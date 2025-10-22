@@ -249,21 +249,33 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
   };
 
   const handleConfirmSend = (studentIds: string[]) => {
-    const studentNames = students
-      .filter((s) => studentIds.includes(s.id))
-      .map((s) => s.name);
+  const studentNames = students
+    .filter((s) => studentIds.includes(s.id))
+    .map((s) => s.name);
 
-    Swal.fire({
-      icon: 'success',
-      title: '자료 전송 완료!',
-      html: `<p style="margin: 0 0 8px 0; font-weight: 600; color: #192b55;">"${selectedMaterialForSend?.title}"</p><p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">${studentNames.join(', ')}</p><p style="color: #6b7280; font-size: 13px;">${studentNames.length}명에게 전송되었습니다.</p>`,
-      confirmButtonColor: '#192b55',
-      confirmButtonText: '확인',
+  Swal.fire({
+    icon: 'success',
+    title: '자료 전송 완료!',
+    html: `
+      <div class="cr-swal-body">
+        <p class="cr-swal-material">"${selectedMaterialForSend?.title}"</p>
+        <p class="cr-swal-names">${studentNames.join(', ')}</p>
+        <p class="cr-swal-count">${studentNames.length}명에게 전송되었습니다</p>
+      </div>
+    `,
+    confirmButtonColor: '#192b55',
+    confirmButtonText: '확인',
+    customClass: {
+      popup: 'cr-swal',            // 팝업 전체
+      title: 'cr-swal-title',      // 타이틀
+      confirmButton: 'cr-swal-confirm', // 확인 버튼
+    },
     }).then(() => {
       setShowSendModal(false);
       setSelectedMaterialForSend(null);
     });
   };
+
 
   const handleOpenStudent = (studentId: string) => {
     navigate(`/student/${studentId}`);

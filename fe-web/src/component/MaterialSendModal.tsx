@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Swal from 'sweetalert2';
-import { X, Send, FileText } from 'lucide-react';
+import { X, Send, FileText, Check, Search } from 'lucide-react';
 import './MaterialSendModal.css';
 
 type Student = {
@@ -8,6 +8,7 @@ type Student = {
   name: string;
   grade: string;
   avatar: string;
+  avatarUrl?: string;
   progressRate: number;
 };
 
@@ -33,101 +34,154 @@ export default function MaterialSendModal({
 }: MaterialSendModalProps) {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [query, setQuery] = useState('');
 
-  // 개별 학생 선택/해제
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return students;
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.grade.toLowerCase().includes(q)
+    );
+  }, [students, query]);
+
   const toggleStudent = (id: string) => {
     setSelectedStudents((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
   };
 
-  // 전체 선택/해제
+  const toggleStudentByKey = (e: React.KeyboardEvent, id: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleStudent(id);
+    }
+  };
+
   const toggleSelectAll = () => {
     if (selectAll) {
-      setSelectedStudents([]);
+      const filteredIds = new Set(filtered.map((s) => s.id));
+      setSelectedStudents((prev) => prev.filter((id) => !filteredIds.has(id)));
       setSelectAll(false);
     } else {
-      setSelectedStudents(students.map((s) => s.id));
+      const idsToAdd = filtered
+        .map((s) => s.id)
+        .filter((id) => !selectedStudents.includes(id));
+      setSelectedStudents((prev) => [...prev, ...idsToAdd]);
       setSelectAll(true);
     }
   };
 
-  // 전송하기 버튼 클릭
   const handleSend = () => {
     if (selectedStudents.length === 0) {
       Swal.fire({
         icon: 'warning',
         title: '학생을 선택하세요',
         text: '자료를 받을 학생을 선택해주세요.',
-        confirmButtonColor: '#28427b',
+        confirmButtonColor: '#192b55',
       });
       return;
     }
-
     onSend(selectedStudents);
   };
 
   return (
     <div className="msm-overlay">
       <div className="msm-modal">
-        {/* Modal Header */}
+        {/* Header */}
         <div className="msm-header">
           <h2>자료 전송하기</h2>
-          <button className="msm-close-btn" onClick={onClose}>
+          <button className="msm-close-btn" onClick={onClose} aria-label="닫기">
             <X size={24} />
           </button>
         </div>
 
-        {/* Modal Content */}
+        {/* Content (scrollable) */}
         <div className="msm-content">
-          {/* Selected Material Info */}
+          {/* Selected material */}
           <div className="msm-material-info">
-            <FileText size={20} />
+            <div className="msm-material-icon">
+              <FileText size={22} />
+            </div>
             <div>
               <p className="msm-label">선택된 자료</p>
               <p className="msm-material-title">{selectedMaterial.title}</p>
             </div>
           </div>
 
-          {/* Students Selection */}
-          <div className="msm-students-section">
-            {/* Select All */}
-            <div className="msm-select-all">
-              <input
-                type="checkbox"
-                id="select-all"
-                checked={selectAll}
-                onChange={toggleSelectAll}
-              />
-              <label htmlFor="select-all">
-                전체 선택 ({students.length}명)
-              </label>
-            </div>
+          {/* Search (icon inside input) */}
+          <div className="msm-search">
+            <Search size={16} className="msm-search-icon" />
+            <input
+              className="msm-search-input"
+              type="text"
+              placeholder="이름 또는 학년/반으로 검색"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectAll(false);
+              }}
+            />
+          </div>
 
-            {/* Students List */}
-            <div className="msm-students-list">
-              {students.map((student) => (
-                <div key={student.id} className="msm-student-item">
-                  <input
-                    type="checkbox"
-                    id={`student-${student.id}`}
-                    checked={selectedStudents.includes(student.id)}
-                    onChange={() => toggleStudent(student.id)}
-                  />
-                  <label htmlFor={`student-${student.id}`}>
-                    <span className="msm-avatar">{student.avatar}</span>
-                    <div className="msm-student-text">
-                      <p className="msm-name">{student.name}</p>
-                      <p className="msm-grade">{student.grade}</p>
-                    </div>
-                  </label>
+          {/* Select All (toggle button) */}
+          <button
+            type="button"
+            className={`msm-select-toggle ${selectAll ? 'is-on' : ''}`}
+            onClick={toggleSelectAll}
+            aria-pressed={selectAll}
+          >
+            전체 선택 <span className="msm-count">({filtered.length}명)</span>
+            {selectAll && <Check className="msm-select-check" size={16} />}
+          </button>
+
+          {/* Students */}
+          <div className="msm-students-list">
+            {filtered.map((student) => {
+              const checked = selectedStudents.includes(student.id);
+              return (
+                <div
+                  key={student.id}
+                  className={`msm-student-item ${checked ? 'is-selected' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleStudent(student.id)}
+                  onKeyDown={(e) => toggleStudentByKey(e, student.id)}
+                  aria-pressed={checked}
+                >
+                  {/* ✅ 선택된 경우에만 체크 배지 렌더링 */}
+                  {checked && (
+                    <span className="msm-selected-badge">
+                      <Check size={16} />
+                    </span>
+                  )}
+
+                  {student.avatarUrl ? (
+                    <img
+                      className="msm-avatar-img"
+                      src={student.avatarUrl}
+                      alt={`${student.name} 아바타`}
+                    />
+                  ) : (
+                    <span className="msm-avatar-emoji">{student.avatar}</span>
+                  )}
+
+                  <div className="msm-student-text">
+                    <p className="msm-name">{student.name}</p>
+                    <p className="msm-grade">{student.grade}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+
+            {filtered.length === 0 && (
+              <div className="msm-empty">검색 결과가 없습니다</div>
+            )}
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {/* Footer */}
         <div className="msm-footer">
           <button className="msm-cancel-btn" onClick={onClose}>
             취소
