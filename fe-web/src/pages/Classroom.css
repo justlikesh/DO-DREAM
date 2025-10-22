@@ -1,21 +1,19 @@
 /* ===== Root ===== */
 .cr-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  overflow: hidden;
-  position: relative;
+  background-image: url('../assets/join/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow-y: auto;
 }
 
 /* ===== Header ===== */
 .cr-header {
-  position: fixed;
   top: 0;
   width: 100%;
   height: 80px;
-  background: white;
-  box-shadow: 0 4px 20px rgba(40, 66, 123, 0.12);
   z-index: 100;
-  border-bottom: 2px solid #f0f1f3;
 }
 
 .cr-header-wrapper {
@@ -26,18 +24,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-}
-
-.cr-header-info {
-  flex: 1;
-  text-align: center;
 }
 
 .cr-header-title {
-  font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #28427b 0%, #3d5a9c 100%);
+  font-size: 30px;
+  font-weight: 700;
+  background: #192b55;
+  -webkit-text-stroke: 0.8px #192b55;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -45,11 +38,8 @@
   margin: 0;
 }
 
-.cr-header-classroom {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 4px 0 0 0;
-  font-weight: 600;
+.cr-header-spacer {
+  flex: 1;
 }
 
 .cr-logout-button {
@@ -58,24 +48,21 @@
   gap: 8px;
   padding: 10px 20px;
   background: transparent;
-  border: 2px solid #28427b;
+  border: none;
   border-radius: 10px;
-  color: #28427b;
+  color: #192b55;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
+  margin-left: 10px;
 }
 
 .cr-logout-button:hover {
-  background: #28427b;
+  background: #192b55;
   color: white;
   box-shadow: 0 4px 12px rgba(40, 66, 123, 0.25);
   transform: translateY(-2px);
-}
-
-.cr-logout-button:active {
-  transform: translateY(0);
 }
 
 .cr-back-to-classrooms {
@@ -84,9 +71,9 @@
   gap: 8px;
   padding: 10px 20px;
   background: transparent;
-  border: 2px solid #28427b;
+  border: none;
   border-radius: 10px;
-  color: #28427b;
+  color: #192b55;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -95,74 +82,145 @@
 }
 
 .cr-back-to-classrooms:hover {
-  background: #28427b;
+  background: #192b55;
   color: white;
   box-shadow: 0 4px 12px rgba(40, 66, 123, 0.25);
   transform: translateY(-2px);
 }
 
-.cr-back-to-classrooms:active {
-  transform: translateY(0);
-}
-
-/* ===== Main Container ===== */
-.cr-container-new {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
+/* ===== Container ===== */
+.cr-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 120px 40px 40px;
-  min-height: 100vh;
+  padding: 10px 40px 40px;
 }
 
-.cr-materials-section {
+/* ===== Info Section ===== */
+.cr-info-section {
+  margin-bottom: 40px;
+}
+
+.cr-info-card {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  padding: 30px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(40, 66, 123, 0.08);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   gap: 24px;
 }
 
-.cr-students-section {
+.cr-info-group {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.cr-info-title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #192b55;
+  margin: 0;
+}
+
+.cr-info-subject {
+  font-size: 20px;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 600;
+}
+
+.cr-info-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 600;
+  margin: 0;
+}
+
+.cr-info-teacher {
+  font-size: 20px;
+  font-weight: 800;
+  color: #192b55;
+  margin: 0;
+}
+
+.cr-info-count {
+  font-size: 20px;
+  font-weight: 800;
+  color: #192b55;
+  margin: 0;
+}
+
+.cr-info-divider {
+  width: 1px;
+  height: 50px;
+  background: #e5e7eb;
+}
+
+/* ===== Main Section ===== */
+.cr-main-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+
+.cr-materials-container,
+.cr-students-container {
+  display: flex;
+  flex-direction: column;
 }
 
 .cr-section {
   background: white;
   border-radius: 16px;
-  padding: 32px;
+  padding: 0px; /* 기존 유지 */
   box-shadow: 0 4px 20px rgba(40, 66, 123, 0.08);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* flex 컨테이너 자식 스크롤 끊김 방지 */
+}
+
+.cr-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .cr-section-title {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 24px;
   font-size: 18px;
   font-weight: 800;
-  color: #28427b;
+  color: #192b55;
+  padding: 30px 30px 10px 30px;
 }
 
 .cr-section-title svg {
-  color: #28427b;
+  color: #192b55;
+  font-size: 24px;
 }
 
 .cr-section-title h3 {
   margin: 0;
-  font-size: inherit;
+  font-size: 24px;
 }
 
 .cr-create-btn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
+  gap: 8px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #28427b 0%, #3d5a9c 100%);
+  margin: 14px 24px 0px 10px;
+  background: #192b55;
   color: white;
   border: none;
   border-radius: 10px;
@@ -170,16 +228,15 @@
   font-size: 13px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(40, 66, 123, 0.25);
+  white-space: nowrap;
 }
 
 .cr-create-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(40, 66, 123, 0.35);
+  transform: translateY(-2px);
 }
 
-.cr-create-btn:active {
-  transform: translateY(-1px);
+.make-file {
+  font-size: 16px;
 }
 
 /* ===== Empty State ===== */
@@ -213,7 +270,11 @@
 .cr-materials-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
+  padding: 30px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .cr-material-card {
@@ -221,8 +282,7 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border: 2px solid #f0f1f3;
+  background: #f7f8f9;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -230,9 +290,8 @@
 
 .cr-material-card:hover {
   background: white;
-  border-color: #28427b;
-  box-shadow: 0 6px 20px rgba(40, 66, 123, 0.12);
-  transform: translateX(4px);
+  box-shadow: 0 8px 24px 8px rgba(0, 0, 0, 0.18);
+  transform: translateY(-4px);
 }
 
 .cr-material-icon {
@@ -242,8 +301,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(40, 66, 123, 0.1);
-  color: #28427b;
+  background: rgba(25, 43, 85, 0.1);
+  color: #192b55;
   flex-shrink: 0;
 }
 
@@ -255,95 +314,94 @@
 }
 
 .cr-material-info h4 {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: #1f2937;
   margin: 0;
 }
 
 .cr-material-info span {
-  font-size: 12px;
+  font-size: 16px;
   color: #6b7280;
 }
 
-.cr-material-action-btn {
+.cr-material-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cr-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
   border: none;
-  background: white;
+  background: #E1E3E9;
   border-radius: 8px;
-  color: #28427b;
+  color: #192b55;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid #e5e7eb;
   flex-shrink: 0;
 }
 
-.cr-material-action-btn:hover {
-  background: #28427b;
+.cr-action-btn:hover {
+  background: #192b55;
   color: white;
-  border-color: #28427b;
+  border-color: #192b55;
 }
 
-.cr-material-action-btn.delete:hover {
+.cr-action-btn.delete:hover {
   background: #dc2626;
   border-color: #dc2626;
 }
 
-.cr-arrow {
-  color: #d1d5db;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.cr-material-card:hover .cr-arrow {
-  color: #28427b;
-  transform: translateX(4px);
-}
-
 /* ===== Students ===== */
+
+/* ✅ 스크롤은 바깥 래퍼가 담당 */
+.cr-students-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .cr-students-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-height: 600px;
-  overflow-y: auto;
-  padding-right: 8px;
+  gap: 20px;
+  overflow: visible;  /* 호버 섀도우 안잘리게 유지 */
+  padding: 30px;
 }
 
-.cr-students-list::-webkit-scrollbar {
+.cr-students-scroll::-webkit-scrollbar {
   width: 6px;
 }
 
-.cr-students-list::-webkit-scrollbar-track {
+.cr-students-scroll::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.cr-students-list::-webkit-scrollbar-thumb {
+.cr-students-scroll::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 3px;
 }
 
-.cr-students-list::-webkit-scrollbar-thumb:hover {
+.cr-students-scroll::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 
 .cr-student-card {
-  padding: 16px;
-  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-  border: 2px solid #f0f1f3;
+  padding: 20px;
+  background: #f7f8f9;
   border-radius: 12px;
   transition: all 0.3s ease;
 }
 
 .cr-student-card:hover {
   background: white;
-  border-color: #28427b;
-  box-shadow: 0 6px 20px rgba(40, 66, 123, 0.12);
-  transform: translateX(4px);
+  box-shadow: 0 8px 24px 8px rgba(0, 0, 0, 0.18);
+  transform: translateY(-4px);
 }
 
 .cr-student-header {
@@ -354,15 +412,32 @@
 }
 
 .cr-student-avatar {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  background: rgba(40, 66, 123, 0.1);
+  font-size: 24px;
+  background: rgba(25, 43, 85, 0.1);
   flex-shrink: 0;
+}
+
+/* 이미지 아바타 전용 (원형, 크기 동일, 커버) */
+.cr-student-avatar-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* 반응형에서 기존 아바타와 동일하게 축소 */
+@media (max-width: 768px) {
+  .cr-student-avatar-img {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 .cr-student-info {
@@ -373,14 +448,14 @@
 }
 
 .cr-student-info h4 {
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 700;
   color: #1f2937;
   margin: 0;
 }
 
 .cr-student-info p {
-  font-size: 12px;
+  font-size: 16px;
   color: #6b7280;
   margin: 0;
 }
@@ -391,27 +466,27 @@
   gap: 8px;
 }
 
-.cr-progress-info {
+.cr-progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .cr-progress-label {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 600;
   color: #6b7280;
 }
 
 .cr-progress-percent {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
-  color: #28427b;
+  color: #192b55;
 }
 
 .cr-progress-bar {
   width: 100%;
-  height: 6px;
+  height: 8px;
   background: #e5e7eb;
   border-radius: 999px;
   overflow: hidden;
@@ -424,27 +499,32 @@
   transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ===== 공용: 내부 스크롤 + 스크롤바 숨김 ===== */
+.cr-scroll-y {
+  /* 원하는 고정 높이로 조정 가능 (예: 520px) */
+  max-height: 600px;
+  overflow-y: auto;
+
+  /* 스크롤바 숨김 (크로스브라우저) */
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE/Edge legacy */
+}
+.cr-scroll-y::-webkit-scrollbar { display: none; } /* Chrome/Safari */
+
 /* ===== Responsive ===== */
-@media (max-width: 1200px) {
-  .cr-container-new {
+@media (max-width: 1024px) {
+  .cr-main-section {
     grid-template-columns: 1fr;
-    padding: 120px 30px 30px;
-    gap: 30px;
   }
 }
 
 @media (max-width: 768px) {
   .cr-header-wrapper {
     padding: 0 20px;
-    gap: 10px;
   }
 
   .cr-header-title {
-    font-size: 20px;
-  }
-
-  .cr-header-classroom {
-    font-size: 11px;
+    font-size: 22px;
   }
 
   .cr-back-to-classrooms span,
@@ -452,22 +532,24 @@
     display: none;
   }
 
-  .cr-back-to-classrooms,
-  .cr-logout-button {
-    padding: 8px 12px;
-    width: 40px;
-    height: 40px;
-    justify-content: center;
-  }
-
-  .cr-container-new {
-    grid-template-columns: 1fr;
+  .cr-container {
     padding: 100px 20px 20px;
-    gap: 20px;
   }
 
   .cr-section {
     padding: 20px;
+    gap: 50px;
+  }
+
+  .cr-info-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .cr-info-divider {
+    display: none;
   }
 
   .cr-create-btn span {
@@ -476,25 +558,34 @@
 
   .cr-create-btn {
     padding: 8px 12px;
-    width: 40px;
-    height: 40px;
-    justify-content: center;
   }
 
-  .cr-material-action-btn {
+  .cr-material-card,
+  .cr-student-card {
+    padding: 12px;
+  }
+
+  .cr-material-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .cr-student-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .cr-action-btn {
     width: 32px;
     height: 32px;
   }
 
-  .cr-section-title {
-    flex-wrap: wrap;
+  /* 모바일에서 학생 리스트는 높이 제한 해제 */
+  .cr-students-scroll {
+    max-height: none;
   }
 
-  .cr-section-title h3 {
-    flex: 1 0 auto;
-  }
-
-  .cr-create-btn {
-    flex: 0 0 auto;
+  .cr-main-section {
+    gap: 20px;
   }
 }

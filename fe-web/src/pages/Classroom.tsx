@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import {
   User,
   FolderOpen,
-  ChevronRight,
   FileText,
   LogOut,
   Plus,
@@ -14,12 +13,15 @@ import {
 } from 'lucide-react';
 import MaterialSendModal from '@/component/MaterialSendModal';
 import './Classroom.css';
+import male from '../assets/classroom/male.png';
+import female from '../assets/classroom/female.png';
 
 type Student = {
   id: string;
   name: string;
   grade: string;
   avatar: string;
+  avatarUrl?: string;
   progressRate: number;
 };
 
@@ -41,6 +43,42 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
   const classroomId = urlClassroomId || propClassroomId || '1';
 
   const [materials, setMaterials] = useState<Material[]>([
+    {
+      id: '1',
+      title: '1학기 수업 자료',
+      uploadDate: '2024.03.15',
+      content: '첫 번째 자료의 내용입니다.',
+    },
+    {
+      id: '2',
+      title: '학습 참고 자료',
+      uploadDate: '2024.03.20',
+      content: '학습 참고 자료의 내용입니다.',
+    },
+    {
+      id: '1',
+      title: '1학기 수업 자료',
+      uploadDate: '2024.03.15',
+      content: '첫 번째 자료의 내용입니다.',
+    },
+    {
+      id: '2',
+      title: '학습 참고 자료',
+      uploadDate: '2024.03.20',
+      content: '학습 참고 자료의 내용입니다.',
+    },
+    {
+      id: '1',
+      title: '1학기 수업 자료',
+      uploadDate: '2024.03.15',
+      content: '첫 번째 자료의 내용입니다.',
+    },
+    {
+      id: '2',
+      title: '학습 참고 자료',
+      uploadDate: '2024.03.20',
+      content: '학습 참고 자료의 내용입니다.',
+    },
     {
       id: '1',
       title: '1학기 수업 자료',
@@ -81,6 +119,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '김민준',
       grade: '3학년 1반',
       avatar: '👦🏻',
+      avatarUrl: male,
       progressRate: 85,
     },
     {
@@ -88,6 +127,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '이서연',
       grade: '3학년 1반',
       avatar: '👧🏻',
+      avatarUrl: female,
       progressRate: 92,
     },
     {
@@ -95,6 +135,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '박지호',
       grade: '3학년 2반',
       avatar: '👦🏻',
+      avatarUrl: male,
       progressRate: 78,
     },
     {
@@ -102,6 +143,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '최유진',
       grade: '3학년 2반',
       avatar: '👧🏻',
+      avatarUrl: female,
       progressRate: 88,
     },
     {
@@ -109,6 +151,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '정민수',
       grade: '3학년 3반',
       avatar: '👦🏻',
+      avatarUrl: male,
       progressRate: 95,
     },
     {
@@ -116,6 +159,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       name: '강서윤',
       grade: '3학년 3반',
       avatar: '👧🏻',
+      avatarUrl: female,
       progressRate: 81,
     },
   ];
@@ -169,7 +213,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       icon: 'success',
       title: '자료 발행 완료!',
       text: `"${title}"이(가) 자료함에 추가되었습니다.`,
-      confirmButtonColor: '#28427b',
+      confirmButtonColor: '#192b55',
       confirmButtonText: '확인',
     });
   };
@@ -185,7 +229,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
   const handleDeleteMaterial = (materialId: string) => {
     Swal.fire({
       title: '자료를 삭제하시겠습니까?',
-      text: '이 작업은 되돌릴 수 없습니다.',
+      text: '이 작업은 되돌릴 수 없습니다',
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#dc2626',
@@ -198,7 +242,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
         Swal.fire({
           icon: 'success',
           title: '자료가 삭제되었습니다',
-          confirmButtonColor: '#28427b',
+          confirmButtonColor: '#192b55',
         });
       }
     });
@@ -212,8 +256,8 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
     Swal.fire({
       icon: 'success',
       title: '자료 전송 완료!',
-      html: `<p style="margin: 0 0 8px 0; font-weight: 600; color: #28427b;">"${selectedMaterialForSend?.title}"</p><p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">${studentNames.join(', ')}</p><p style="color: #6b7280; font-size: 13px;">${studentNames.length}명에게 전송되었습니다.</p>`,
-      confirmButtonColor: '#28427b',
+      html: `<p style="margin: 0 0 8px 0; font-weight: 600; color: #192b55;">"${selectedMaterialForSend?.title}"</p><p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">${studentNames.join(', ')}</p><p style="color: #6b7280; font-size: 13px;">${studentNames.length}명에게 전송되었습니다.</p>`,
+      confirmButtonColor: '#192b55',
       confirmButtonText: '확인',
     }).then(() => {
       setShowSendModal(false);
@@ -226,7 +270,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
       icon: 'question',
       title: '로그아웃하시겠습니까?',
       showCancelButton: true,
-      confirmButtonColor: '#28427b',
+      confirmButtonColor: '#192b55',
       cancelButtonColor: '#d1d5db',
       confirmButtonText: '로그아웃',
       cancelButtonText: '취소',
@@ -235,7 +279,7 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
         Swal.fire({
           icon: 'success',
           title: '로그아웃되었습니다',
-          confirmButtonColor: '#28427b',
+          confirmButtonColor: '#192b55',
         });
       }
     });
@@ -255,14 +299,12 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
     <div className="cr-root">
       <header className="cr-header">
         <div className="cr-header-wrapper">
+          <h1 className="cr-header-title">DO:DREAM</h1>
+          <div className="cr-header-spacer" />
           <button className="cr-back-to-classrooms" onClick={() => navigate('/classrooms')}>
             <ArrowLeft size={18} />
             <span>돌아가기</span>
           </button>
-          <div className="cr-header-info">
-            <h1 className="cr-header-title">Do!dream</h1>
-            <p className="cr-header-classroom">{currentClassroom.grade} {currentClassroom.class}</p>
-          </div>
           <button className="cr-logout-button" onClick={handleLogout}>
             <LogOut size={18} />
             <span>로그아웃</span>
@@ -270,94 +312,138 @@ export default function Classroom({ onNavigateToEditor, classroomId: propClassro
         </div>
       </header>
 
-      <div className="cr-container-new">
-        {/* Left Section - Materials */}
-        <div className="cr-materials-section">
-          <section className="cr-section">
-            <div className="cr-section-title">
-              <FolderOpen size={20} />
-              <h3>자료함</h3>
-              <button className="cr-create-btn" onClick={handleCreateMaterial}>
-                <Plus size={18} />
-                <span>자료 만들기</span>
-              </button>
+      <div className="cr-container">
+        {/* Top Section - Classroom Info */}
+        <div className="cr-info-section">
+          <div className="cr-info-card">
+            <div className="cr-info-group">
+              <h2 className="cr-info-title">{currentClassroom.grade} {currentClassroom.class}</h2>
             </div>
-            <div className="cr-materials-list">
-              {materials.length === 0 ? (
-                <div className="cr-empty-state">
-                  <FolderOpen size={48} />
-                  <p>아직 자료가 없습니다.</p>
-                  <p className="cr-empty-hint">
-                    자료 만들기 버튼을 눌러 새로운 자료를 추가하세요.
-                  </p>
-                </div>
-              ) : (
-                materials.map((material) => (
-                  <div key={material.id} className="cr-material-card">
-                    <div className="cr-material-icon">
-                      <FileText size={20} />
-                    </div>
-                    <div className="cr-material-info">
-                      <h4>{material.title}</h4>
-                      <span>{material.uploadDate}</span>
-                    </div>
-                    <button
-                      className="cr-material-action-btn"
-                      onClick={() => handleSendMaterial(material.id)}
-                      title="자료 전송"
-                    >
-                      <Send size={16} />
-                    </button>
-                    <button
-                      className="cr-material-action-btn delete"
-                      onClick={() => handleDeleteMaterial(material.id)}
-                      title="자료 삭제"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <ChevronRight size={18} className="cr-arrow" />
-                  </div>
-                ))
-              )}
+            <div className="cr-info-divider" />
+            <div className="cr-info-group">
+              <p className="cr-info-label">담당 선생님</p>
+              <h3 className="cr-info-teacher">{teacher.name}</h3>
             </div>
-          </section>
+            <div className="cr-info-divider" />
+            <div className="cr-info-group">
+              <p className="cr-info-label">담당 과목</p>
+              <h3 className="cr-info-teacher">{currentClassroom.subject}</h3>
+            </div>
+            <div className="cr-info-divider" />
+            <div className="cr-info-group">
+              <p className="cr-info-label">전체 학생</p>
+              <h3 className="cr-info-count">{students.length}명</h3>
+            </div>
+          </div>
         </div>
 
-        {/* Right Section - Students */}
-        <div className="cr-students-section">
-          <section className="cr-section">
-            <div className="cr-section-title">
-              <User size={20} />
-              <h3>학생 관리 ({students.length}명)</h3>
-            </div>
-            <div className="cr-students-list">
-              {students.map((student) => (
-                <div key={student.id} className="cr-student-card">
-                  <div className="cr-student-header">
-                    <div className="cr-student-avatar">{student.avatar}</div>
-                    <div className="cr-student-info">
-                      <h4>{student.name}</h4>
-                      <p>{student.grade}</p>
-                    </div>
-                  </div>
-                  <div className="cr-student-progress">
-                    <div className="cr-progress-info">
-                      <span className="cr-progress-label">진도</span>
-                      <span className="cr-progress-percent">
-                        {student.progressRate}%
-                      </span>
-                    </div>
-                    <div className="cr-progress-bar">
-                      <div
-                        className="cr-progress-fill"
-                        style={{ width: `${student.progressRate}%` }}
-                      />
-                    </div>
-                  </div>
+        {/* Main Section */}
+        <div className="cr-main-section">
+          {/* Left - Materials */}
+          <div className="cr-materials-container">
+            <div className="cr-section">
+              <div className="cr-section-header">
+                <div className="cr-section-title">
+                  <FolderOpen size={20} />
+                  <h3>자료함</h3>
                 </div>
-              ))}
+                <button className="cr-create-btn" onClick={handleCreateMaterial}>
+                  <Plus size={20} />
+                  <span className="make-file">자료 만들기</span>
+                </button>
+              </div>
+
+              {/* ✅ 내부 스크롤 + 스크롤바 숨김 */}
+              <div className="cr-materials-list cr-scroll-y">
+                {materials.length === 0 ? (
+                  <div className="cr-empty-state">
+                    <FolderOpen size={48} />
+                    <p>아직 자료가 없습니다</p>
+                    <p className="cr-empty-hint">
+                      자료 만들기 버튼을 눌러 새로운 자료를 추가하세요
+                    </p>
+                  </div>
+                ) : (
+                  materials.map((material) => (
+                    <div key={material.id} className="cr-material-card">
+                      <div className="cr-material-icon">
+                        <FileText size={20} />
+                      </div>
+                      <div className="cr-material-info">
+                        <h4>{material.title}</h4>
+                        <span>{material.uploadDate}</span>
+                      </div>
+                      <div className="cr-material-actions">
+                        <button
+                          className="cr-action-btn"
+                          onClick={() => handleSendMaterial(material.id)}
+                          title="자료 전송"
+                        >
+                          <Send size={16} />
+                        </button>
+                        <button
+                          className="cr-action-btn delete"
+                          onClick={() => handleDeleteMaterial(material.id)}
+                          title="자료 삭제"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </section>
+          </div>
+
+          {/* Right - Students */}
+          <div className="cr-students-container">
+            <div className="cr-section">
+              <div className="cr-section-title">
+                <User size={20} />
+                <h3>학생 관리 ({students.length}명)</h3>
+              </div>
+
+              {/* ✅ 내부 스크롤 + 스크롤바 숨김 */}
+              <div className="cr-students-scroll cr-scroll-y">
+                <div className="cr-students-list">
+                  {students.map((student) => (
+                    <div key={student.id} className="cr-student-card">
+                      <div className="cr-student-header">
+                        {student.avatarUrl ? (
+                          <img
+                            className="cr-student-avatar-img"
+                            src={student.avatarUrl}
+                            alt={`${student.name} 아바타`}
+                          />
+                        ) : (
+                          <div className="cr-student-avatar">{student.avatar}</div>
+                        )}
+
+                        <div className="cr-student-info">
+                          <h4>{student.name}</h4>
+                          <p>{student.grade}</p>
+                        </div>
+                      </div>
+                      <div className="cr-student-progress">
+                        <div className="cr-progress-header">
+                          <span className="cr-progress-label">현재 학습 진행률</span>
+                          <span className="cr-progress-percent">{student.progressRate}%</span>
+                        </div>
+                        <div className="cr-progress-bar">
+                          <div
+                            className="cr-progress-fill"
+                            style={{ width: `${student.progressRate}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* ✅ 끝 */}
+            </div>
+          </div>
         </div>
       </div>
 
