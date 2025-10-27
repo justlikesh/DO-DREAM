@@ -7,6 +7,7 @@ import {
   ScrollView,
   AccessibilityInfo,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { 
   PlayerScreenNavigationProp,
@@ -60,16 +61,16 @@ export default function PlayerScreen() {
 
   if (!chapter) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         <Text>챕터를 찾을 수 없습니다.</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const currentSection = chapter.sections[currentSectionIndex];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* 상단 헤더 */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -109,7 +110,6 @@ export default function PlayerScreen() {
 
       {/* 컨트롤 버튼들 */}
       <View style={styles.controlsContainer}>
-        {/* 이전 버튼 */}
         <TouchableOpacity
           style={[
             styles.controlButton,
@@ -125,7 +125,6 @@ export default function PlayerScreen() {
           <Text style={styles.controlButtonText}>◀ 이전</Text>
         </TouchableOpacity>
 
-        {/* 재생/일시정지 버튼 */}
         <TouchableOpacity
           style={[styles.controlButton, styles.playButton]}
           onPress={handlePlayPause}
@@ -138,7 +137,6 @@ export default function PlayerScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* 다음 버튼 */}
         <TouchableOpacity
           style={[
             styles.controlButton,
@@ -156,7 +154,7 @@ export default function PlayerScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 음성 질문 버튼 (나중에 구현) */}
+      {/* 음성 질문하기 버튼 */}
       <View style={styles.bottomButtons}>
         <TouchableOpacity
           style={styles.voiceQueryButton}
@@ -173,7 +171,7 @@ export default function PlayerScreen() {
           <Text style={styles.voiceQueryText}>🎤 질문하기</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -183,8 +181,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
-    paddingTop: 60,
     paddingHorizontal: 24,
+    paddingTop: 12,
     paddingBottom: 20,
     borderBottomWidth: 2,
     borderBottomColor: '#e0e0e0',
@@ -269,7 +267,7 @@ const styles = StyleSheet.create({
   },
   bottomButtons: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 24,
     paddingTop: 16,
   },
   voiceQueryButton: {

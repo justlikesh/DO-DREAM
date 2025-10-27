@@ -1,11 +1,12 @@
 import React from 'react';
 import {
-  View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LibraryScreenNavigationProp } from '../navigation/navigationTypes';
 import { dummyBooks, studentName, Book } from '../data/dummyBooks';
@@ -15,8 +16,6 @@ export default function LibraryScreen() {
 
   const handleBookPress = (book: Book) => {
     console.log('선택한 교재:', book.subject);
-    
-    // PlaybackChoice 화면으로 이동
     navigation.navigate('PlaybackChoice', { book });
   };
 
@@ -52,7 +51,7 @@ export default function LibraryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Text 
           style={styles.studentName}
@@ -72,7 +71,7 @@ export default function LibraryScreen() {
         showsVerticalScrollIndicator={false}
         accessible={false}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -80,10 +79,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 60,
   },
   header: {
     paddingHorizontal: 24,
+    paddingTop: 12,
     paddingBottom: 24,
     borderBottomWidth: 2,
     borderBottomColor: '#e0e0e0',

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   AccessibilityInfo,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { 
   PlaybackChoiceScreenNavigationProp,
@@ -18,7 +19,6 @@ export default function PlaybackChoiceScreen() {
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { book } = route.params;
 
-  // 첫 번째 챕터 가져오기
   const chapters = getChaptersByBookId(book.id);
   const firstChapter = chapters[0];
 
@@ -42,7 +42,6 @@ export default function PlaybackChoiceScreen() {
   const handleContinue = () => {
     AccessibilityInfo.announceForAccessibility('이어서 듣기 시작합니다.');
     
-    // 현재 챕터 찾기 (여기서는 간단하게 첫 번째 챕터로)
     if (firstChapter) {
       navigation.navigate('Player', {
         book,
@@ -57,7 +56,7 @@ export default function PlaybackChoiceScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* 뒤로가기 버튼 */}
       <TouchableOpacity
         style={styles.backButton}
@@ -111,7 +110,7 @@ export default function PlaybackChoiceScreen() {
           <Text style={styles.buttonSubtext}>챕터 처음부터</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -119,10 +118,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 60,
     paddingHorizontal: 24,
   },
   backButton: {
+    paddingTop: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
     alignSelf: 'flex-start',
