@@ -20,7 +20,7 @@ export const dummyBooks: Book[] = [
   },
   {
     id: '2',
-    subject: '과학 3',
+    subject: '생물 1',
     currentChapter: 5,
     totalChapters: 8,
     hasProgress: true,
