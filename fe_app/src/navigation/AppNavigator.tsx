@@ -6,6 +6,7 @@ import { RootStackParamList } from './navigationTypes';
 import LibraryScreen from '../screens/LibraryScreen';
 import PlaybackChoiceScreen from '../screens/PlaybackChoiceScreen';
 import PlayerScreen from '../screens/PlayerScreen';
+import QuestionScreen from '../screens/QuestionScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -38,6 +39,13 @@ export default function AppNavigator() {
           component={PlayerScreen}
           options={{
             title: '교재 듣기',
+          }}
+        />
+        <Stack.Screen 
+          name="Question" 
+          component={QuestionScreen}
+          options={{
+            title: '질문하기',
           }}
         />
       </Stack.Navigator>

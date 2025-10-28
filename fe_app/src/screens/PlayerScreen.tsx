@@ -59,6 +59,11 @@ export default function PlayerScreen() {
     }
   };
 
+  const handleQuestionPress = () => {
+    AccessibilityInfo.announceForAccessibility('질문하기 화면으로 이동합니다');
+    navigation.navigate('Question');
+  };
+
   if (!chapter) {
     return (
       <SafeAreaView style={styles.container}>
@@ -158,15 +163,11 @@ export default function PlayerScreen() {
       <View style={styles.bottomButtons}>
         <TouchableOpacity
           style={styles.voiceQueryButton}
-          onPress={() => {
-            AccessibilityInfo.announceForAccessibility(
-              '질문하기 기능은 준비 중입니다'
-            );
-          }}
+          onPress={handleQuestionPress}
           accessible={true}
           accessibilityLabel="질문하기"
           accessibilityRole="button"
-          accessibilityHint="볼륨 버튼을 두 번 눌러도 실행할 수 있습니다"
+          accessibilityHint="음성으로 질문할 수 있는 화면으로 이동합니다"
         >
           <Text style={styles.voiceQueryText}>🎤 질문하기</Text>
         </TouchableOpacity>

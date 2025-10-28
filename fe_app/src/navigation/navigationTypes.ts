@@ -12,6 +12,7 @@ export type RootStackParamList = {
     chapterId: string;
     fromStart: boolean;
   };
+  Question: undefined;
 };
 
 // Navigation prop 타입
@@ -28,6 +29,11 @@ export type PlaybackChoiceScreenNavigationProp = NativeStackNavigationProp<
 export type PlayerScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Player'
+>;
+
+export type QuestionScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Question'
 >;
 
 // Route prop 타입
