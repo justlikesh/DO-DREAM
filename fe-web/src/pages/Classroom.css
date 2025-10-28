@@ -1,519 +1,231 @@
-/* ===== Root & Header ===== */
-.cr-root {
-  height: 100vh; /* ⬅️ 화면 높이 고정 */
-  overflow: hidden; /* ⬅️ 페이지 스크롤 차단 */
-  background: linear-gradient(135deg, #f0f4f8 0%, #e8f1f8 100%);
-}
+/* =========================
+   Classroom.css (slim)
+   - ClassroomList.css와 겹치는 스타일 제거
+   - Classroom 페이지 전용 요소만 유지
+   ========================= */
 
-.cr-header {
-  position: sticky;
-  top: 0;
-  width: 100%;
-  height: 70px;
-  z-index: 100;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
-}
-
-.cr-header-wrapper {
+/* .cl-header-wrapper {
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0 40px;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
+} */
 
-.cr-header-left,
-.cr-header-right {
+.cl-header-button {
   display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
 }
 
-.cr-header-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: #192b55;
-  -webkit-text-stroke: 0.8px #192b55;
-  letter-spacing: -0.5px;
-  margin: 0;
-}
-
-.cr-back-chip,
-.cr-logout-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #f1f5f9;
-  border: none;
-  border-radius: 8px;
-  color: #475569;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-.cr-back-chip:hover,
-.cr-logout-button:hover {
-  background: #e2e8f0;
-  color: #192b55;
-}
-
-/* ===== Shell Layout: Left Sticky + Right Main ===== */
-.cr-shell {
-  height: calc(100vh - 70px); /* ⬅️ 헤더 제외한 영역을 꽉 채움 */
-  box-sizing: border-box;
-  padding: 24px 40px 24px;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
-  overflow: hidden; /* ⬅️ 바깥 스크롤 차단 */
-}
-
-/* Left panel: 고정 보이기 (스크롤 없음) */
-.cr-side {
-  position: sticky;
-  align-self: start;
+.cl-header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow: hidden; /* ⬅️ 좌측 패널 자체 스크롤 방지 */
-}
-
-.cr-class-badge {
-  display: flex;
+  flex-direction: row;
   gap: 8px;
   align-items: center;
-  padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(16px);
-  border-radius: 14px;
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-.cr-class-grade {
-  font-size: 18px;
-  font-weight: 900;
-  color: #192b55;
-}
-.cr-class-class {
-  font-size: 18px;
-  font-weight: 800;
-  color: #64748b;
 }
 
-.cr-kpis {
-  display: grid;
-  gap: 12px;
-}
-.cr-kpi {
-  padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(16px);
-  border-radius: 14px;
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-.cr-kpi-label {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 700;
-  margin: 0 0 6px;
-}
-.cr-kpi-value {
-  font-size: 18px;
-  font-weight: 900;
-  color: #192b55;
-  margin: 0;
+/* ===== 메인 레이아웃(페이지 전용) ===== */
+.cl-main-fixed {
+  position: relative;
+  height: calc(100vh - 70px); /* 고정 헤더 70px 가정 */
+  margin-left: 280px; /* 고정 사이드바 280px 가정 */
+  margin-top: 70px; /* 헤더 높이 */
+  padding: 30px 40px 24px;
+  overflow: hidden; /* 내부 스크롤 컨테이너만 스크롤 */
 }
 
-/* ===== Right main grid (스크롤은 내부 리스트에만) ===== */
-.cr-main {
-  min-width: 0;
+/* 2단 컬럼 래이아웃 (좌: 학생/반, 우: 자료 등) */
+.cl-two-columns {
   height: 100%;
-  overflow: hidden;
-} /* ⬅️ 바깥 스크롤 차단 */
-.cr-main-grid {
-  height: 100%; /* ⬅️ 섹션이 높이 계산 가능 */
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
+  align-items: stretch;
 }
 
-/* Section card */
-.cr-section {
+/* ===== 카드 공통 (Classroom 전용 카드) ===== */
+.cl-card {
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 20px;
-  padding: 0;
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 16px 16px 12px;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* ⬅️ 내부 스크롤 위해 필수 */
-  gap: 10px;
+  min-height: 0; /* 내부 스크롤 위해 */
 }
-
-.cr-section-title {
+.cl-card-head {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  color: #192b55;
-  padding: 24px 24px 8px;
+  padding: 6px 8px 10px;
 }
-.cr-section-title h3 {
+.cl-card-head h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  color: #1e293b;
 }
-
-/* ===== Toolbar ===== */
-.cr-toolbar {
+.cl-head-left {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 16px 12px;
+  align-items: center;
+  gap: 10px;
 }
-.cr-toolbar-row {
+.cl-head-right {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.cr-input-wrap {
-  flex: 1;
-  min-width: 220px;
+/* ===== 카드 내부 툴바/검색/정렬 (페이지 전용) ===== */
+.cl-input-wrap {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
+  height: 36px;
   padding: 0 10px;
   background: #fff;
   border: 2px solid rgba(0, 0, 0, 0.06);
   border-radius: 10px;
 }
-.cr-input-wrap svg {
-  opacity: 0.6;
-}
-.cr-input {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
+.cl-input {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
+  height: 100%;
 }
-
-.cr-sort-btn {
-  flex: 0 0 auto;
+.cl-sort-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 38px;
+  height: 36px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: #eee;
   border: none;
+  background: #eee;
   font-size: 12px;
   font-weight: 800;
   color: #374151;
   cursor: pointer;
-  transition: 0.15s;
 }
 
-.cr-label-chips {
-  display: flex;
-  gap: 8px;
+/* ===== 카드 스크롤 컨테이너 (페이지 전용) ===== */
+.cl-section-scroll {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding-bottom: 2px;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  padding: 8px 8px 12px;
 }
-.cr-label-chips::-webkit-scrollbar {
-  display: none;
+
+/* ===== 라벨 필터 칩 (페이지 전용) ===== */
+.cl-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0px;
+  margin: 4px 8px;
+  border-radius: 12px;
 }
-.cr-chip {
-  flex: 0 0 auto;
+.cl-chip {
+  --chip-color: #94a3b8;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
-  background: rgba(247, 248, 249, 0.7);
-  border: none;
+  height: 28px;
+  padding: 0 10px;
   border-radius: 999px;
+  border: 2px solid transparent;
+  background: #fff;
   font-size: 12px;
   font-weight: 700;
-  color: #9ca3af;
+  color: #374151;
   cursor: pointer;
-  transition: 0.15s;
 }
-/* active 색상은 TSX 인라인으로 들어오므로 효과만 */
-.cr-chip.active {
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+.cl-chip.active {
+  background-color: var(--chip-color);
+  color: #fff;
 }
-.cr-chip.active:hover {
-  filter: brightness(0.96);
-}
-
-/* ===== Lists (여기가 내부 스크롤 주인공) ===== */
-.cr-materials-list,
-.cr-students-list {
-  flex: 1; /* ⬅️ 남은 높이를 모두 차지 */
-  min-height: 0; /* ⬅️ overflow 동작 보장 */
-  padding: 20px 24px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow: hidden; /* 내부에 또 스크롤 컨테이너가 있을 때 깜박임 방지(선택) */
+.cl-chip.reset {
+  background: #f1f5f9;
+  color: #475569;
 }
 
-/* 재사용 스크롤 헬퍼: max-height 제거, 부모 높이 기반으로 스크롤 */
-.cr-scroll-y {
-  flex: 1; /* ⬅️ 높이 채우기 */
-  min-height: 0;
-  overflow-y: auto; /* ⬅️ 리스트 자체 스크롤 */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+/* ===== 학생 카드 (Classroom 전용) ===== */
+.cl-students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
 }
-.cr-scroll-y::-webkit-scrollbar {
-  display: none;
-}
-
-.cr-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 48px 20px;
-  color: #9ca3af;
-  text-align: center;
-}
-.cr-empty-main {
-  font-size: 18px !important;
-  margin-top: 8px;
-}
-.cr-empty-hint {
-  font-size: 14px !important;
-  color: #d1d5db !important;
-  margin-top: 8px;
-}
-
-/* Material card */
-.cr-material-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-  background: rgba(247, 248, 249, 0.7);
-  backdrop-filter: blur(10px);
+.cl-student-card {
+  background: #f8fafc;
   border-radius: 12px;
-  border: none;
-  transition: 0.2s;
-  cursor: default;
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
+  border: 3px dotted #cbd5e1;
+  padding: 14px;
 }
-.cr-material-card:hover {
+.cl-student-card:hover {
   background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
+  border: 3px dotted #192b55;
 }
-.cr-material-label-bar {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-}
-.cr-material-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+.cl-student-top {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: #E9EAEF;
-  color: #192b55;
-  flex-shrink: 0;
+  gap: 10px;
+  margin-bottom: 8px;
 }
-.cr-material-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.cr-material-info h4 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
-}
-.cr-material-info span {
-  font-size: 12px;
-  color: #6b7280;
-}
-.cr-material-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.cr-action-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(225, 227, 233, 0.7);
-  color: #192b55;
-  cursor: pointer;
-  transition: 0.15s;
-}
-.cr-action-btn:hover {
-  background: #cbd5e1;
-  color: #192b55;
-}
-.cr-action-btn.delete:hover {
-  background: #fecaca;
-  color: #991b1b;
-}
-
-/* Students */
-.cr-student-card {
-  padding: 16px;
-  background: rgba(247, 248, 249, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  border: none;
-  transition: 0.2s;
-  cursor: pointer;
-  transition: 0.2s;
-  cursor: default;
-  box-shadow: 0 0px 2px rgba(0, 0, 0, 0.1);
-  
-}
-.cr-student-card:hover {
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-.cr-student-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.cr-student-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  background: rgba(25, 43, 85, 0.1);
-}
-.cr-student-avatar-img {
-  width: 50px;
+.cl-student-avatar {
   height: 50px;
   object-fit: cover;
-  border-radius: 50%;
-  display: block;
 }
-.cr-student-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cr-student-info h4 {
+.cl-student-info h4 {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
-  color: #1f2937;
+  color: #1e293b;
 }
-.cr-student-info p {
+.cl-student-info p {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: #64748b;
 }
-
-.cr-student-progress {
+.cl-progress {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
-.cr-progress-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.cr-progress-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-}
-.cr-progress-percent {
-  font-size: 14px;
-  font-weight: 700;
-  color: #192b55;
-}
-.cr-progress-bar {
-  width: 100%;
+.cl-progress-bar {
+  flex: 1;
   height: 8px;
   background: rgba(229, 231, 235, 0.5);
   border-radius: 999px;
   overflow: hidden;
 }
-.cr-progress-fill {
+.cl-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #fae100 0%, #ffe44d 100%);
-  border-radius: 999px;
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #fbe210;
+}
+.cl-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #192b55;
 }
 
-/* ===== Responsive ===== */
-@media (max-width: 1200px) {
-  .cr-main-grid {
+/* ===== 반응형 (페이지 전용 요소만) ===== */
+@media (max-width: 1024px) {
+  .cl-main-fixed {
+    margin-left: 0;
+    padding: 16px;
+  }
+  .cl-two-columns {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
-@media (max-width: 960px) {
-  .cr-shell {
-    grid-template-columns: 1fr;
-  }
-  .cr-side {
-    position: static;
-    top: auto;
-    gap: 12px;
-  }
-  .cr-kpis {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-@media (max-width: 768px) {
-  .cr-header-wrapper {
-    padding: 0 20px;
-  }
-  .cr-header-title {
-    font-size: 20px;
-  }
-  .cr-back-chip span,
-  .cr-logout-button span {
-    display: none;
-  }
-  .cr-shell {
-    padding: 20px;
-  }
-  .cr-kpis {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 480px) {
+  /* 이 구간은 Classroom 전용 요소가 거의 없어 최소화 */
 }

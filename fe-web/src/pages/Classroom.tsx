@@ -1,204 +1,193 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
-  User,
-  FolderOpen,
-  FileText,
-  LogOut,
   ArrowLeft,
-  Trash2,
+  LogOut,
+  FileText,
+  FolderOpen,
+  Users,
   Search,
   SortDesc,
   SortAsc,
+  Trash2,
   Tag,
+  Clock,
+  NotebookPen,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import './Classroom.css';
-import male from '../assets/classroom/male.png';
-import female from '../assets/classroom/female.png';
+import './ClassroomList.css';
+import teacherAvatar from '../assets/classList/teacher.png';
+import maleImg from '../assets/classroom/male.png';
+import femaleImg from '../assets/classroom/female.png';
 
-type Student = {
-  id: string;
-  name: string;
-  grade: string;
-  avatar: string;
-  avatarUrl?: string;
-  progressRate: number;
-};
+/* ===== 타입 ===== */
+type LabelId =
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'purple'
+  | 'gray';
 
 type Material = {
   id: string;
   title: string;
   uploadDate: string; // YYYY.MM.DD
-  content: string;
-  label?: 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'purple' | 'gray';
-  teacherId?: string;
+  label?: LabelId;
+};
+type Student = {
+  id: string;
+  name: string;
+  grade: string;
+  avatarUrl?: string;
+  progressRate: number;
 };
 
-type ClassroomProps = {
-  onNavigateToEditor: (extractedText: string) => void;
-  classroomId?: string;
-};
+/* ===== 라벨 옵션 ===== */
+const LABEL_OPTIONS = [
+  { id: 'red', color: '#ef4444', name: '빨강' },
+  { id: 'orange', color: '#f97316', name: '주황' },
+  { id: 'yellow', color: '#eab308', name: '노랑' },
+  { id: 'green', color: '#2ea058ff', name: '초록' },
+  { id: 'blue', color: '#3c71c7ff', name: '파랑' },
+  { id: 'purple', color: '#8e4fc8ff', name: '보라' },
+  { id: 'gray', color: '#8b8f97ff', name: '회색' },
+] as const;
 
-const LABELS: Record<
-  NonNullable<Material['label']>,
-  { name: string; color: string }
-> = {
-  red: { name: '빨강', color: '#ef4444' },
-  orange: { name: '주황', color: '#f97316' },
-  yellow: { name: '노랑', color: '#eab308' },
-  green: { name: '초록', color: '#22c55e' },
-  blue: { name: '파랑', color: '#3b82f6' },
-  purple: { name: '보라', color: '#a855f7' },
-  gray: { name: '회색', color: '#9ca3af' },
-};
+const getLabelColor = (label?: LabelId) =>
+  LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
-function parseDate(d: string) {
-  const [y, m, day] = d.split('.').map((x) => parseInt(x, 10));
+const parseDate = (d: string) => {
+  const [y, m, day] = d.split('.').map((v) => parseInt(v, 10));
   return new Date(y, m - 1, day);
+};
+
+/** KST 기준 날짜 포맷 유틸 */
+function formatKST(date: Date, withTime = false) {
+  // 한국 시간대 보정
+  const tzDate = new Date(
+    date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }),
+  );
+  const yyyy = tzDate.getFullYear();
+  const mm = String(tzDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(tzDate.getDate()).padStart(2, '0');
+  if (!withTime) return `${yyyy}.${mm}.${dd}`;
+  const HH = String(tzDate.getHours()).padStart(2, '0');
+  const MM = String(tzDate.getMinutes()).padStart(2, '0');
+  return `${yyyy}년 ${mm}월 ${dd}일 (${HH}시 ${MM}분)`;
 }
 
-export default function Classroom({
-  onNavigateToEditor,
-  classroomId: propClassroomId,
-}: ClassroomProps) {
-  const { classroomId: urlClassroomId } = useParams<{ classroomId: string }>();
+export default function Classroom() {
+  const { classroomId = '1' } = useParams<{ classroomId: string }>();
   const navigate = useNavigate();
-  const classroomId = urlClassroomId || propClassroomId || '1';
 
+  /* ===== 샘플 상태 ===== */
   const [materials, setMaterials] = useState<Material[]>([
     {
       id: '1',
-      title: '1학기 수업 자료',
-      uploadDate: '2024.03.15',
-      content: '첫 번째 자료의 내용입니다.',
-      label: 'red',
-      teacherId: 'teacher1',
+      title: '심화 학습 문제',
+      uploadDate: '2024.10.25',
+      label: 'green',
     },
     {
       id: '2',
       title: '학습 참고 자료',
-      uploadDate: '2024.03.20',
-      content: '학습 참고 자료의 내용입니다.',
+      uploadDate: '2024.10.21',
       label: 'blue',
-      teacherId: 'teacher1',
     },
     {
       id: '3',
-      title: '심화 학습 문제',
-      uploadDate: '2024.03.25',
-      content: '심화 학습 문제입니다.',
-      label: 'green',
-      teacherId: 'teacher1',
+      title: '1학기 수업 자료',
+      uploadDate: '2024.10.15',
+      label: 'red',
     },
+    { id: '4', title: '어휘 프린트', uploadDate: '2024.09.30' },
   ]);
-
   const students: Student[] = [
     {
       id: '1',
-      name: '김민준',
+      name: '정민수',
       grade: '3학년 1반',
-      avatar: '👦🏻',
-      avatarUrl: male,
-      progressRate: 85,
+      avatarUrl: maleImg,
+      progressRate: 95,
     },
     {
       id: '2',
       name: '이서연',
       grade: '3학년 1반',
-      avatar: '👧🏻',
-      avatarUrl: female,
+      avatarUrl: femaleImg,
       progressRate: 92,
     },
     {
       id: '3',
-      name: '박지호',
-      grade: '3학년 2반',
-      avatar: '👦🏻',
-      avatarUrl: male,
-      progressRate: 78,
-    },
-    {
-      id: '4',
       name: '최유진',
-      grade: '3학년 2반',
-      avatar: '👧🏻',
-      avatarUrl: female,
+      grade: '3학년 1반',
+      avatarUrl: femaleImg,
       progressRate: 88,
     },
     {
+      id: '4',
+      name: '김민준',
+      grade: '3학년 1반',
+      avatarUrl: maleImg,
+      progressRate: 85,
+    },
+    {
       id: '5',
-      name: '정민수',
-      grade: '3학년 3반',
-      avatar: '👦🏻',
-      avatarUrl: male,
-      progressRate: 95,
+      name: '강서윤',
+      grade: '3학년 1반',
+      avatarUrl: femaleImg,
+      progressRate: 80,
     },
     {
       id: '6',
-      name: '강서윤',
-      grade: '3학년 3반',
-      avatar: '👧🏻',
-      avatarUrl: female,
-      progressRate: 81,
+      name: '정성우',
+      grade: '3학년 1반',
+      avatarUrl: maleImg,
+      progressRate: 72,
     },
   ];
 
-  const classroomInfo: Record<
-    string,
-    { grade: string; class: string; subject: string }
-  > = {
-    '1': { grade: '3학년', class: '1반', subject: '국어' },
-    '2': { grade: '3학년', class: '2반', subject: '수학' },
-    '3': { grade: '2학년', class: '1반', subject: '영어' },
-    '4': { grade: '2학년', class: '3반', subject: '과학' },
-  };
-  const currentClassroom = classroomInfo[classroomId] || classroomInfo['1'];
+  /* ===== 메모(반별 로컬 저장) ===== */
+  const MEMO_KEY = `classroom_memo_${classroomId}`;
+  const [memo, setMemo] = useState('');
+  useEffect(() => {
+    const saved = localStorage.getItem(MEMO_KEY);
+    if (saved != null) setMemo(saved);
+  }, [MEMO_KEY]);
+  useEffect(() => {
+    localStorage.setItem(MEMO_KEY, memo);
+  }, [MEMO_KEY, memo]);
 
-  const handleLogout = () => {
-    Swal.fire({
-      icon: 'question',
-      title: '로그아웃하시겠습니까?',
-      showCancelButton: true,
-      confirmButtonColor: '#192b55',
-      cancelButtonColor: '#d1d5db',
-      reverseButtons: true,
-      confirmButtonText: '로그아웃',
-      cancelButtonText: '취소',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        Swal.fire({
-          icon: 'success',
-          title: '로그아웃되었습니다',
-          confirmButtonColor: '#192b55',
-        });
-      }
-    });
-  };
+  const latestUpdate = useMemo(() => {
+    if (!materials.length) return '-';
+    return materials
+      .map((m) => m.uploadDate)
+      .sort()
+      .reverse()[0];
+  }, [materials]);
 
-  /* ===== 자료 툴바 상태 ===== */
+  /* ===== 자료 검색/정렬/라벨 필터 ===== */
   const [matQuery, setMatQuery] = useState('');
   const [matSort, setMatSort] = useState<'new' | 'old'>('new');
-  const [activeLabels, setActiveLabels] = useState<Set<Material['label']>>(
-    new Set(),
-  );
+  const [activeLabels, setActiveLabels] = useState<LabelId[]>([]);
 
-  const toggleLabel = (label: Material['label']) => {
-    setActiveLabels((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+  const toggleLabel = (id: LabelId) => {
+    setActiveLabels((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
   };
+  const clearLabels = () => setActiveLabels([]);
 
   const filteredMaterials = useMemo(() => {
     const q = matQuery.trim().toLowerCase();
     let list = materials.filter((m) =>
       q ? m.title.toLowerCase().includes(q) : true,
     );
-    if (activeLabels.size > 0)
-      list = list.filter((m) => m.label && activeLabels.has(m.label));
+    if (activeLabels.length)
+      list = list.filter((m) => m.label && activeLabels.includes(m.label));
     list.sort((a, b) =>
       matSort === 'new'
         ? parseDate(b.uploadDate).getTime() - parseDate(a.uploadDate).getTime()
@@ -207,7 +196,92 @@ export default function Classroom({
     return list;
   }, [materials, matQuery, matSort, activeLabels]);
 
-  const handleDeleteMaterial = (materialId: string) => {
+  const handleLogout = async () => {
+    const r1 = await Swal.fire({
+      icon: 'question',
+      title: '로그아웃 하시겠습니까?',
+      showCancelButton: true,
+      confirmButtonText: '로그아웃',
+      cancelButtonText: '취소',
+      reverseButtons: true,
+      confirmButtonColor: '#192b55',
+      cancelButtonColor: '#d1d5db',
+    });
+
+    if (!r1.isConfirmed) return;
+
+    await Swal.fire({
+      icon: 'success',
+      title: '로그아웃 되었습니다',
+      confirmButtonColor: '#192b55',
+    });
+
+    navigate('/join', { replace: true }); // ✅ Join으로 이동
+  };
+
+  /* ===== 라벨 변경 모달 ===== */
+  const handleLabelMaterial = (materialId: string, currentLabel?: LabelId) => {
+    let selectedLabel: LabelId | undefined = currentLabel;
+
+    Swal.fire({
+      title: '라벨 선택',
+      html: `
+        <div class="cl-label-grid">
+          ${LABEL_OPTIONS.map(
+            (l) => `
+            <button
+              class="cl-label-option ${currentLabel === l.id ? 'active' : ''}"
+              data-label="${l.id}"
+              style="background-color:${l.color};"
+              title="${l.name}"
+            >
+              ${currentLabel === l.id ? '✓' : ''}
+            </button>
+          `,
+          ).join('')}
+        </div>
+      `,
+      width: 420,
+      padding: '18px',
+      showCancelButton: true,
+      confirmButtonText: '저장',
+      cancelButtonText: '취소',
+      reverseButtons: true,
+      confirmButtonColor: '#192b55',
+      cancelButtonColor: '#d1d5db',
+      customClass: { popup: 'cl-label-modal', title: 'cl-label-title' },
+      didOpen: () => {
+        const buttons =
+          document.querySelectorAll<HTMLButtonElement>('.cl-label-option');
+        buttons.forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            buttons.forEach((b) => b.classList.remove('active'));
+            const target = e.currentTarget as HTMLButtonElement;
+            target.classList.add('active');
+            selectedLabel = target.getAttribute('data-label') as
+              | LabelId
+              | undefined;
+            buttons.forEach((b) => (b.innerHTML = b === target ? '✓' : ''));
+          });
+        });
+      },
+      preConfirm: () => selectedLabel,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setMaterials((prev) =>
+          prev.map((m) =>
+            m.id === materialId
+              ? { ...m, label: result.value as LabelId | undefined }
+              : m,
+          ),
+        );
+      }
+    });
+  };
+
+  /* ===== 삭제 ===== */
+  const handleDeleteMaterial = (id: string) => {
     Swal.fire({
       title: '자료를 삭제하시겠습니까?',
       text: '이 작업은 되돌릴 수 없습니다',
@@ -215,31 +289,28 @@ export default function Classroom({
       showCancelButton: true,
       confirmButtonColor: '#dc2626',
       cancelButtonColor: '#d1d5db',
+      reverseButtons: true,
       confirmButtonText: '삭제',
       cancelButtonText: '취소',
-      reverseButtons: true,
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setMaterials((prev) => prev.filter((m) => m.id !== materialId));
+    }).then((res) => {
+      if (res.isConfirmed) {
+        setMaterials((prev) => prev.filter((m) => m.id !== id));
         Swal.fire({
           icon: 'success',
-          title: '자료가 삭제되었습니다',
+          title: '삭제되었습니다',
           confirmButtonColor: '#192b55',
         });
       }
     });
   };
 
-  /* ===== 학생 툴바 상태 ===== */
+  /* ===== 학생 검색/정렬 ===== */
   const [stuQuery, setStuQuery] = useState('');
   const [stuSort, setStuSort] = useState<'progress' | 'name'>('progress');
-
   const filteredStudents = useMemo(() => {
     const q = stuQuery.trim().toLowerCase();
     let list = students.filter((s) =>
-      q
-        ? s.name.toLowerCase().includes(q) || s.grade.toLowerCase().includes(q)
-        : true,
+      q ? (s.name + ' ' + s.grade).toLowerCase().includes(q) : true,
     );
     list.sort((a, b) =>
       stuSort === 'progress'
@@ -249,36 +320,32 @@ export default function Classroom({
     return list;
   }, [students, stuQuery, stuSort]);
 
-  /* ===== 좌측 KPI 최신 날짜 ===== */
-  const latestDate = useMemo(() => {
-    if (materials.length === 0) return '-';
-    const latest = materials
-      .map((m) => parseDate(m.uploadDate))
-      .sort((a, b) => b.getTime() - a.getTime())[0];
-    const y = latest.getFullYear();
-    const mm = String(latest.getMonth() + 1).padStart(2, '0');
-    const dd = String(latest.getDate()).padStart(2, '0');
-    return `${y}.${mm}.${dd}`;
-  }, [materials]);
-
+  /* ===== UI ===== */
   return (
-    <div className="cr-root">
-      {/* Header */}
-      <header className="cr-header">
-        <div className="cr-header-wrapper">
-          <div className="cr-header-left">
-            <h1 className="cr-header-title">DO:DREAM</h1>
-          </div>
-          <div className="cr-header-right">
+    <div className="cl-root cl-root--no-page-scroll">
+      {/* 헤더 */}
+      <header className="cl-header">
+        <div className="cl-header-wrapper">
+          <h1 className="cl-header-title">DO:DREAM</h1>
+
+          <div className="cl-header-button">
+            {/* ✅ 목록으로: ClassroomList 경로로 이동 (예: "/") */}
             <button
-              className="cr-back-chip"
-              onClick={() => navigate('/classrooms')}
-              aria-label="돌아가기"
+              type="button"
+              className="cl-logout-button"
+              onClick={() => navigate('/')} // 필요시 '/classrooms'로 변경
+              title="목록으로"
             >
-              <ArrowLeft size={16} />
-              <span>돌아가기</span>
+              <ArrowLeft size={18} />
+              <span>목록으로</span>
             </button>
-            <button className="cr-logout-button" onClick={handleLogout}>
+
+            {/* ✅ 로그아웃: Join으로 이동 */}
+            <button
+              type="button"
+              className="cl-logout-button"
+              onClick={handleLogout}
+            >
               <LogOut size={18} />
               <span>로그아웃</span>
             </button>
@@ -286,247 +353,200 @@ export default function Classroom({
         </div>
       </header>
 
-      {/* 좌측 sticky 인포 + 우측 본문 */}
-      <div className="cr-shell">
-        {/* Left Info Panel (sticky) */}
-        <aside className="cr-side">
-          <div className="cr-class-badge">
-            <span className="cr-class-grade">{currentClassroom.grade}</span>
-            <span className="cr-class-class">{currentClassroom.class}</span>
+      {/* 사이드 패널 */}
+      <aside className="cl-sidebar">
+        <div className="cl-sidebar-content">
+          <div className="cl-profile-mini">
+            <img
+              className="cl-profile-avatar-mini"
+              src={teacherAvatar}
+              alt="담임"
+            />
+            <h2 className="cl-profile-name-mini">김싸피</h2>
+            <p className="cl-profile-email-mini">teacher@school.com</p>
+            <p className="cl-profile-label-mini">3학년 1반 · 국어</p>
           </div>
 
-          <div className="cr-kpis">
-            <div className="cr-kpi">
-              <p className="cr-kpi-label">자료</p>
-              <p className="cr-kpi-value">{materials.length}개</p>
-            </div>
-            <div className="cr-kpi">
-              <p className="cr-kpi-label">학생</p>
-              <p className="cr-kpi-value">{students.length}명</p>
-            </div>
-            <div className="cr-kpi">
-              <p className="cr-kpi-label">최근 업데이트</p>
-              <p className="cr-kpi-value">{latestDate}</p>
-            </div>
-          </div>
-        </aside>
+          <div className="cl-sidebar-divider" />
 
-        {/* Right Main */}
-        <main className="cr-main">
-          <div className="cr-main-grid">
-            {/* Materials */}
-            <section className="cr-section">
-              <div className="cr-section-title">
-                <FolderOpen size={20} />
+          {/* ▼ 메모장 (하단 고정) */}
+          <div className="cl-memo">
+            <div className="cl-memo-header">
+              <div className="cl-memo-title">
+                <NotebookPen size={14} />
+                <span>메모장</span>
+              </div>
+              <div className="cl-memo-latest" title="오늘 날짜">
+                <span>오늘은 {formatKST(new Date())}</span>
+              </div>
+            </div>
+            <textarea
+              className="cl-memo-textarea"
+              placeholder="수업 준비/할 일 메모"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+            />
+          </div>
+        </div>
+      </aside>
+
+      {/* 메인: 두 열, 내부 스크롤 */}
+      <main className="cl-main-fixed">
+        <div className="cl-two-columns">
+          {/* ── 자료 열 */}
+          <section className="cl-card">
+            <div className="cl-card-head">
+              <div className="cl-head-left">
+                <FolderOpen size={18} />
                 <h3>공유된 학습 자료</h3>
               </div>
-
-              {/* 자료 툴바: 1줄(검색+정렬), 2줄(라벨칩) */}
-              <div className="cr-toolbar">
-                <div className="cr-toolbar-row">
-                  <div className="cr-input-wrap">
-                    <Search size={16} />
-                    <input
-                      className="cr-input"
-                      type="text"
-                      placeholder="자료 제목 검색"
-                      value={matQuery}
-                      onChange={(e) => setMatQuery(e.target.value)}
-                    />
-                  </div>
-
-                  <button
-                    className="cr-sort-btn"
-                    onClick={() =>
-                      setMatSort((s) => (s === 'new' ? 'old' : 'new'))
-                    }
-                    title={matSort === 'new' ? '오래된 순' : '최신 순'}
-                  >
-                    {matSort === 'new' ? (
-                      <SortDesc size={16} />
-                    ) : (
-                      <SortAsc size={16} />
-                    )}
-                    <span>{matSort === 'new' ? '최신 순' : '오래된 순'}</span>
-                  </button>
+              <div className="cl-head-right">
+                <div className="cl-input-wrap">
+                  <Search size={16} />
+                  <input
+                    className="cl-input"
+                    placeholder="자료 제목 검색"
+                    value={matQuery}
+                    onChange={(e) => setMatQuery(e.target.value)}
+                  />
                 </div>
-
-                <div
-                  className="cr-label-chips"
-                  role="listbox"
-                  aria-label="라벨 필터"
+                <button
+                  className="cl-sort-btn"
+                  onClick={() =>
+                    setMatSort((s) => (s === 'new' ? 'old' : 'new'))
+                  }
                 >
-                  {(
-                    Object.keys(LABELS) as Array<NonNullable<Material['label']>>
-                  ).map((key) => (
-                    <button
-                      key={key}
-                      className={`cr-chip ${activeLabels.has(key) ? 'active' : ''}`}
-                      onClick={() => toggleLabel(key)}
-                      title={LABELS[key].name}
-                      style={
-                        activeLabels.has(key)
-                          ? {
-                              backgroundColor: LABELS[key].color, // ✅ 배경을 라벨 색으로
-                              borderColor: LABELS[key].color, // ✅ 테두리도 같은 색
-                              color: '#ffffff',
-                            }
-                          : undefined
-                      }
-                    >
-                      <Tag size={14} />
-                      <span>{LABELS[key].name}</span>
-                    </button>
-                  ))}
-                </div>
+                  {matSort === 'new' ? (
+                    <SortDesc size={16} />
+                  ) : (
+                    <SortAsc size={16} />
+                  )}
+                  <span>{matSort === 'new' ? '최신 순' : '오래된 순'}</span>
+                </button>
               </div>
+            </div>
 
-              {/* 자료 리스트 */}
-              <div className="cr-materials-list cr-scroll-y">
-                {filteredMaterials.length === 0 ? (
-                  <div className="cr-empty-state">
-                    <FolderOpen size={48} />
-                    <p className="cr-empty-main">조건에 맞는 자료가 없습니다</p>
-                    <p className="cr-empty-hint">
-                      검색어나 라벨 필터를 확인해보세요
-                    </p>
-                  </div>
-                ) : (
-                  filteredMaterials.map((material) => (
-                    <div key={material.id} className="cr-material-card">
-                      {material.label && (
-                        <div
-                          className="cr-material-label-bar"
-                          style={{
-                            backgroundColor: LABELS[material.label].color,
-                          }}
-                        />
-                      )}
-                      <div className="cr-material-icon">
-                        <FileText size={20} />
-                      </div>
-                      <div className="cr-material-info">
-                        <h4>{material.title}</h4>
-                        <span>{material.uploadDate}</span>
-                      </div>
-                      <div className="cr-material-actions">
-                        <button
-                          className="cr-action-btn delete"
-                          onClick={() => handleDeleteMaterial(material.id)}
-                          title="자료 삭제"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+            {/* 라벨 필터 칩 */}
+            <div className="cl-filter-chips">
+              {LABEL_OPTIONS.map((l) => (
+                <button
+                  key={l.id}
+                  className={`cl-chip ${activeLabels.includes(l.id as LabelId) ? 'active' : ''}`}
+                  style={{ '--chip-color': l.color } as React.CSSProperties}
+                  onClick={() => toggleLabel(l.id as LabelId)}
+                >
+                  {l.name}
+                </button>
+              ))}
+              <button className="cl-chip reset" onClick={clearLabels}>
+                초기화
+              </button>
+            </div>
+
+            {/* 내부 스크롤 영역 + gap 적용 래퍼 */}
+            <div className="cl-section-scroll">
+              <div className="cl-materials-list">
+                {filteredMaterials.map((m) => (
+                  <div key={m.id} className="cl-material-item">
+                    {m.label && (
+                      <div
+                        className="cl-material-label-bar"
+                        style={{ backgroundColor: getLabelColor(m.label) }}
+                      />
+                    )}
+                    <div className="cl-material-icon">
+                      <FileText size={18} />
+                    </div>
+                    <div className="cl-material-info">
+                      <h3 className="cl-material-title">{m.title}</h3>
+                      <div className="cl-material-meta">
+                        <span className="cl-material-date">{m.uploadDate}</span>
                       </div>
                     </div>
-                  ))
-                )}
+                    <div className="cl-material-actions">
+                      <button
+                        className="cl-material-action-btn label-btn"
+                        title="라벨 편집"
+                        onClick={() => handleLabelMaterial(m.id, m.label)}
+                      >
+                        <Tag size={16} />
+                      </button>
+                      <button
+                        className="cl-material-action-btn delete-btn"
+                        title="삭제"
+                        onClick={() => handleDeleteMaterial(m.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </section>
+            </div>
+          </section>
 
-            {/* Students */}
-            <section className="cr-section">
-              <div className="cr-section-title">
-                <User size={20} />
+          {/* ── 학생 열 */}
+          <section className="cl-card">
+            <div className="cl-card-head">
+              <div className="cl-head-left">
+                <Users size={18} />
                 <h3>학생 관리 ({filteredStudents.length}명)</h3>
               </div>
-
-              {/* 학생 툴바: 1줄(검색+정렬) */}
-              <div className="cr-toolbar">
-                <div className="cr-toolbar-row">
-                  <div className="cr-input-wrap">
-                    <Search size={16} />
-                    <input
-                      className="cr-input"
-                      type="text"
-                      placeholder="이름 또는 학년/반 검색"
-                      value={stuQuery}
-                      onChange={(e) => setStuQuery(e.target.value)}
-                    />
-                  </div>
-
-                  <button
-                    className="cr-sort-btn"
-                    onClick={() =>
-                      setStuSort((s) =>
-                        s === 'progress' ? 'name' : 'progress',
-                      )
-                    }
-                    title={stuSort === 'progress' ? '이름순' : '진행률순'}
-                  >
-                    {stuSort === 'progress' ? (
-                      <SortDesc size={16} />
-                    ) : (
-                      <SortAsc size={16} />
-                    )}
-                    <span>
-                      {stuSort === 'progress' ? '진행률순' : '이름순'}
-                    </span>
-                  </button>
+              <div className="cl-head-right">
+                <div className="cl-input-wrap">
+                  <Search size={16} />
+                  <input
+                    className="cl-input"
+                    placeholder="이름 또는 학년/반 검색"
+                    value={stuQuery}
+                    onChange={(e) => setStuQuery(e.target.value)}
+                  />
                 </div>
-              </div>
-
-              {/* 학생 리스트 */}
-              <div className="cr-students-scroll cr-scroll-y">
-                <div className="cr-students-list">
-                  {filteredStudents.map((student) => (
-                    <div
-                      key={student.id}
-                      className="cr-student-card"
-                      onClick={() => navigate(`/student/${student.id}`)}
-                    >
-                      <div className="cr-student-header">
-                        {student.avatarUrl ? (
-                          <img
-                            className="cr-student-avatar-img"
-                            src={student.avatarUrl}
-                            alt={`${student.name} 아바타`}
-                          />
-                        ) : (
-                          <div className="cr-student-avatar">
-                            {student.avatar}
-                          </div>
-                        )}
-
-                        <div className="cr-student-info">
-                          <h4>{student.name}</h4>
-                          <p>{student.grade}</p>
-                        </div>
-                      </div>
-
-                      {/* 진행률 뷰(슬라이더 아님) */}
-                      <div className="cr-student-progress">
-                        <div className="cr-progress-header">
-                          <span className="cr-progress-label">학습 진행률</span>
-                          <span className="cr-progress-percent">
-                            {student.progressRate}%
-                          </span>
-                        </div>
-                        <div className="cr-progress-bar">
-                          <div
-                            className="cr-progress-fill"
-                            style={{ width: `${student.progressRate}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {filteredStudents.length === 0 && (
-                    <div className="cr-empty-state" style={{ padding: 24 }}>
-                      <User size={36} />
-                      <p>조건에 맞는 학생이 없습니다</p>
-                      <p className="cr-empty-hint">
-                        검색어나 정렬을 확인해보세요
-                      </p>
-                    </div>
+                <button
+                  className="cl-sort-btn"
+                  onClick={() =>
+                    setStuSort((s) => (s === 'progress' ? 'name' : 'progress'))
+                  }
+                >
+                  {stuSort === 'progress' ? (
+                    <SortDesc size={16} />
+                  ) : (
+                    <SortAsc size={16} />
                   )}
-                </div>
+                  <span>{stuSort === 'progress' ? '진행률순' : '이름순'}</span>
+                </button>
               </div>
-            </section>
-          </div>
-        </main>
-      </div>
+            </div>
+
+            <div className="cl-section-scroll cl-students-grid">
+              {filteredStudents.map((s) => (
+                <div key={s.id} className="cl-student-card">
+                  <div className="cl-student-top">
+                    <img
+                      className="cl-student-avatar"
+                      src={s.avatarUrl}
+                      alt={s.name}
+                    />
+                    <div className="cl-student-info">
+                      <h4>{s.name}</h4>
+                      <p>{s.grade}</p>
+                    </div>
+                  </div>
+                  <div className="cl-progress">
+                    <div className="cl-progress-bar">
+                      <div
+                        className="cl-progress-fill"
+                        style={{ width: `${s.progressRate}%` }}
+                      />
+                    </div>
+                    <span className="cl-progress-text">{s.progressRate}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
   );
 }

@@ -18,7 +18,6 @@
   z-index: 100;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
-
 .cl-header-wrapper {
   max-width: 1600px;
   margin: 0 auto;
@@ -28,7 +27,6 @@
   align-items: center;
   justify-content: space-between;
 }
-
 .cl-header-title {
   font-size: 24px;
   font-weight: 800;
@@ -37,7 +35,6 @@
   letter-spacing: -0.5px;
   margin: 0;
 }
-
 .cl-logout-button {
   display: flex;
   align-items: center;
@@ -52,7 +49,6 @@
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
 .cl-logout-button:hover {
   color: #fff;
   background: #192b55;
@@ -60,13 +56,13 @@
 
 /* ===== Layout ===== */
 .cl-layout {
-  display: block;
+  display: flex;
   min-height: calc(100vh - 70px);
   position: relative;
-  padding-top: 70px;
+  padding-top: 70px; /* 헤더 보정 */
 }
 
-/* ===== Sidebar ===== */
+/* ===== Sidebar (메모장 포함) ===== */
 .cl-sidebar {
   position: fixed;
   top: 0;
@@ -74,22 +70,21 @@
   width: 280px;
   height: 100vh;
   padding: 32px 24px;
+  padding-top: calc(70px + 32px); /* 헤더 높이 보정 */
   overflow-y: auto;
   background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-right: 1px solid rgba(255, 255, 255, 0.2);
   z-index: 50;
-  padding-top: calc(70px + 32px);
   box-shadow: 8px 0 32px rgba(0, 0, 0, 0.08);
 }
-
 .cl-sidebar-content {
   display: flex;
   flex-direction: column;
   gap: 28px;
+  min-height: calc(100vh - 70px - 64px); /* 헤더+패딩 보정 */
 }
-
 .cl-profile-mini {
   display: flex;
   flex-direction: column;
@@ -97,74 +92,89 @@
   text-align: center;
   gap: 12px;
 }
-
 .cl-profile-avatar-mini {
-  height: 100px;
+  height: 120px;
   border-radius: 12px;
   object-fit: cover;
 }
-
 .cl-profile-name-mini {
   font-size: 20px;
   font-weight: 700;
   color: #192b55;
   margin: 0;
 }
-
 .cl-profile-email-mini {
   font-size: 16px;
   color: #64748b;
   margin: 0;
   word-break: break-all;
 }
-
 .cl-profile-label-mini {
   font-size: 16px;
   color: #94a3b8;
   font-weight: 500;
   margin: 0;
 }
-
 .cl-sidebar-divider {
   width: 100%;
   height: 1px;
   background: #e2e8f0;
 }
 
-.cl-stat-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* 메모장 (하단 고정) */
+.cl-memo {
+  margin-top: auto;
+  background: #192b55;
+  border-radius: 12px;
+  padding: 12px;
+  position: sticky;
+  bottom: 12px;
 }
-
-.cl-stat-item-mini {
+.cl-memo-header {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
 }
-
-.cl-stat-value-mini {
-  font-size: 24px;
+.cl-memo-title {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+}
+.cl-memo-latest {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: #fff;
   font-weight: 700;
-  color: #192b55;
-  margin: 0;
 }
-
-.cl-stat-label-mini {
-  font-size: 16px;
-  color: #64748b;
-  font-weight: 600;
-  margin: 0;
+.cl-memo-textarea {
+  width: 100%;
+  height: 220px;
+  resize: none;
+  min-height: 120px;
+  max-height: 60vh;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  font-size: 13px;
+  color: #192b55;
+  outline: none;
 }
 
 /* ===== Main Content ===== */
 .cl-main-content {
-  padding: 40px 40px 10px 40px;
+  padding: 30px 40px 0 40px;
   overflow-y: auto;
   background: transparent;
-  margin-left: 280px;
+  margin-left: 280px; /* 사이드바 폭 */
+  width: 100%;
 }
 
 /* ===== Sections ===== */
@@ -178,57 +188,37 @@
   margin-bottom: 32px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
-
 .cl-section-header {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 30px;
   margin-bottom: 20px;
 }
-
 .cl-section-title {
   font-size: 20px;
   font-weight: 700;
   color: #1e293b;
 }
-
 .cl-section-subtitle {
   font-size: 14px;
   color: #64748b;
 }
 
-/* ===== Materials Header ===== */
-/* 제목/부제 + (설명박스+버튼) 2행 구조 */
-.cl-materials-header {
-  display: block;
-}
-
-.cl-materials-header > .cl-section-title + .cl-section-subtitle {
-  margin-bottom: 14px;
-}
-
-/* 설명박스(왼쪽) + 버튼(오른쪽)을 한 행에 정렬 */
+/* ===== CTA 설명 + 버튼 줄 ===== */
 .cl-cta-row {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 16px;
-  background-color: #E8EEF3;
+  background-color: #e8eef3;
   padding: 4px 20px 4px 10px;
   margin-bottom: 20px;
   border-radius: 12px;
 }
-
-/* ===== Feature explain (left of create button) ===== */
 .cl-feature-explain {
   flex: 1;
   padding: 12px 14px;
-  margin-bottom: 12px;
-  border: none;
   border-radius: 12px;
 }
-
 .cl-feature-title {
   margin: 0 0 8px 0;
   font-size: 13px;
@@ -236,7 +226,6 @@
   color: #192b55;
   letter-spacing: -0.2px;
 }
-
 .cl-feature-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(200px, 1fr));
@@ -245,7 +234,6 @@
   padding: 0;
   list-style: none;
 }
-
 .cl-feature-list li {
   position: relative;
   padding-left: 18px;
@@ -258,16 +246,15 @@
   position: absolute;
   left: 0;
   top: 0;
-  color: #192b55; /* 브랜드 블루 포인트 */
+  color: #192b55;
   font-weight: 900;
   line-height: 1;
 }
-
-/* 버튼은 고정 폭/높이 */
 .cl-create-material-btn {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 40px;
   padding: 12px 24px;
   background: #192b55;
   color: white;
@@ -278,7 +265,6 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  height: 40px;
 }
 .cl-create-material-btn:hover {
   background: #0f1f3a;
@@ -288,147 +274,12 @@
   transform: translateY(0);
 }
 
-/* ===== Materials List ===== */
-.cl-materials-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.cl-empty-materials {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  color: #cbd5e1;
-  text-align: center;
-}
-
-.cl-empty-materials svg {
-  margin-bottom: 16px;
-  opacity: 0.6;
-  color: #cbd5e1;
-}
-
-.cl-empty-materials p {
-  font-size: 14px;
-  margin: 0;
-  color: #64748b;
-}
-
-.cl-empty-hint {
-  font-size: 12px !important;
-  color: #94a3b8 !important;
-  margin-top: 8px;
-}
-
-/* ===== Material Item ===== */
-.cl-material-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 16px;
-  background: #f8fafc;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-.cl-material-item:hover {
-  background: white;
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-
-.cl-material-label-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.cl-material-info {
-  flex: 1;
-  min-width: 0;
-}
-.cl-material-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cl-material-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-  font-size: 12px;
-}
-.cl-material-date {
-  color: #94a3b8;
-  font-weight: 500;
-}
-
-.cl-material-status {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-}
-.cl-material-status.draft {
-  background: #fef3c7;
-  color: #92400e;
-}
-.cl-material-status.published {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.cl-material-actions {
-  display: flex;
-  gap: 6px;
-}
-.cl-material-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #e2e8f0;
-  border-radius: 6px;
-  color: #475569;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-.cl-material-action-btn.send-btn:hover {
-  background: #cbd5e1;
-  color: #192b55;
-}
-.cl-material-action-btn.label-btn:hover {
-  background: #f0e0b7;
-  color: #edaa00;
-}
-.cl-material-action-btn.delete-btn:hover {
-  background: #fecaca;
-  color: #991b1b;
-}
-
 /* ===== Classrooms Grid ===== */
 .cl-classrooms-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 20px;
 }
-
-/* ===== Classroom Card ===== */
 .cl-classroom-card {
   display: flex;
   flex-direction: column;
@@ -437,28 +288,24 @@
   border: 3px dotted #cbd5e1;
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: 0.2s;
 }
 .cl-classroom-card:hover {
-  background: white;
+  background: #fff;
   border: 3px dotted #192b55;
-  transform: translateY(-2px);
+}
+.cl-classroom-card:hover h3 {
+  background-color: #fec73da4;                                         
 }
 .cl-classroom-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
-  margin-bottom: 16px;
-}
-.cl-classroom-color-badge {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  margin: 10px 0;
 }
 .cl-classroom-title {
   display: flex;
-  flex-direction: row;
   align-items: center;
   gap: 8px;
 }
@@ -467,18 +314,16 @@
   font-weight: 700;
   color: #192b55;
   margin: 0;
-}
-.cl-classroom-title p {
-  font-size: 15px;
-  color: #64748b;
-  font-weight: 600;
-  margin: 0;
+  display: inline-block;
+  padding: 2px 10px;        /* ← 기본으로 줘서 hover 때 크기 변화 없음 */
+  border-radius: 999px;
+  transition: background-color .18s ease, box-shadow .18s ease;
 }
 .cl-classroom-stats {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
+  padding: 10px 0;
   border-top: 1px solid #e2e8f0;
 }
 .cl-stat {
@@ -517,185 +362,216 @@
   background: #e2e8f0;
 }
 
-/* ===== Label Grid Modal (라벨 색 선택) ===== */
-.cl-label-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin: 20px 0;
+/* ===== Materials List ===== */
+.cl-materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
-.cl-label-option {
-  width: 100%;
-  aspect-ratio: 1;
-  border: 3px solid transparent;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.cl-empty-materials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #cbd5e1;
+  text-align: center;
+}
+.cl-empty-materials svg {
+  margin-bottom: 16px;
+  opacity: 0.6;
+  color: #cbd5e1;
+}
+.cl-empty-materials p {
+  font-size: 14px;
+  margin: 0;
+  color: #64748b;
+}
+.cl-empty-hint {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+  margin-top: 8px;
+}
+
+/* 자료 아이템 (왼쪽 컬러 바) */
+.cl-material-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: none;       
+  transition: background-color .18s ease,
+  box-shadow .18s ease,
+  border-color .18s ease;     
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+.cl-material-item:hover {
+  background: #fff;   
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);              
+}
+
+.cl-materials-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+}
+
+.cl-last-updated {
+  font-size: 12px;
   font-weight: 700;
-  color: white;
-  font-size: 18px;
+  color: #475569;
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+/* 좁은 화면에서 줄바꿈 */
+@media (max-width: 640px) {
+  .cl-materials-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+  .cl-last-updated {
+    justify-self: start;
+  }
+}
+
+.cl-material-label-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 10px 0 0 10px;
+}
+.cl-material-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #e9eaef;
+  color: #192b55;
+  flex-shrink: 0;
+}
+.cl-material-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+.cl-material-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cl-material-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.cl-material-date {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.cl-material-status {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.cl-material-status.draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+.cl-material-status.published {
+  background: #dcfce7;
+  color: #166534;
+}
+.cl-material-actions {
+  display: flex;
+  gap: 6px;
+}
+.cl-material-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #e2e8f0;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  transition: 0.2s;
+  flex-shrink: 0;
+}
+.cl-material-action-btn.send-btn:hover {
+  background: #cbd5e1;
+  color: #192b55;
+}
+.cl-material-action-btn.label-btn:hover {
+  background: #f0e0b7;
+  color: #edaa00;
+}
+.cl-material-action-btn.delete-btn:hover {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+/* ===== Label Modal (SweetAlert2) ===== */
+.cl-label-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 56px);
+  gap: 12px;
+  justify-content: center;
+  margin: 14px 0 6px 0;
+}
+.cl-label-option {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.06);
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 .cl-label-option:hover {
-  transform: scale(1.1);
-  border-color: rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px) scale(1.05);
+  border-color: rgba(0, 0, 0, 0.16);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
 }
 .cl-label-option.active {
-  border-color: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
 }
-
-/* ===== 새 SweetAlert 스타일 ===== */
-.cl-swal {
-  border-radius: 20px !important;
-  background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(18px) !important;
-  -webkit-backdrop-filter: blur(18px) !important;
-  padding: 20px 20px 24px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
+.swal2-popup.cl-label-modal {
+  border-radius: 16px;
+  box-shadow: 0 12px 48px rgba(25, 43, 85, 0.18);
 }
-.cl-swal-title {
-  font-size: 20px !important;
+.cl-label-title {
+  font-size: 18px !important;
   font-weight: 800 !important;
   color: #192b55 !important;
-  margin: 8px 0 8px !important;
-}
-.cl-swal-body {
-  text-align: left;
-}
-.cl-swal-tip {
-  color: #475569;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-.cl-sel-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.cl-btn {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 700;
-  background: rgba(229, 231, 235, 0.7);
-  color: #374151;
-}
-.cl-btn:hover {
-  background: #e5e7eb;
-}
-.cl-btn--primary {
-  background: #192b55;
-  color: #fff;
-}
-.cl-btn--primary:hover {
-  filter: brightness(0.95);
-}
-
-.cl-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
-  box-sizing: border-box;
-  margin-bottom: 12px;
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.75);
-}
-.cl-input:focus {
-  outline: 2px solid rgba(25, 43, 85, 0.2);
-}
-
-.cl-sel-list {
-  max-height: 320px;
-  overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  border-radius: 12px;
-}
-.cl-sel-list::-webkit-scrollbar {
-  display: none;
-}
-
-.cl-sel-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: rgba(247, 248, 249, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 10px;
-  transition:
-    background 0.2s,
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-.cl-sel-row:hover {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-}
-.cl-sel-row-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-}
-.cl-sel-row-title {
-  font-weight: 700;
-  color: #1e293b;
-}
-.cl-sel-row-sub {
-  margin-left: auto;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.cl-sel-checkbox {
-  width: 18px;
-  height: 18px;
-  accent-color: #192b55;
-  cursor: pointer;
-}
-
-.cl-swal-confirm,
-.cl-swal-cancel {
-  padding: 10px 18px !important;
-  border-radius: 10px !important;
-  font-weight: 800 !important;
-}
-.cl-swal-confirm {
-  background: #192b55 !important;
-  color: #fff !important;
-}
-.cl-swal-cancel {
-  background: #e5e7eb !important;
-  color: #374151 !important;
-}
-
-/* 결과 Swal 텍스트 강화 */
-.cl-swal-body--result {
-  line-height: 1.5;
-}
-.cl-result-material {
-  margin-bottom: 10px;
-  font-weight: 800;
-  color: #111827;
-}
-.cl-result-class,
-.cl-result-students {
-  margin: 6px 0;
-  color: #374151;
-}
-.cl-result-count {
-  color: #6b7280;
-  font-size: 14px;
-  margin-top: 6px;
 }
 
 /* ===== Responsive ===== */
@@ -704,24 +580,11 @@
     grid-template-columns: 1fr;
   }
 }
-
 @media (max-width: 1024px) {
   .cl-main-content {
     padding: 32px;
+    margin-left: 0;
   }
-}
-
-@media (max-width: 768px) {
-  .cl-header-wrapper {
-    padding: 0 20px;
-  }
-  .cl-header-title {
-    font-size: 20px;
-  }
-  .cl-logout-button span {
-    display: none;
-  }
-
   .cl-sidebar {
     position: relative;
     top: auto;
@@ -743,27 +606,33 @@
   .cl-profile-mini {
     flex: 1;
   }
-  .cl-stat-mini {
-    flex: 1;
-  }
   .cl-sidebar-divider {
     display: none;
   }
-
-  .cl-main-content {
-    padding: 20px;
-    margin-left: 0;
+  .cl-memo {
+    position: static;
+    margin-top: 0;
+    flex: 1;
   }
-
-  .cl-materials-section,
-  .cl-classrooms-section {
+  .cl-classrooms-section,
+  .cl-materials-section {
     padding: 20px;
     margin-bottom: 20px;
   }
-  .cl-section-title {
-    font-size: 18px;
+}
+@media (max-width: 768px) {
+  .cl-header-wrapper {
+    padding: 0 20px;
   }
-
+  .cl-header-title {
+    font-size: 20px;
+  }
+  .cl-logout-button span {
+    display: none;
+  }
+  .cl-main-content {
+    padding: 20px;
+  }
   .cl-classrooms-grid {
     grid-template-columns: 1fr;
   }
@@ -779,7 +648,6 @@
   .cl-classroom-stats {
     display: none;
   }
-
   .cl-material-item {
     flex-direction: column;
     align-items: flex-start;
@@ -789,33 +657,11 @@
     width: 100%;
     justify-content: flex-end;
   }
-
   .cl-profile-avatar-mini {
     width: 60px;
     height: 60px;
   }
-  .cl-stat-value-mini {
-    font-size: 20px;
-  }
-
-  .cl-label-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-
-  /* CTA 행: 세로 스택, 설명 박스는 공간 절약 위해 숨김 가능 */
-  .cl-cta-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-  .cl-feature-explain {
-    display: none;
-  }
-  .cl-create-material-btn {
-    width: 100%;
-  }
 }
-
 @media (max-width: 480px) {
   .cl-header-wrapper {
     padding: 0 16px;
@@ -826,7 +672,6 @@
   .cl-sidebar {
     padding: 16px;
   }
-
   .cl-profile-avatar-mini {
     width: 56px;
     height: 56px;
@@ -834,21 +679,18 @@
   .cl-profile-name-mini {
     font-size: 14px;
   }
-
   .cl-create-material-btn {
     padding: 10px 16px;
     font-size: 13px;
   }
-
   .cl-main-content {
     padding: 16px;
   }
-  .cl-materials-section,
-  .cl-classrooms-section {
+  .cl-classrooms-section,
+  .cl-materials-section {
     padding: 16px;
     margin-bottom: 16px;
   }
-
   .cl-section-title {
     font-size: 16px;
   }
@@ -859,72 +701,7 @@
     width: 28px;
     height: 28px;
   }
-  .cl-classroom-title h3,
-  .cl-classroom-title p {
+  .cl-classroom-title h3 {
     font-size: 14px;
   }
-
-  .cl-label-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* ===== Label Modal (SweetAlert2) – smaller & cleaner ===== */
-.swal2-popup.cl-label-modal {
-  border-radius: 16px;
-  box-shadow: 0 12px 48px rgba(25, 43, 85, 0.18);
-}
-
-.cl-label-title {
-  font-size: 18px !important;
-  font-weight: 800 !important;
-  color: #192b55 !important;
-}
-
-/* 모달 안에서만 라벨 그리드/옵션 크기 조정 */
-.cl-label-modal .cl-label-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 56px);
-  gap: 12px;
-  justify-content: center;
-  margin: 14px 0 6px 0;
-}
-
-.cl-label-modal .cl-label-option {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.06);
-  font-size: 16px;
-  font-weight: 800;
-  color: #fff;
-  display: grid;
-  place-items: center;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.cl-label-modal .cl-label-option:hover {
-  transform: translateY(-1px) scale(1.05);
-  border-color: rgba(0, 0, 0, 0.16);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
-}
-
-.cl-label-modal .cl-label-option.active {
-  outline: none;
-  border-color: rgba(0, 0, 0, 0.28);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
-}
-
-/* 버튼 정렬은 reverseButtons 로 처리, 색상/호버만 미세 보정 */
-.cl-label-save {
-  font-weight: 800 !important;
-}
-.cl-label-cancel {
-  font-weight: 700 !important;
-  color: #4b5563 !important;
-  background: #eef2f7 !important;
 }

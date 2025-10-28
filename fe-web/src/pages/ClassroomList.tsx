@@ -9,8 +9,9 @@ import {
   Trash2,
   Tag,
   Send,
+  NotebookPen,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './ClassroomList.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 
@@ -30,7 +31,7 @@ type ClassroomData = {
 type Material = {
   id: string;
   title: string;
-  uploadDate: string;
+  uploadDate: string; // 'YYYY.MM.DD'
   label?: string;
   status: 'draft' | 'published';
 };
@@ -44,13 +45,13 @@ const LABEL_OPTIONS = [
   { id: 'red', color: '#ef4444', name: '빨강' },
   { id: 'orange', color: '#f97316', name: '주황' },
   { id: 'yellow', color: '#eab308', name: '노랑' },
-  { id: 'green', color: '#22c55e', name: '초록' },
-  { id: 'blue', color: '#3b82f6', name: '파랑' },
-  { id: 'purple', color: '#a855f7', name: '보라' },
-  { id: 'gray', color: '#9ca3af', name: '회색' },
+  { id: 'green', color: '#2ea058ff', name: '초록' },
+  { id: 'blue', color: '#3c71c7ff', name: '파랑' },
+  { id: 'purple', color: '#8e4fc8ff', name: '보라' },
+  { id: 'gray', color: '#8b8f97ff', name: '회색' },
 ];
 
-// 반별 학생 데이터 (gender 추가)
+// 반별 학생 데이터
 const STUDENTS_BY_CLASSROOM: Record<
   string,
   Array<{
@@ -80,11 +81,38 @@ const STUDENTS_BY_CLASSROOM: Record<
   ],
 };
 
+/** KST 기준 날짜 포맷 유틸 */
+function formatKST(date: Date, withTime = false) {
+  // 한국 시간대 보정
+  const tzDate = new Date(
+    date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }),
+  );
+  const yyyy = tzDate.getFullYear();
+  const mm = String(tzDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(tzDate.getDate()).padStart(2, '0');
+  if (!withTime) return `${yyyy}.${mm}.${dd}`;
+  const HH = String(tzDate.getHours()).padStart(2, '0');
+  const MM = String(tzDate.getMinutes()).padStart(2, '0');
+  return `${yyyy}년 ${mm}월 ${dd}일 (${HH}시 ${MM}분)`;
+}
+
 export default function ClassroomList({
   onLogout,
   onNavigateToEditor,
 }: ClassroomListProps) {
   const navigate = useNavigate();
+
+  // 메모장 상태 (localStorage 연동)
+  const MEMO_KEY = 'clist_memo_v1';
+  const [memo, setMemo] = useState('');
+  useEffect(() => {
+    const saved = localStorage.getItem(MEMO_KEY);
+    if (saved !== null) setMemo(saved);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem(MEMO_KEY, memo);
+  }, [memo]);
+
   const [materials, setMaterials] = useState<Material[]>([
     {
       id: '1',
@@ -116,12 +144,17 @@ export default function ClassroomList({
     },
     {
       id: '5',
-      title: '새로운 자료 (작성중)',
+      title: '새로운 자료',
       uploadDate: '2024.10.10',
-      label: undefined,
       status: 'draft',
     },
   ]);
+
+  /** 최근 업데이트 일시 (자료 변경 시 현재 시각으로 갱신) */
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date>(new Date());
+  useEffect(() => {
+    setLastUpdatedAt(new Date());
+  }, [materials]);
 
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
@@ -174,12 +207,10 @@ export default function ClassroomList({
     else navigate('/editor');
   };
 
-  const getLabelColor = (label?: string) => {
-    const labelObj = LABEL_OPTIONS.find((l) => l.id === label);
-    return labelObj?.color || 'transparent';
-  };
+  const getLabelColor = (label?: string) =>
+    LABEL_OPTIONS.find((l) => l.id === label)?.color || 'transparent';
 
-  // 라벨 변경(저장 후 별도 알림 없음)
+  // 라벨 변경
   const handleLabelMaterial = (materialId: string, currentLabel?: string) => {
     let selectedLabel = currentLabel;
 
@@ -221,33 +252,32 @@ export default function ClassroomList({
           btn.addEventListener('click', (e) => {
             e.preventDefault();
             buttons.forEach((b) => b.classList.remove('active'));
-            (e.target as HTMLElement).classList.add('active');
-            selectedLabel =
-              (e.target as HTMLElement).getAttribute('data-label') || undefined;
+            const el = e.currentTarget as HTMLElement;
+            el.classList.add('active');
+            selectedLabel = el.getAttribute('data-label') || undefined;
 
             buttons.forEach((b) => {
-              if (b.getAttribute('data-label') === selectedLabel) {
-                (b as HTMLElement).innerHTML = '✓';
-              } else {
-                (b as HTMLElement).innerHTML = '';
-              }
+              (b as HTMLElement).innerHTML =
+                b.getAttribute('data-label') === selectedLabel ? '✓' : '';
             });
           });
         });
       },
       preConfirm: () => selectedLabel,
     }).then((result) => {
-      if (result.isConfirmed && result.value !== undefined) {
+      if (result.isConfirmed) {
         setMaterials((prev) =>
           prev.map((mat) =>
-            mat.id === materialId ? { ...mat, label: result.value } : mat,
+            mat.id === materialId
+              ? { ...mat, label: result.value as string | undefined }
+              : mat,
           ),
         );
       }
     });
   };
 
-  // 전송 모달 열기
+  // 전송 모달
   const handleSendMaterial = (materialId: string) => {
     const m = materials.find((mt) => mt.id === materialId);
     if (!m) return;
@@ -296,11 +326,21 @@ export default function ClassroomList({
           title: '로그아웃 되었습니다',
           confirmButtonColor: '#192b55',
         }).then(() => {
-          onLogout();
+          onLogout?.(); // (있으면 실행)
+          navigate('/join', { replace: true }); // ✅ Join 화면으로
         });
       }
     });
   };
+
+  // (참고) 가장 최근 업로드 "날짜"만 필요할 때
+  const latestUploadDate = useMemo(() => {
+    if (materials.length === 0) return '-';
+    return materials
+      .map((m) => m.uploadDate)
+      .sort()
+      .reverse()[0];
+  }, [materials]);
 
   return (
     <div className="cl-root">
@@ -330,11 +370,23 @@ export default function ClassroomList({
 
             <div className="cl-sidebar-divider" />
 
-            <div className="cl-stat-mini">
-              <div className="cl-stat-item-mini">
-                <p className="cl-stat-value-mini">{classrooms.length}</p>
-                <p className="cl-stat-label-mini">개 반 담당</p>
+            {/* ▼ 메모장 (하단 고정) */}
+            <div className="cl-memo">
+              <div className="cl-memo-header">
+                <div className="cl-memo-title">
+                  <NotebookPen size={14} />
+                  <span>메모장</span>
+                </div>
+                <div className="cl-memo-latest" title="오늘 날짜">
+                  <span>오늘은 {formatKST(new Date())}</span>
+                </div>
               </div>
+              <textarea
+                className="cl-memo-textarea"
+                placeholder="수업 준비/할 일 메모"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+              />
             </div>
           </div>
         </aside>
@@ -343,7 +395,9 @@ export default function ClassroomList({
           {/* 반 목록 */}
           <div className="cl-classrooms-section">
             <div className="cl-section-header">
-              <h2 className="cl-section-title">담당 반 선택</h2>
+              <h2 className="cl-section-title">
+                {classrooms.length}개 반 담당
+              </h2>
               <p className="cl-section-subtitle">
                 자료를 관리할 반을 선택해주세요
               </p>
@@ -357,13 +411,10 @@ export default function ClassroomList({
                   onClick={() => handleSelectClassroom(classroom.id)}
                 >
                   <div className="cl-classroom-header">
-                    {/* <div
-                      className="cl-classroom-color-badge"
-                      style={{ backgroundColor: classroom.color }}
-                    /> */}
                     <div className="cl-classroom-title">
-                      <h3>{classroom.grade}</h3>
-                      <p>{classroom.class}</p>
+                      <h3>
+                        {classroom.grade} {classroom.class}
+                      </h3>
                     </div>
                   </div>
 
@@ -391,16 +442,19 @@ export default function ClassroomList({
 
           {/* 자료함 */}
           <div className="cl-materials-section">
+            {/* 헤더: 좌(타이틀/설명) + 우(최근 업데이트 일시) */}
             <div className="cl-materials-header">
-              <div className="cl-section-header">
+              <div className="cl-section-header" style={{ flex: 1 }}>
                 <h2 className="cl-section-title">내 자료</h2>
                 <p className="cl-section-subtitle">
                   생성하거나 공유한 자료들을 관리하세요
                 </p>
               </div>
+              <div className="cl-last-updated">
+                최근 업데이트: {formatKST(lastUpdatedAt, true)}
+              </div>
 
-              {/* ▼ 설명 박스(왼쪽) + 버튼(오른쪽)을 같은 행으로 */}
-              <div className="cl-cta-row">
+              <div className="cl-cta-row" style={{ gridColumn: '1 / -1' }}>
                 <div className="cl-feature-explain">
                   <p className="cl-feature-title">자료 만들기란?</p>
                   <ul className="cl-feature-list">
@@ -443,17 +497,17 @@ export default function ClassroomList({
                   <div key={material.id} className="cl-material-item">
                     {material.label && (
                       <div
-                        className="cl-material-label-dot"
+                        className="cl-material-label-bar"
                         style={{
                           backgroundColor: getLabelColor(material.label),
                         }}
-                        title={
-                          LABEL_OPTIONS.find((l) => l.id === material.label)
-                            ?.name
-                        }
                       />
                     )}
+                    <div className="cl-material-icon">
+                      <FileText size={18} />
+                    </div>
                     <div className="cl-material-info">
+                      {/* 중첩 h3 버그 수정 */}
                       <h3 className="cl-material-title">{material.title}</h3>
                       <div className="cl-material-meta">
                         <span className="cl-material-date">
@@ -531,12 +585,7 @@ export default function ClassroomList({
               html: `
                 <div style="text-align:left;line-height:1.5">
                   <p style="margin:0 0 8px 0"><strong>"${selectedMaterial.title}"</strong></p>
-                  <p style="margin:0 0 6px 0;color:#374151;"><strong>공유할 반</strong> ${classroomIds
-                    .map((id) => {
-                      const c = classrooms.find((cc) => cc.id === id);
-                      return c ? `${c.grade} ${c.class}` : id;
-                    })
-                    .join(', ')}</p>
+                  <p style="margin:0 0 6px 0;color:#374151;"><strong>공유할 반</strong> ${classroomIds.join(', ')}</p>
                   <p style="margin:0 0 6px 0;color:#374151;"><strong>공유할 학생</strong> ${names.join(', ')}</p>
                   <p style="margin:4px 0 0 0;color:#6b7280;font-size:14px;">${names.length}명에게 공유되었습니다</p>
                 </div>
