@@ -11,7 +11,7 @@ import {
   Send,
   NotebookPen,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, ChangeEvent } from 'react';
 import './ClassroomList.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 
@@ -101,6 +101,83 @@ export default function ClassroomList({
   onNavigateToEditor,
 }: ClassroomListProps) {
   const navigate = useNavigate();
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // ✅ 파일 추출 시뮬레이터 (demo)
+  const simulateExtract = async (file: File): Promise<string> => {
+    // 간단한 확장자 판별
+    const name = file.name.toLowerCase();
+    // (데모) txt면 실제 텍스트 읽고, 그 외는 더미 텍스트
+    if (name.endsWith('.txt')) {
+      const text = await file.text();
+      return text.slice(0, 5000) || '내용이 비어있습니다.';
+    }
+    // pdf/doc/docx 등은 실제 파서 없이 더미 본문
+    return [
+      `<h1>${file.name}</h1>`,
+      '<h2>자동 추출 요약 (Demo)</h2>',
+      '<p>이 본문은 화면 흐름 확인을 위한 더미 텍스트입니다.</p>',
+      '<ul>',
+      '<li>원문에서 문단/제목/리스트를 탐지하여 편집 가능한 형태로 변환</li>',
+      '<li>수식/표/이미지는 1차 텍스트로 대체</li>',
+      '<li>필요 시 에디터에서 챕터 분할선으로 다중 챕터 구성</li>',
+      '</ul>',
+    ].join('');
+  };
+
+  // ✅ 파일 선택 트리거
+  const handleCreateMaterial = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
+
+  // ✅ 파일 선택 후 처리
+  const handlePickFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    void Swal.fire({
+      title: '텍스트 추출 중입니다',
+      html: '<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;"><div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="color: #374151; font-size: 18px;">파일을 처리하는 중입니다...</p></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    });
+
+    try {
+      // 최소 표시 시간(ms)
+      const MIN_SHOW_MS = 1200; // 1.2초 정도가 자연스러움
+
+      // 실제 추출과 최소 지연을 동시에 기다림
+      const [extracted] = await Promise.all([
+        simulateExtract(file),
+        sleep(MIN_SHOW_MS),
+      ]);
+
+      await Swal.close();
+
+      navigate('/editor', {
+        state: {
+          fileName: file.name,
+          extractedText: extracted.startsWith('<')
+            ? extracted
+            : `<h1>${file.name}</h1><p>${extracted
+                .replace(/\n/g, '</p><p>')
+                .replace(/<\/p><p>$/, '')}</p>`,
+        },
+      });
+    } catch (err) {
+      await Swal.fire({
+        icon: 'error',
+        title: '추출 실패',
+        text: '파일에서 텍스트를 추출하지 못했습니다. 다시 시도해 주세요.',
+        confirmButtonColor: '#192b55',
+        heightAuto: false,
+      });
+    }
+  };
 
   // 메모장 상태 (localStorage 연동)
   const MEMO_KEY = 'clist_memo_v1';
@@ -200,11 +277,6 @@ export default function ClassroomList({
 
   const handleSelectClassroom = (classroomId: string) => {
     navigate(`/classroom/${classroomId}`);
-  };
-
-  const handleCreateMaterial = () => {
-    if (onNavigateToEditor) onNavigateToEditor();
-    else navigate('/editor');
   };
 
   const getLabelColor = (label?: string) =>
@@ -344,6 +416,13 @@ export default function ClassroomList({
 
   return (
     <div className="cl-root">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        style={{ display: 'none' }}
+        onChange={handlePickFile}
+      />
       <header className="cl-header">
         <div className="cl-header-wrapper">
           <h1 className="cl-header-title">DO:DREAM</h1>
