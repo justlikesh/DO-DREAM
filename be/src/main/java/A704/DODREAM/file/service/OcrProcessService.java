@@ -1,10 +1,10 @@
 package A704.DODREAM.file.service;
 
-import A704.DODREAM.file.OcrPage;
-import A704.DODREAM.file.OcrStatus;
-import A704.DODREAM.file.OcrWord;
-import A704.DODREAM.file.UploadedFile;
-import A704.DODREAM.file.UploadedFileRepository;
+import A704.DODREAM.file.entity.OcrPage;
+import A704.DODREAM.file.entity.OcrStatus;
+import A704.DODREAM.file.entity.OcrWord;
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.repository.UploadedFileRepository;
 import A704.DODREAM.file.dto.PageOcrResult;
 import java.io.File;
 import java.util.List;

@@ -1,6 +1,6 @@
-package A704.DODREAM.quiz;
+package A704.DODREAM.quiz.entity;
 
-import A704.DODREAM.user.User;
+import A704.DODREAM.user.entity.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "quiz_attempt", indexes = {
+@Table(name = "quiz_attempts", indexes = {
     @Index(name = "idx_student", columnList = "student_id"),
     @Index(name = "idx_quiz", columnList = "quiz_id")
 })
@@ -35,8 +35,7 @@ public class QuizAttempt {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "attempt_id")
-  private Long attemptId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "quiz_id", nullable = false)

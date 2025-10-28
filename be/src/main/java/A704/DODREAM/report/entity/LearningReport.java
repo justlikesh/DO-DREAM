@@ -1,7 +1,7 @@
-package A704.DODREAM.report;
+package A704.DODREAM.report.entity;
 
 import A704.DODREAM.material.entity.Material;
-import A704.DODREAM.user.User;
+import A704.DODREAM.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -21,7 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "learning_report", indexes = {
+@Table(name = "learning_reports", indexes = {
     @Index(name = "idx_student", columnList = "student_id"),
     @Index(name = "idx_period", columnList = "report_period_start, report_period_end")
 })
@@ -34,8 +34,7 @@ public class LearningReport {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "report_id")
-  private Long reportId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "student_id", nullable = false)

@@ -1,5 +1,7 @@
-package A704.DODREAM.file;
+package A704.DODREAM.file.repository;
 
+import A704.DODREAM.file.entity.OcrPage;
+import A704.DODREAM.file.entity.OcrWord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

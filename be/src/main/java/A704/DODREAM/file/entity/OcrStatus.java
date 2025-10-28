@@ -1,4 +1,4 @@
-package A704.DODREAM.file;
+package A704.DODREAM.file.entity;
 
 public enum OcrStatus {
     PENDING,      // 대기 중

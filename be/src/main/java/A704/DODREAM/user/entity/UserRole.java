@@ -1,4 +1,4 @@
-package A704.DODREAM.user;
+package A704.DODREAM.user.entity;
 
 public enum UserRole {
   STUDENT("학생"),

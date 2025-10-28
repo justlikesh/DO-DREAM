@@ -1,4 +1,4 @@
-package A704.DODREAM.quiz;
+package A704.DODREAM.quiz.entity;
 
 import A704.DODREAM.material.entity.Material;
 import jakarta.persistence.CascadeType;
@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "quiz", indexes = {
+@Table(name = "quizs", indexes = {
     @Index(name = "idx_material", columnList = "material_id")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -36,8 +36,7 @@ public class Quiz {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "quiz_id")
-  private Long quizId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "material_id", nullable = false)
@@ -60,9 +59,4 @@ public class Quiz {
   @Builder.Default
   private List<QuizQuestion> questions = new ArrayList<>();
 
-  // 편의 메서드
-  public void addQuestion(QuizQuestion question) {
-    questions.add(question);
-    question.setQuiz(this);
-  }
 }

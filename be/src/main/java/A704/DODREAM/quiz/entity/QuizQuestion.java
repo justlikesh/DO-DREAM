@@ -1,4 +1,4 @@
-package A704.DODREAM.quiz;
+package A704.DODREAM.quiz.entity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -25,11 +25,11 @@ import java.util.List;
  * QuizQuestion.java
  */
 @Entity
-@Table(name = "quiz_question", indexes = {
+@Table(name = "quiz_questions", indexes = {
     @Index(name = "idx_quiz", columnList = "quiz_id")
 })
 @EntityListeners(AuditingEntityListener.class)
-@Getter @Setter
+@Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -37,8 +37,7 @@ public class QuizQuestion {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "question_id")
-  private Long questionId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "quiz_id", nullable = false)

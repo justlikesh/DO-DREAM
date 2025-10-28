@@ -1,7 +1,7 @@
-package A704.DODREAM.progress;
+package A704.DODREAM.progress.entity;
 
 import A704.DODREAM.material.entity.Material;
-import A704.DODREAM.user.User;
+import A704.DODREAM.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -20,7 +20,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "student_material_progress",
+@Table(name = "student_material_progresses",
     indexes = {
         @Index(name = "idx_student", columnList = "student_id")
     },
@@ -37,8 +37,7 @@ public class StudentMaterialProgress {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "progress_id")
-  private Long progressId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "student_id", nullable = false)

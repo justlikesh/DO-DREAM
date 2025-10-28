@@ -1,8 +1,8 @@
 package A704.DODREAM.file.controller;
 
-import A704.DODREAM.file.OcrStatus;
-import A704.DODREAM.file.UploadedFile;
-import A704.DODREAM.file.UploadedFileRepository;
+import A704.DODREAM.file.entity.OcrStatus;
+import A704.DODREAM.file.entity.UploadedFile;
+import A704.DODREAM.file.repository.UploadedFileRepository;
 import A704.DODREAM.file.dto.FileUploadResponse;
 import A704.DODREAM.file.dto.OcrResultResponse;
 import A704.DODREAM.file.service.FileStorageService;

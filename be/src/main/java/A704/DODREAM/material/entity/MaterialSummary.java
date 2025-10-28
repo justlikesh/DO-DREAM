@@ -20,7 +20,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "material_summary", indexes = {
+@Table(name = "material_summarys", indexes = {
     @Index(name = "idx_material", columnList = "material_id")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -32,8 +32,7 @@ public class MaterialSummary {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "summary_id")
-  private Long summaryId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "material_id", nullable = false)

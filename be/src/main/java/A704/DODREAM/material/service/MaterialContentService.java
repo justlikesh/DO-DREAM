@@ -1,7 +1,7 @@
 package A704.DODREAM.material.service;
 
-import A704.DODREAM.material.MaterialContentRepository;
-import A704.DODREAM.material.MaterialRepository;
+import A704.DODREAM.material.repository.MaterialContentRepository;
+import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.entity.MaterialContent;
 import lombok.RequiredArgsConstructor;

@@ -2,7 +2,7 @@ package A704.DODREAM.material.entity;
 
 import A704.DODREAM.material.enums.ContentType;
 import A704.DODREAM.material.enums.ProcessingStatus;
-import A704.DODREAM.user.User;
+import A704.DODREAM.user.entity.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "material", indexes = {
+@Table(name = "materials", indexes = {
     @Index(name = "idx_teacher", columnList = "teacher_id"),
     @Index(name = "idx_status", columnList = "processing_status")
 })
@@ -40,8 +40,7 @@ public class Material {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "material_id")
-  private Long materialId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "teacher_id", nullable = true)  // 테스트를 위해 nullable 허용

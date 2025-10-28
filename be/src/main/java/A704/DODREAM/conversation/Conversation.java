@@ -1,7 +1,7 @@
 package A704.DODREAM.conversation;
 
 import A704.DODREAM.material.entity.Material;
-import A704.DODREAM.user.User;
+import A704.DODREAM.user.entity.User;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -1,4 +1,4 @@
-package A704.DODREAM.quiz;
+package A704.DODREAM.quiz.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,7 +17,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "student_answer", indexes = {
+@Table(name = "student_answers", indexes = {
     @Index(name = "idx_attempt", columnList = "attempt_id"),
     @Index(name = "idx_student_wrong", columnList = "attempt_id, is_correct")
 })
@@ -30,8 +30,7 @@ public class StudentAnswer {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "answer_id")
-  private Long answerId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "attempt_id", nullable = false)

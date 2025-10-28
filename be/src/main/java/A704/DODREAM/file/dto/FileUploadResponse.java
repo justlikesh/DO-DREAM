@@ -1,6 +1,6 @@
 package A704.DODREAM.file.dto;
 
-import A704.DODREAM.file.OcrStatus;
+import A704.DODREAM.file.entity.OcrStatus;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

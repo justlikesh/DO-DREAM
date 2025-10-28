@@ -1,4 +1,4 @@
-package A704.DODREAM.quiz;
+package A704.DODREAM.quiz.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 @Entity
-@Table(name = "quiz_option", indexes = {
+@Table(name = "quiz_options", indexes = {
     @Index(name = "idx_question", columnList = "question_id")
 })
 @Getter
@@ -24,8 +24,7 @@ public class QuizOption {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "option_id")
-  private Long optionId;
+  private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "question_id", nullable = false)
