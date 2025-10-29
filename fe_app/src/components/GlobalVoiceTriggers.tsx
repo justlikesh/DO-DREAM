@@ -7,10 +7,19 @@ import AndroidVolumeDoublePress from './AndroidVolumeDoublePress';
 import { TriggerContext } from '../triggers/TriggerContext';
 
 type Props = {
-  onVoiceCommand: () => void;
+  onVoiceCommand: () => void;             // 전역 질문 라우팅
+  /**
+   * TalkBack(스크린리더) 켜져 있어도 Android 볼륨 더블프레스를 허용할지 여부
+   * - 기본값: true (요청사항 반영)
+   * - 사용자 옵션으로 끄고 싶으면 false로 내려주면 됨
+   */
+  allowWithScreenReaderOn?: boolean;
 };
 
-export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
+export default function GlobalVoiceTriggers({
+  onVoiceCommand,
+  allowWithScreenReaderOn = true,
+}: Props) {
   const srEnabled = useScreenReaderEnabled();
   const { mode, getPlayPause } = useContext(TriggerContext);
 
@@ -29,14 +38,17 @@ export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
   // iOS: Magic Tap 라우팅
   const onMagicTap = () => {
     if (mode === 'playpause') firePlayPause();
-    else if (mode === 'voice') fireVoice();
+    else fireVoice();
   };
 
-  // Android: 볼륨 업 더블=질문 / 볼륨 다운 더블=재생(플레이어에서만)
+  // Android: TalkBack ON이어도 트리거 허용(옵션)
+  //  - 업 더블 = 질문(전역)
+  //  - 다운 더블 = 재생/정지 (playpause 모드에서만)
   const androidOverlay =
     Platform.OS === 'android' ? (
       <AndroidVolumeDoublePress
-        enabled={!srEnabled}
+        // TalkBack ON이어도 허용(옵션). 끄고 싶으면 allowWithScreenReaderOn=false로.
+        enabled={allowWithScreenReaderOn ? true : !srEnabled}
         onVolumeUpDouble={fireVoice}
         onVolumeDownDouble={mode === 'playpause' ? firePlayPause : undefined}
       />
@@ -44,7 +56,7 @@ export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
 
   return (
     <MagicTapCatcher
-      onMagicTap={onMagicTap}
+      onMagicTap={onMagicTap} // iOS VoiceOver Magic Tap
       style={{ position: 'absolute', inset: 0, backgroundColor: 'transparent' }}
       pointerEvents="none" // 화면 조작 방해 없음 (접근성 액션만 수신)
     >
