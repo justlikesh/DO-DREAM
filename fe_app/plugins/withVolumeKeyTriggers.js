@@ -1,4 +1,3 @@
-// plugins/with-volume-key-triggers.js
 const { withMainActivity } = require('@expo/config-plugins');
 
 const MARK = {
@@ -169,7 +168,6 @@ public boolean onKeyMultiple(int keyCode, int repeatCount, KeyEvent event) {
 `.trim();
 
 function insertAfterFirstImportOrPackage(src, toInsert) {
-  // package 라인 다음에 바로 삽입 (가장 보수적)
   return src.replace(/package [^\n]+\n/, (m) => m + toInsert + '\n');
 }
 
@@ -181,37 +179,33 @@ function insertAfterClassOpen(src, insertion) {
 }
 
 module.exports = function withVolumeKeyTriggers(config) {
-  console.log('[with-volume-key-triggers] plugin start');
+  console.log('[withVolumeKeyTriggers] plugin start');
   return withMainActivity(config, (mod) => {
     const isKotlin = mod.modResults.language === 'kt';
-    console.log('[with-volume-key-triggers] MainActivity language =', isKotlin ? 'Kotlin' : 'Java');
+    console.log('[withVolumeKeyTriggers] MainActivity language =', isKotlin ? 'Kotlin' : 'Java');
 
     let src = mod.modResults.contents;
 
-    // 이미 주입되어 있으면 스킵
     if (src.includes(MARK.methods) && src.includes(MARK.fields)) {
-      console.log('[with-volume-key-triggers] already injected, skip');
+      console.log('[withVolumeKeyTriggers] already injected, skip');
       mod.modResults.contents = src;
       return mod;
     }
 
-    // 1) imports (package 뒤에 강제 삽입, 중복 방지)
     if (!src.includes(MARK.imports)) {
       src = insertAfterFirstImportOrPackage(src, isKotlin ? IMPORTS_KT : IMPORTS_JAVA);
     }
 
-    // 2) fields (class open 뒤에 삽입)
     if (!src.includes(MARK.fields)) {
       src = insertAfterClassOpen(src, isKotlin ? FIELDS_KT : FIELDS_JAVA);
     }
 
-    // 3) methods (class open 뒤에 삽입)
     if (!src.includes(MARK.methods)) {
       src = insertAfterClassOpen(src, isKotlin ? METHODS_KT : METHODS_JAVA);
     }
 
     mod.modResults.contents = src;
-    console.log('[with-volume-key-triggers] injected successfully');
+    console.log('[withVolumeKeyTriggers] injected successfully');
     return mod;
   });
 };
