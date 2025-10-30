@@ -6,6 +6,13 @@ node_modules/
 # Expo
 .expo/
 dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
 web-build/
 expo-env.d.ts
 
@@ -39,3 +46,16 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Android
+android/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
