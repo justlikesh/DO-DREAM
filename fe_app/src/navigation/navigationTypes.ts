@@ -1,7 +1,7 @@
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Book } from '../data/dummyBooks';
-import { Quiz } from '../data/dummyQuizzes';
+import { Book } from '../types/book';
+import { Quiz } from '../types/quiz';
 
 export type RootStackParamList = {
   Library: undefined;
@@ -31,6 +31,7 @@ export type RootStackParamList = {
       isCorrect: boolean;
     }[];
   };
+  MMKVTest: undefined;
 };
 
 // Navigation prop 타입
@@ -69,6 +70,11 @@ export type QuizResultScreenNavigationProp = NativeStackNavigationProp<
   'QuizResult'
 >;
 
+export type MMKVTestScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'MMKVTest'
+>;
+
 // Route prop 타입
 export type PlaybackChoiceScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -93,4 +99,9 @@ export type QuizScreenRouteProp = RouteProp<
 export type QuizResultScreenRouteProp = RouteProp<
   RootStackParamList,
   'QuizResult'
+>;
+
+export type MMKVTestScreenRouteProp = RouteProp<
+  RootStackParamList,
+  'MMKVTest'
 >;

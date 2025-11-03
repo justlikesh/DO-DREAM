@@ -10,6 +10,7 @@ import QuestionScreen from '../screens/QuestionScreen';
 import QuizListScreen from '../screens/QuizListScreen';
 import QuizScreen from '../screens/QuizScreen';
 import QuizResultScreen from '../screens/QuizResultScreen';
+import MMKVTestScreen from '../screens/MMKVTestScreen';
 
 import { navigationRef } from './RootNavigation';
 
@@ -74,6 +75,9 @@ export default function AppNavigator() {
             title: '퀴즈 결과',
           }}
         />
+        <Stack.Screen name="MMKVTest" component={MMKVTestScreen} options={{
+            title: 'MMKV 테스트',
+          }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );
