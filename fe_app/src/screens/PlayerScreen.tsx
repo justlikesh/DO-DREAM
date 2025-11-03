@@ -36,7 +36,7 @@ export default function PlayerScreen() {
   const [playMode, setPlayMode] = useState<PlayMode>("continuous");
   const { setMode, registerPlayPause } = useContext(TriggerContext);
 
-  // 스크린리더 상태
+  // TalkBack 상태
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   // 스크롤 & 포커스
@@ -44,11 +44,10 @@ export default function PlayerScreen() {
   const playButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const isInitialMount = useRef(true);
 
-  // 하단 컨트롤 높이 → ScrollView에 패딩 반영
+  // 하단 컨트롤 높이 → ScrollView 패딩 보정
   const [controlsHeight, setControlsHeight] = useState(0);
   const onControlsLayout = (e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    if (h !== controlsHeight) setControlsHeight(h);
+    setControlsHeight(e.nativeEvent.layout.height);
   };
 
   const chapter = getChapterById(chapterId);
@@ -58,24 +57,24 @@ export default function PlayerScreen() {
   const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const didAutoPlayRef = useRef(false);
 
-  // 스크린리더 상태 구독
+  // TalkBack 상태 구독
   useEffect(() => {
     let mounted = true;
     AccessibilityInfo.isScreenReaderEnabled().then((enabled) => {
       if (mounted) setScreenReaderEnabled(enabled);
     });
-    const sub = AccessibilityInfo.addEventListener(
-      "screenReaderChanged",
-      (enabled) => setScreenReaderEnabled(enabled)
+    const sub = AccessibilityInfo.addEventListener("screenReaderChanged", (enabled) =>
+      setScreenReaderEnabled(enabled)
     );
     return () => {
       mounted = false;
-      // @ts-ignore RN new API returns {remove()}
+      // RN 버전에 따라 remove 존재
+      // @ts-ignore
       sub?.remove?.();
     };
   }, []);
 
-  // 트리거 모드/해제
+  // 트리거 모드
   useEffect(() => {
     setMode("playpause");
     registerPlayPause(() => handlePlayPause());
@@ -84,11 +83,23 @@ export default function PlayerScreen() {
       registerPlayPause(null);
       setMode("voice");
       ttsService.stop();
-      if (progressSaveTimerRef.current) {
-        clearTimeout(progressSaveTimerRef.current);
-      }
+      if (progressSaveTimerRef.current) clearTimeout(progressSaveTimerRef.current);
     };
   }, []);
+
+  // 보증 재생: TalkBack 안내가 끝난 뒤 실제로 말하고 있는지 확인하고, 아니면 재생
+  const ensureAutoPlay = (delayMs: number) => {
+    setTimeout(async () => {
+      const speaking = await ttsService.isSpeaking();
+      const status = ttsService.getStatus();
+      if (!speaking && status !== "playing" && status !== "paused") {
+        try {
+          await ttsService.play();
+          setIsPlaying(true);
+        } catch {}
+      }
+    }, delayMs);
+  };
 
   // 초기화 + 자동재생
   useEffect(() => {
@@ -113,22 +124,23 @@ export default function PlayerScreen() {
         if (currentSectionIndex === chapter.sections.length - 1) {
           setIsChapterCompleted(true);
           saveProgressData(true);
-          // 완료 안내는 TalkBack과 충돌 없어 상대적으로 안전
           AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
         }
       },
       onSectionChange: (newIndex) => {
         setCurrentSectionIndex(newIndex);
-        // 새 섹션으로 이동 시 맨 위로 스크롤
+        // 새 섹션으로 이동 시 스크롤 맨 위
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }, 100);
+        }, 50);
+
+        // TalkBack 켜진 경우: 안내 음성 뒤 보증 재생
+        // 끊김 최소화를 위해 약간 더 길게 대기
+        ensureAutoPlay(screenReaderEnabled ? 900 : 250);
       },
       onSectionComplete: () => {
         setIsPlaying(false);
-        AccessibilityInfo.announceForAccessibility(
-          "문단 완료. 다음 버튼을 눌러 계속하세요."
-        );
+        AccessibilityInfo.announceForAccessibility("문단 완료. 다음 버튼을 눌러 계속하세요.");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       },
       onError: (error) => {
@@ -138,45 +150,37 @@ export default function PlayerScreen() {
       },
     });
 
-    // TalkBack 켜짐이면, 초기 announce 생략(오디오 포커스 충돌 방지)
+    // 초기 음성 안내는 TalkBack ON 시 충돌 가능 → 생략
     if (!screenReaderEnabled) {
-      const announcement = `${book.subject}, ${chapter.title}. ${
-        fromStart ? "처음부터" : savedProgress ? "이어서" : ""
-      } 재생 시작`;
-      AccessibilityInfo.announceForAccessibility(announcement);
+      AccessibilityInfo.announceForAccessibility(
+        `${book.subject}, ${chapter.title}. ${fromStart ? "처음부터" : savedProgress ? "이어서" : ""} 재생 시작`
+      );
     }
 
-    // 자동 재생: TalkBack 켜짐일 때는 지연을 더 길게 주어 충돌 회피
-    const delay = screenReaderEnabled ? 1400 : 800;
+    // 자동재생: TalkBack ON 시 더 긴 지연 후 시작
+    const delay = screenReaderEnabled ? 1200 : 700;
     const autoPlayTimer = setTimeout(async () => {
       if (!didAutoPlayRef.current) {
         try {
           await ttsService.play();
           setIsPlaying(true);
           didAutoPlayRef.current = true;
-        } catch (e) {
-          console.warn("Auto play failed:", e);
-        }
+        } catch {}
       }
     }, delay);
 
-    // 초기 포커스 재생 버튼
-    if (isInitialMount.current) {
+    // 초기에 버튼으로 강제 포커스 → TalkBack ON일 땐 생략 (충돌 방지)
+    if (isInitialMount.current && !screenReaderEnabled) {
       setTimeout(() => {
         if (playButtonRef.current) {
           const reactTag = findNodeHandle(playButtonRef.current);
-          if (reactTag) {
-            AccessibilityInfo.setAccessibilityFocus(reactTag);
-          }
+          if (reactTag) AccessibilityInfo.setAccessibilityFocus(reactTag);
         }
       }, 100);
       isInitialMount.current = false;
     }
 
-    return () => {
-      clearTimeout(autoPlayTimer);
-    };
-    // screenReaderEnabled 포함: TalkBack on/off 상태에서 들어올 때도 올바르게 동작
+    return () => clearTimeout(autoPlayTimer);
   }, [chapter, book.id, chapterId, fromStart, ttsSpeed, playMode, screenReaderEnabled]);
 
   // 진행도 저장(디바운스)
@@ -199,7 +203,6 @@ export default function PlayerScreen() {
 
   const saveProgressData = (isCompleted: boolean) => {
     if (!chapter) return;
-
     const progress: LocalProgress = {
       materialId: book.id,
       chapterId: chapterId,
@@ -207,7 +210,6 @@ export default function PlayerScreen() {
       lastAccessedAt: new Date().toISOString(),
       isCompleted,
     };
-
     saveProgress(progress);
   };
 
@@ -236,7 +238,7 @@ export default function PlayerScreen() {
     if (currentSectionIndex > 0) {
       const newIndex = currentSectionIndex - 1;
       setCurrentSectionIndex(newIndex);
-      await ttsService.previous();
+      await ttsService.previous(); // onSectionChange에서 보증 재생
       AccessibilityInfo.announceForAccessibility(`${newIndex + 1}번째 문단으로 이동`);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -246,14 +248,12 @@ export default function PlayerScreen() {
     if (chapter && currentSectionIndex < chapter.sections.length - 1) {
       const newIndex = currentSectionIndex + 1;
       setCurrentSectionIndex(newIndex);
-      await ttsService.next();
+      await ttsService.next(); // onSectionChange에서 보증 재생
       AccessibilityInfo.announceForAccessibility(`${newIndex + 1}번째 문단으로 이동`);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else if (chapter && currentSectionIndex === chapter.sections.length - 1) {
       if (hasQuiz) {
-        AccessibilityInfo.announceForAccessibility(
-          "챕터를 완료했습니다. 아래 퀴즈 버튼을 눌러보세요."
-        );
+        AccessibilityInfo.announceForAccessibility("챕터를 완료했습니다. 아래 퀴즈 버튼을 눌러보세요.");
       } else {
         AccessibilityInfo.announceForAccessibility("챕터를 완료했습니다.");
       }
@@ -262,30 +262,18 @@ export default function PlayerScreen() {
     }
   };
 
-  // 속도 변경: TalkBack 제스처 대응(accessibilityActions) + 탭 대응(onPress)
+  // 속도 변경 (조절 제스처 지원은 이전 답변과 동일)
   const speedSteps = [0.8, 1.0, 1.2, 1.5] as const;
   const changeSpeedTo = async (nextSpeed: (typeof speedSteps)[number]) => {
     const wasPlaying = isPlaying;
-    try {
-      // 많은 엔진이 live-rate 변경을 지원
-      ttsService.setRate(nextSpeed);
-      setTtsSpeed(nextSpeed);
-
-      // 일부 단말에서 즉시 반영 안 될 때를 대비
-      if (wasPlaying) {
-        // 아주 짧은 재시작으로 반영 보장
-        await ttsService.pause();
-        setTimeout(async () => {
-          await ttsService.play();
-        }, 80);
-      }
-
-      AccessibilityInfo.announceForAccessibility(`재생 속도 ${nextSpeed}배`);
-      Haptics.selectionAsync();
-    } catch (e) {
-      console.warn("setRate failed", e);
-      AccessibilityInfo.announceForAccessibility("속도 변경에 실패했습니다");
+    await ttsService.setRate(nextSpeed);
+    setTtsSpeed(nextSpeed);
+    if (wasPlaying) {
+      // setRate 내부에서 동일 섹션 재시작 처리됨
+      ensureAutoPlay(screenReaderEnabled ? 700 : 150);
     }
+    AccessibilityInfo.announceForAccessibility(`재생 속도 ${nextSpeed}배`);
+    Haptics.selectionAsync();
   };
 
   const handleSpeedChangePress = async () => {
@@ -297,13 +285,9 @@ export default function PlayerScreen() {
   const handlePlayModeChange = () => {
     const modes: PlayMode[] = ["continuous", "single", "repeat"];
     const nextMode = modes[(modes.indexOf(playMode) + 1) % modes.length];
-
     setPlayMode(nextMode);
     ttsService.setPlayMode(nextMode, 2);
-
-    AccessibilityInfo.announceForAccessibility(
-      `${PlayModeLabels[nextMode]} 모드로 변경되었습니다`
-    );
+    AccessibilityInfo.announceForAccessibility(`${PlayModeLabels[nextMode]} 모드로 변경되었습니다`);
     Haptics.selectionAsync();
   };
 
@@ -336,8 +320,6 @@ export default function PlayerScreen() {
   }
 
   const currentSection = chapter.sections[currentSectionIndex];
-
-  // ScrollView 패딩: 하단 컨트롤 + 여유
   const dynamicContentContainer = [
     styles.contentContainer,
     { paddingBottom: Math.max(24, controlsHeight + 24) },
@@ -387,15 +369,12 @@ export default function PlayerScreen() {
                 { name: "decrement", label: "속도 내리기" },
               ]}
               onAccessibilityAction={(e) => {
-                const idx = speedSteps.indexOf(
-                  ttsSpeed as (typeof speedSteps)[number]
-                );
+                const idx = speedSteps.indexOf(ttsSpeed as (typeof speedSteps)[number]);
                 if (e.nativeEvent.actionName === "increment") {
                   const next = speedSteps[(idx + 1) % speedSteps.length];
                   changeSpeedTo(next);
                 } else if (e.nativeEvent.actionName === "decrement") {
-                  const next =
-                    speedSteps[(idx - 1 + speedSteps.length) % speedSteps.length];
+                  const next = speedSteps[(idx - 1 + speedSteps.length) % speedSteps.length];
                   changeSpeedTo(next);
                 }
               }}
@@ -409,7 +388,7 @@ export default function PlayerScreen() {
           </View>
         </View>
 
-        {/* 챕터 정보 (스크린리더에서 읽히도록 no-hide-descendants 제거) */}
+        {/* 챕터 정보 */}
         <View style={styles.headerInfo}>
           <Text style={styles.subjectText}>{book.subject}</Text>
           <Text style={styles.chapterTitle}>{chapter.title}</Text>
@@ -419,12 +398,11 @@ export default function PlayerScreen() {
         </View>
       </View>
 
-      {/* 내용 영역: 접근성 차단 제거 → TalkBack 스크롤/탐색 가능 */}
+      {/* 내용 */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.contentArea}
         contentContainerStyle={dynamicContentContainer}
-        // TalkBack에서 세로 스와이프로 자연 스크롤 가능
       >
         <View style={styles.contentTextContainer}>
           <Text style={styles.contentText}>{currentSection.text}</Text>
@@ -434,7 +412,6 @@ export default function PlayerScreen() {
           {currentSectionIndex + 1} / {chapter.sections.length}
         </Text>
 
-        {/* 챕터 완료 시 퀴즈 버튼 (스크롤 영역에 포함되어 가리지 않게) */}
         {isChapterCompleted && hasQuiz && (
           <View style={styles.completionSection}>
             <Text style={styles.completionText}>🎉 챕터 학습 완료!</Text>
@@ -452,20 +429,15 @@ export default function PlayerScreen() {
         )}
       </ScrollView>
 
-      {/* 컨트롤 버튼 (고정) */}
+      {/* 컨트롤 */}
       <View style={styles.controlsContainer} onLayout={onControlsLayout}>
         <TouchableOpacity
-          style={[
-            styles.controlButton,
-            currentSectionIndex === 0 && styles.disabledButton,
-          ]}
+          style={[styles.controlButton, currentSectionIndex === 0 && styles.disabledButton]}
           onPress={handlePrevious}
           disabled={currentSectionIndex === 0}
           accessible={true}
           accessibilityLabel={
-            currentSectionIndex === 0
-              ? "이전 문단 없음"
-              : `이전 문단. ${currentSectionIndex}번째 문단으로 이동`
+            currentSectionIndex === 0 ? "이전 문단 없음" : `이전 문단. ${currentSectionIndex}번째 문단으로 이동`
           }
           accessibilityRole="button"
           accessibilityState={{ disabled: currentSectionIndex === 0 }}
@@ -494,9 +466,7 @@ export default function PlayerScreen() {
         <TouchableOpacity
           style={[
             styles.controlButton,
-            chapter && currentSectionIndex === chapter.sections.length - 1
-              ? styles.disabledButton
-              : null,
+            chapter && currentSectionIndex === chapter.sections.length - 1 ? styles.disabledButton : null,
           ]}
           onPress={handleNext}
           disabled={chapter ? currentSectionIndex === chapter.sections.length - 1 : false}
@@ -539,10 +509,7 @@ export default function PlayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ffffff",
-  },
+  container: { flex: 1, backgroundColor: "#ffffff" },
   header: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -550,27 +517,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#e0e0e0",
   },
-  headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    minWidth: 70,
-    minHeight: 44,
-  },
-  backButtonText: {
-    fontSize: 18,
-    color: "#2196F3",
-    fontWeight: "600",
-  },
-  headerButtons: {
-    flexDirection: "row",
-    gap: 8,
-  },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  backButton: { paddingVertical: 8, paddingHorizontal: 4, minWidth: 70, minHeight: 44 },
+  backButtonText: { fontSize: 18, color: "#2196F3", fontWeight: "600" },
+  headerButtons: { flexDirection: "row", gap: 8 },
   modeButton: {
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -583,9 +533,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  modeButtonText: {
-    fontSize: 26,
-  },
+  modeButtonText: { fontSize: 26 },
   speedButton: {
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -598,56 +546,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  speedButtonText: {
-    fontSize: 17,
-    color: "#F57C00",
-    fontWeight: "bold",
-  },
-  headerInfo: {
-    marginTop: 4,
-  },
-  subjectText: {
-    fontSize: 18,
-    color: "#666666",
-    marginBottom: 4,
-  },
-  chapterTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
-    marginBottom: 6,
-  },
-  modeIndicator: {
-    fontSize: 15,
-    color: "#2196F3",
-    fontWeight: "600",
-  },
-  contentArea: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 24,
-  },
-  contentTextContainer: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  contentText: {
-    fontSize: 26,
-    lineHeight: 42,
-    color: "#333333",
-    fontWeight: "500",
-  },
-  progressText: {
-    fontSize: 20,
-    color: "#999999",
-    textAlign: "center",
-    fontWeight: "600",
-    marginBottom: 16,
-  },
+  speedButtonText: { fontSize: 17, color: "#F57C00", fontWeight: "bold" },
+  headerInfo: { marginTop: 4 },
+  subjectText: { fontSize: 18, color: "#666666", marginBottom: 4 },
+  chapterTitle: { fontSize: 24, fontWeight: "bold", color: "#333333", marginBottom: 6 },
+  modeIndicator: { fontSize: 15, color: "#2196F3", fontWeight: "600" },
+  contentArea: { flex: 1 },
+  contentContainer: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 24 },
+  contentTextContainer: { padding: 16, borderRadius: 12, marginBottom: 20 },
+  contentText: { fontSize: 26, lineHeight: 42, color: "#333333", fontWeight: "500" },
+  progressText: { fontSize: 20, color: "#999999", textAlign: "center", fontWeight: "600", marginBottom: 16 },
   completionSection: {
     marginTop: 24,
     padding: 20,
@@ -657,13 +565,7 @@ const styles = StyleSheet.create({
     borderColor: "#4CAF50",
     alignItems: "center",
   },
-  completionText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2E7D32",
-    marginBottom: 16,
-    textAlign: "center",
-  },
+  completionText: { fontSize: 24, fontWeight: "bold", color: "#2E7D32", marginBottom: 16, textAlign: "center" },
   completionQuizButton: {
     backgroundColor: "#9C27B0",
     borderRadius: 16,
@@ -675,11 +577,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#7B1FA2",
   },
-  completionQuizButtonText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
+  completionQuizButtonText: { fontSize: 24, fontWeight: "bold", color: "#ffffff" },
   controlsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -702,31 +600,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#1976D2",
   },
-  disabledButton: {
-    backgroundColor: "#BDBDBD",
-    borderColor: "#9E9E9E",
-    opacity: 0.6,
-  },
-  controlButtonText: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  playButton: {
-    backgroundColor: "#4CAF50",
-    minWidth: 120,
-    minHeight: 88,
-    borderColor: "#388E3C",
-  },
-  playButtonText: {
-    fontSize: 40,
-    color: "#ffffff",
-  },
-  bottomButtons: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 12,
-  },
+  disabledButton: { backgroundColor: "#BDBDBD", borderColor: "#9E9E9E", opacity: 0.6 },
+  controlButtonText: { fontSize: 20, fontWeight: "700", color: "#ffffff" },
+  playButton: { backgroundColor: "#4CAF50", minWidth: 120, minHeight: 88, borderColor: "#388E3C" },
+  playButtonText: { fontSize: 40, color: "#ffffff" },
+  bottomButtons: { paddingHorizontal: 20, paddingBottom: 20, paddingTop: 12 },
   voiceQueryButton: {
     backgroundColor: "#FF9800",
     borderRadius: 16,
@@ -737,9 +615,5 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "#F57C00",
   },
-  voiceQueryText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
+  voiceQueryText: { fontSize: 24, fontWeight: "bold", color: "#ffffff" },
 });
