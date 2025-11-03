@@ -13,6 +13,7 @@ export interface TTSOptions {
   onDone?: () => void;
   onError?: (error: Error) => void;
   onBoundary?: (event: { charIndex: number; charLength: number }) => void;
+  onSectionChange?: (index: number) => void;
 }
 
 class TTSService {
@@ -59,6 +60,30 @@ class TTSService {
     const currentSection = this.sections[this.currentSectionIndex];
     this.status = 'playing';
 
+    // 섹션 타입에 따른 pause 시간 설정 (밀리초)
+    let pauseAfter = 0;
+    
+    switch (currentSection.type) {
+      case 'heading':
+        // 제목 뒤에 긴 pause (구분을 명확히)
+        pauseAfter = 1500; // 1.5초
+        break;
+      case 'paragraph':
+        // 일반 문단 뒤에 짧은 pause
+        pauseAfter = 800; // 0.8초
+        break;
+      case 'formula':
+        // 수식 뒤에 pause (이해할 시간 제공)
+        pauseAfter = 1200; // 1.2초
+        break;
+      case 'image_description':
+        // 이미지 설명 뒤에 pause (상상할 시간 제공)
+        pauseAfter = 1000; // 1초
+        break;
+      default:
+        pauseAfter = 500; // 기본 0.5초
+    }
+
     try {
       await Speech.speak(currentSection.text, {
         language: this.options.language,
@@ -71,13 +96,13 @@ class TTSService {
           this.options.onStart?.();
         },
         onDone: () => {
-          // 자동으로 다음 섹션 재생
-          if (this.autoPlayNext && this.currentSectionIndex < this.sections.length - 1) {
-            this.currentSectionIndex++;
-            this.play();
+          // pause 후 다음 섹션 자동 재생
+          if (pauseAfter > 0) {
+            setTimeout(() => {
+              this.handleDone();
+            }, pauseAfter);
           } else {
-            this.status = 'idle';
-            this.options.onDone?.();
+            this.handleDone();
           }
         },
         onError: (error) => {
@@ -91,6 +116,18 @@ class TTSService {
       console.error('TTS play error:', error);
       this.status = 'idle';
       this.options.onError?.(error as Error);
+    }
+  }
+
+  private handleDone(): void {
+    // 자동으로 다음 섹션 재생
+    if (this.autoPlayNext && this.currentSectionIndex < this.sections.length - 1) {
+      this.currentSectionIndex++;
+      this.options.onSectionChange?.(this.currentSectionIndex);
+      this.play();
+    } else {
+      this.status = 'idle';
+      this.options.onDone?.();
     }
   }
 
@@ -125,6 +162,7 @@ class TTSService {
 
     await this.stop();
     this.currentSectionIndex = index;
+    this.options.onSectionChange?.(index); // 섹션 변경 알림
 
     if (autoPlay) {
       await this.play();

@@ -83,6 +83,11 @@ export default function PlayerScreen() {
             saveProgressData(true);
           }
         },
+        onSectionChange: (newIndex) => {
+          // TTS가 자동으로 다음 섹션으로 넘어갈 때 UI 업데이트
+          setCurrentSectionIndex(newIndex);
+          AccessibilityInfo.announceForAccessibility(`${newIndex + 1}번째 문단`);
+        },
         onError: (error) => {
           console.error('TTS Error:', error);
           setIsPlaying(false);
@@ -98,12 +103,9 @@ export default function PlayerScreen() {
     }
   }, [chapter]);
 
-  // 섹션 변경 시 TTS 업데이트
+  // 섹션 변경 시 진행상황 저장 (수동 제어 시)
   useEffect(() => {
     if (chapter) {
-      const isSpeaking = ttsService.getStatus() === 'playing';
-      ttsService.goToSection(currentSectionIndex, isSpeaking);
-
       // 진행상황 저장 (디바운스)
       if (progressSaveTimerRef.current) {
         clearTimeout(progressSaveTimerRef.current);
@@ -161,7 +163,8 @@ export default function PlayerScreen() {
 
   const handlePrevious = async () => {
     if (currentSectionIndex > 0) {
-      setCurrentSectionIndex((i) => i - 1);
+      const newIndex = currentSectionIndex - 1;
+      setCurrentSectionIndex(newIndex);
       await ttsService.previous();
       AccessibilityInfo.announceForAccessibility("이전 문단");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -170,7 +173,8 @@ export default function PlayerScreen() {
 
   const handleNext = async () => {
     if (chapter && currentSectionIndex < chapter.sections.length - 1) {
-      setCurrentSectionIndex((i) => i + 1);
+      const newIndex = currentSectionIndex + 1;
+      setCurrentSectionIndex(newIndex);
       await ttsService.next();
       AccessibilityInfo.announceForAccessibility("다음 문단");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -182,15 +186,22 @@ export default function PlayerScreen() {
     }
   };
 
-  const handleSpeedChange = () => {
+  const handleSpeedChange = async () => {
     // 속도 변경: 0.8 -> 1.0 -> 1.2 -> 1.5 -> 0.8
-    const speeds = [0.8, 1.0, 1.2, 1.5, 2.0];
+    const speeds = [0.8, 1.0, 1.2, 1.5];
     const currentIndex = speeds.indexOf(ttsSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
     const nextSpeed = speeds[nextIndex];
     
     setTtsSpeed(nextSpeed);
     ttsService.setRate(nextSpeed);
+    
+    // 재생 중이면 현재 섹션을 새 속도로 다시 재생
+    if (isPlaying) {
+      await ttsService.stop();
+      await ttsService.play();
+    }
+    
     AccessibilityInfo.announceForAccessibility(`재생 속도 ${nextSpeed}배`);
     Haptics.selectionAsync();
   };
