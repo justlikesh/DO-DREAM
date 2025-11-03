@@ -1,5 +1,5 @@
 <configuration>
-    <property name="LOG_DIR" value="${LOG_DIR:-/var/log/app}" />
+    <property name="LOG_DIR" value="${LOG_DIR:-/var/log/app}"/>
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_DIR}/app.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
