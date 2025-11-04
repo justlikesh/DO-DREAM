@@ -39,8 +39,7 @@ public class SecurityConfig {
 		config.setMaxAge(3600L); // 3600초
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		// /api/** 경로에 대해 위 설정 적용
-		source.registerCorsConfiguration("/api/**", config);
+		source.registerCorsConfiguration("/**", config);
 		return source;
 	}
 
