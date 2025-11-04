@@ -34,7 +34,7 @@ class TTSService {
   private sections: Section[] = [];
   private status: TTSStatus = 'idle';
   private options: TTSOptions = {};
-  private playMode: PlayMode = 'continuous';
+  private playMode: PlayMode = 'single';
   private currentRepeatCount: number = 0;
   private targetRepeatCount: number = 2;
 
@@ -53,7 +53,7 @@ class TTSService {
   initialize(sections: Section[], startIndex: number = 0, options: TTSOptions = {}) {
     this.sections = sections;
     this.currentSectionIndex = startIndex;
-    this.playMode = options.playMode || 'continuous';
+    this.playMode = options.playMode || 'single';
     this.targetRepeatCount = options.repeatCount ?? 2;
     this.currentRepeatCount = 0;
 
@@ -184,6 +184,8 @@ class TTSService {
   private handleDone(): void {
     switch (this.playMode) {
       case 'single':
+        // Single 모드: 섹션 완료 후 idle 상태로 전환
+        // 사용자가 재생 버튼을 누르면 현재 섹션을 다시 재생할 수 있음
         this.status = 'idle';
         this.options.onSectionComplete?.();
         break;
