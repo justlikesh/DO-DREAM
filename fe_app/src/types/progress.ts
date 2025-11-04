@@ -1,3 +1,5 @@
+import { PlayMode } from './playMode';
+
 export interface MaterialProgress {
   progressId?: string;
   studentId: string;
@@ -17,4 +19,5 @@ export interface LocalProgress {
   currentSectionIndex: number;
   lastAccessedAt: string; // ISO string
   isCompleted: boolean;
+  playMode?: PlayMode; // 사용자가 마지막으로 선택한 재생 모드
 }
