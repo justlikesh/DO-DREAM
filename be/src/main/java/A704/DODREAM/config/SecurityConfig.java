@@ -27,21 +27,20 @@ public class SecurityConfig {
 
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.csrf(csrf -> csrf.disable());
-		http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-		http.cors(c -> {}); // WebMvcConfigurer로 allowedOrigins/credentials 설정
+		http
+			.cors(cors -> {})  // WebMvcConfigurer 설정 사용
+			.csrf(csrf -> csrf.disable())
+			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.authorizeHttpRequests(auth -> auth
+				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ★ 프리플라이트 허용
+				.requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+				.requestMatchers("/actuator/**", "/health").permitAll()
+				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
+				.anyRequest().authenticated()
+			);
 
-		http.authorizeHttpRequests(auth -> auth
-        .requestMatchers("/**").permitAll()
-        .requestMatchers("/actuator/**","/auth/**","/v3/api-docs/**",
-            "/swagger-ui/**", "/swagger-ui.html").permitAll()
-        .requestMatchers(HttpMethod.GET, "/health").permitAll()
-			.requestMatchers("/api/teacher/**").hasRole("TEACHER")
-			.anyRequest().authenticated()
-		);
-
-//		http.addFilterBefore(new JwtAuthFilter(jwt),
-//			org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+		http.addFilterBefore(new JwtAuthFilter(jwt),
+			org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}
