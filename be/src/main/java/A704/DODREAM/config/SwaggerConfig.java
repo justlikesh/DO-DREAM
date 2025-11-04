@@ -33,6 +33,6 @@ public class SwaggerConfig {
 					.scheme("bearer")
 					.bearerFormat("JWT")
 			))
-			.servers(List.of(new Server().url("")));
+			.servers(List.of(new Server().url("/api")));
 	}
 }
