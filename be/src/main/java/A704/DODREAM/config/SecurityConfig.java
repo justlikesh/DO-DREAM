@@ -28,13 +28,17 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-			.cors(cors -> {})  // WebMvcConfigurer 설정 사용
+			.cors(cors -> {})
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ★ 프리플라이트 허용
-				.requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-				.requestMatchers("/actuator/**", "/health").permitAll()
+				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+				// springdoc (프리픽스 유무 모두 허용)
+				.requestMatchers("/api/swagger-ui/**", "/api/v3/api-docs/**",
+					"/swagger-ui/**", "/v3/api-docs/**").permitAll()
+				// 공개 엔드포인트
+				.requestMatchers("/api/auth/**", "/actuator/**", "/health").permitAll()
+				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 				.anyRequest().authenticated()
 			);
@@ -45,16 +49,25 @@ public class SecurityConfig {
 		return http.build();
 	}
 
+	// ★ JwtAuthFilter: 공개 경로/OPTIONS 는 필터 스킵 + 조기 return
 	static class JwtAuthFilter extends OncePerRequestFilter {
 		private final JwtUtil jwt;
 		JwtAuthFilter(JwtUtil jwt) { this.jwt = jwt; }
 
 		@Override
+		protected boolean shouldNotFilter(HttpServletRequest req) {
+			String u = req.getRequestURI();
+			return "OPTIONS".equalsIgnoreCase(req.getMethod())
+				|| u.startsWith("/api/auth/")
+				|| u.startsWith("/api/swagger-ui/")
+				|| u.startsWith("/api/v3/api-docs/")
+				|| u.startsWith("/swagger-ui/")
+				|| u.startsWith("/v3/api-docs/");
+		}
+
+		@Override
 		protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 			throws ServletException, IOException {
-      if (req.getRequestURI().startsWith("/"))
-        chain.doFilter(req, res);
-
 			String h = req.getHeader("Authorization");
 			if (h != null && h.startsWith("Bearer ")) {
 				String at = h.substring(7);
