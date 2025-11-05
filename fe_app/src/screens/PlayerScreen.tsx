@@ -23,6 +23,12 @@ import ttsService from "../services/ttsService";
 import { saveProgress, getProgress } from "../services/storage";
 import { LocalProgress } from "../types/progress";
 import { PlayMode, PlayModeLabels, PlayModeIcons } from "../types/playMode";
+import { 
+  createBookmark, 
+  isBookmarked, 
+  getBookmarkIdBySection, 
+  deleteBookmark 
+} from "../services/bookmarkStorage";
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
@@ -34,6 +40,7 @@ export default function PlayerScreen() {
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
   const [ttsSpeed, setTtsSpeed] = useState(1.0);
   const [playMode, setPlayMode] = useState<PlayMode>("single");
+  const [bookmarked, setBookmarked] = useState(false);
   const { setMode, registerPlayPause } = useContext(TriggerContext);
 
   // TalkBack 상태
@@ -75,6 +82,13 @@ export default function PlayerScreen() {
       sub?.remove?.();
     };
   }, []);
+
+  // 북마크 상태 확인
+  useEffect(() => {
+    if (!chapter) return;
+    const isCurrentBookmarked = isBookmarked(book.id, chapterId, currentSectionIndex);
+    setBookmarked(isCurrentBookmarked);
+  }, [currentSectionIndex, book.id, chapterId, chapter]);
 
   // 보증 재생: TalkBack 안내가 끝난 뒤 실제로 말하고 있는지 확인하고, 아니면 강제 재생
   const ensureAutoPlay = useCallback(async (delayMs: number) => {
@@ -513,6 +527,55 @@ export default function PlayerScreen() {
     }
   };
 
+  // 북마크 추가/제거 핸들러
+  const handleToggleBookmark = () => {
+    if (!chapter) return;
+
+    const currentSection = chapter.sections[currentSectionIndex];
+    
+    if (bookmarked) {
+      // 북마크 제거
+      const bookmarkId = getBookmarkIdBySection(book.id, chapterId, currentSectionIndex);
+      if (bookmarkId) {
+        const success = deleteBookmark(bookmarkId);
+        if (success) {
+          setBookmarked(false);
+          AccessibilityInfo.announceForAccessibility("북마크가 제거되었습니다");
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }
+    } else {
+      // 북마크 추가
+      try {
+        createBookmark({
+          materialId: book.id,
+          chapterId: chapterId,
+          sectionId: currentSection.id,
+          sectionIndex: currentSectionIndex,
+          sectionText: currentSection.text,
+          sectionType: currentSection.type,
+        });
+        setBookmarked(true);
+        AccessibilityInfo.announceForAccessibility("북마크에 추가되었습니다");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } catch (error) {
+        console.error('[Bookmark] Failed to create:', error);
+        AccessibilityInfo.announceForAccessibility("북마크 추가에 실패했습니다");
+      }
+    }
+  };
+
+  // 북마크 목록 화면으로 이동
+  const handleBookmarkList = () => {
+    ttsService.stop();
+    setIsPlaying(false);
+    AccessibilityInfo.announceForAccessibility("북마크 목록 화면으로 이동합니다");
+    navigation.navigate("BookmarkList", {
+      book,
+      chapterId,
+    });
+  };
+
   if (!chapter) {
     return (
       <SafeAreaView style={styles.container}>
@@ -548,6 +611,34 @@ export default function PlayerScreen() {
 
           <View style={styles.headerButtons}>
             <TouchableOpacity
+              style={styles.bookmarkButton}
+              onPress={handleToggleBookmark}
+              accessible={true}
+              accessibilityLabel={bookmarked ? "북마크 제거" : "북마크 추가"}
+              accessibilityRole="button"
+              accessibilityHint={bookmarked ? "이 섹션의 북마크를 제거합니다" : "이 섹션을 북마크에 추가합니다"}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.bookmarkButtonText}>
+                {bookmarked ? "⭐" : "☆"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bookmarkListButton}
+              onPress={handleBookmarkList}
+              accessible={true}
+              accessibilityLabel="북마크 목록"
+              accessibilityRole="button"
+              accessibilityHint="저장된 북마크 목록을 봅니다"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.bookmarkListButtonText}>
+                📑
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.modeButton}
               onPress={handleModeChange}
               accessible={true}
@@ -556,7 +647,7 @@ export default function PlayerScreen() {
               accessibilityHint="탭하면 다음 모드로 변경됩니다"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text importantForAccessibility="no" style={styles.modeButtonText}>
+              <Text style={styles.modeButtonText}>
                 {PlayModeIcons[playMode]}
               </Text>
             </TouchableOpacity>
@@ -570,7 +661,7 @@ export default function PlayerScreen() {
               accessibilityHint="탭하면 다음 속도로 변경됩니다"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text importantForAccessibility="no" style={styles.speedButtonText}>
+              <Text style={styles.speedButtonText}>
                 {ttsSpeed}x
               </Text>
             </TouchableOpacity>
@@ -633,7 +724,7 @@ export default function PlayerScreen() {
           accessibilityState={{ disabled: currentSectionIndex === 0 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text importantForAccessibility="no" style={styles.controlButtonText}>
+          <Text style={styles.controlButtonText}>
             ◀ 이전
           </Text>
         </TouchableOpacity>
@@ -648,10 +739,7 @@ export default function PlayerScreen() {
           accessibilityHint={isPlaying ? "음성을 일시정지합니다" : "음성을 재생합니다. 두 손가락으로 두 번 탭해도 제어할 수 있습니다"}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text 
-            importantForAccessibility="no-hide-descendants"
-            style={styles.playButtonText}
-          >
+          <Text style={styles.playButtonText}>
             {isPlaying ? "⏸" : "▶"}
           </Text>
         </TouchableOpacity>
@@ -676,7 +764,7 @@ export default function PlayerScreen() {
           }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text importantForAccessibility="no" style={styles.controlButtonText}>
+          <Text style={styles.controlButtonText}>
             다음 ▶
           </Text>
         </TouchableOpacity>
@@ -693,7 +781,7 @@ export default function PlayerScreen() {
           accessibilityHint="음성으로 질문할 수 있는 화면으로 이동합니다"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text importantForAccessibility="no" style={styles.voiceQueryText}>
+          <Text style={styles.voiceQueryText}>
             🎤 질문하기
           </Text>
         </TouchableOpacity>
@@ -715,6 +803,32 @@ const styles = StyleSheet.create({
   backButton: { paddingVertical: 8, paddingHorizontal: 4, minWidth: 70, minHeight: 44 },
   backButtonText: { fontSize: 18, color: "#2196F3", fontWeight: "600" },
   headerButtons: { flexDirection: "row", gap: 8 },
+  bookmarkButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#FFB300",
+    minWidth: 52,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookmarkButtonText: { fontSize: 26 },
+  bookmarkListButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "#E1F5FE",
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#039BE5",
+    minWidth: 52,
+    minHeight: 52,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookmarkListButtonText: { fontSize: 26 },
   modeButton: {
     paddingVertical: 8,
     paddingHorizontal: 10,
