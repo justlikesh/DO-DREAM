@@ -2,12 +2,14 @@ package A704.DODREAM.user.entity;
 
 import jakarta.persistence.*;
 import lombok.Builder;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "teacher_profiles")
+@Getter
 public class TeacherProfile {
 
 	@Id
@@ -21,7 +23,7 @@ public class TeacherProfile {
 	private String teacherNo;
 
     @OneToMany(mappedBy = "teacher")
-    private List<Classroom> classrooms = new ArrayList<>();
+    private List<ClassroomTeacher> classroomTeachers = new ArrayList<>();
 
     public static TeacherProfile create(User user, String teacherNo) {
 		TeacherProfile teacherProfile = new TeacherProfile();

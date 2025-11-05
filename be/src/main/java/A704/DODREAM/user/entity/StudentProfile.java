@@ -3,6 +3,9 @@ package A704.DODREAM.user.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "student_profiles")
 @Getter
@@ -23,12 +26,10 @@ public class StudentProfile {
     @Column(length = 100)
     private String schoolName;
 
-    @Column(name = "grade_level")
-    private Integer gradeLevel;
-
-    @Column(name = "class_number")
-    private Integer classNumber;
-
     @Column(name = "student_number")
     private String studentNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "classroom_id")
+    private Classroom classroom;
 }

@@ -6,7 +6,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
+@Table(name = "classrooms")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,9 +30,13 @@ public class Classroom {
     @Column(name = "class_number", nullable = false)
     private Integer classNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "teacher_id")
-    private TeacherProfile teacher;
+    @OneToMany(mappedBy = "classroom")
+    @Builder.Default
+    private List<ClassroomTeacher> classroomTeachers = new ArrayList<>();
+
+    @OneToMany(mappedBy = "classroom")
+    @Builder.Default
+    private List<StudentProfile> students = new ArrayList<>();
 
     public String getDisplayName() {
         return gradeLevel + "학년 " + classNumber + "반";

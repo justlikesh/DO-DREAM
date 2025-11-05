@@ -225,8 +225,6 @@ public class MaterialShareService {
         return MaterialShareListResponse.builder()
                 .studentId(student.getId())
                 .studentName(student.getName())
-                .teacherId(teacher.getId())
-                .teacherName(teacher.getName())
                 .totalCount(shares.size())
                 .materials(toInfoList(shares))
                 .build();
