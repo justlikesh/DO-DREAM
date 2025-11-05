@@ -10,6 +10,7 @@ import QuestionScreen from '../screens/QuestionScreen';
 import QuizListScreen from '../screens/QuizListScreen';
 import QuizScreen from '../screens/QuizScreen';
 import QuizResultScreen from '../screens/QuizResultScreen';
+import BookmarkListScreen from '../screens/BookmarkListScreen';
 
 import { navigationRef } from './RootNavigation';
 
@@ -72,6 +73,13 @@ export default function AppNavigator() {
           component={QuizResultScreen}
           options={{
             title: '퀴즈 결과',
+          }}
+        />
+        <Stack.Screen
+          name="BookmarkList"
+          component={BookmarkListScreen}
+          options={{
+            title: '북마크 목록',
           }}
         />
       </Stack.Navigator>

@@ -12,6 +12,7 @@ export type RootStackParamList = {
     book: Book;
     chapterId: string;
     fromStart: boolean;
+    initialSectionIndex?: number;
   };
   Question: {
     book: Book;
@@ -36,6 +37,10 @@ export type RootStackParamList = {
       selectedOptionId: string;
       isCorrect: boolean;
     }[];
+  };
+  BookmarkList: {
+    book: Book;
+    chapterId: string;
   };
 };
 
@@ -75,6 +80,11 @@ export type QuizResultScreenNavigationProp = NativeStackNavigationProp<
   'QuizResult'
 >;
 
+export type BookmarkListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'BookmarkList'
+>;
+
 // Route prop 타입
 export type PlaybackChoiceScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -104,4 +114,9 @@ export type QuizScreenRouteProp = RouteProp<
 export type QuizResultScreenRouteProp = RouteProp<
   RootStackParamList,
   'QuizResult'
+>;
+
+export type BookmarkListScreenRouteProp = RouteProp<
+  RootStackParamList,
+  'BookmarkList'
 >;
