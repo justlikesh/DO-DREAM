@@ -61,7 +61,8 @@
             "extraProguardRules": "-keep class com.facebook.react.** { *; }"
           }
         }
-      ]
+      ],
+      "expo-speech-recognition"
     ]
   }
 }
