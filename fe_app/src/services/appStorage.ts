@@ -1,3 +1,11 @@
+/**
+ * 앱 전반의 범용 저장소
+ * - Progress (학습 진도)
+ * - StudentId (학번)
+ * - TTS Speed (음성 속도)
+ * 
+ * 참고: 인증 관련은 authStorage.ts 사용
+ */
 import { createMMKV } from 'react-native-mmkv';
 import { LocalProgress } from '../types/progress';
 
