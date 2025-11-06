@@ -1,7 +1,9 @@
-import { storage, getStudentId } from './storage';
+import { storage, getStudentId } from './appStorage';
 import { Bookmark, BookmarkCreateInput } from '../types/bookmark';
 
-// Storage Keys
+/**
+ * 북마크 관련 Storage Keys
+ */
 const BOOKMARK_KEY = (bookmarkId: string) => `bookmark_${bookmarkId}`;
 const BOOKMARK_LIST_KEY = (materialId: string, chapterId: string) => 
   `bookmark_list_${materialId}_${chapterId}`;
