@@ -1,6 +1,7 @@
 package A704.DODREAM.material.dto;
 
 import A704.DODREAM.material.entity.MaterialShare;
+import A704.DODREAM.material.enums.LabelColor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,6 +37,7 @@ public class MaterialShareListResponse {
         private String gradeLevel;
         private String contentType;
         private String processingStatus;
+        private LabelColor labelColor;
 
         private Long teacherId;
         private String teacherName;
@@ -56,6 +58,7 @@ public class MaterialShareListResponse {
                     .gradeLevel(share.getMaterial().getGradeLevel())
                     .contentType(share.getMaterial().getContentType().name())
                     .processingStatus(share.getMaterial().getProcessingStatus().name())
+                    .labelColor(share.getMaterial().getLabel())
                     .teacherId(share.getTeacher().getId())
                     .teacherName(share.getTeacher().getName())
                     .sharedAt(share.getSharedAt())

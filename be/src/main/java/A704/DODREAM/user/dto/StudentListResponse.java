@@ -35,7 +35,7 @@ public class StudentListResponse {
 
         public static StudentInfo from(StudentProfile student) {
             return StudentInfo.builder()
-                    .studentId(student.getId())
+                    .studentId(student.getUser().getId())
                     .studentName(student.getUser().getName())
                     .studentNumber(student.getStudentNumber())
                     .build();

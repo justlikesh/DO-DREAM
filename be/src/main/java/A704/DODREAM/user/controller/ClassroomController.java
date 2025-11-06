@@ -35,7 +35,7 @@ public class ClassroomController {
         return ResponseEntity.ok(response);
     }
 
-    @Operation(summary = "전체 담당 학생 조회")
+    @Operation(summary = "담당 학생 전체 조회")
     @GetMapping("/teacher/{teacherId}/students")
     public ResponseEntity<List<StudentListResponse>> getTeacherClassroomStudents(
             @PathVariable Long teacherId,

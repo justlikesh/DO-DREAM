@@ -126,9 +126,7 @@ public class MaterialShareService {
                         .teacher(teacher)
                         .student(student)
                         .shareType(info.getType())
-                        .sharedGrade(sharedGrade)
-                        .sharedClass(sharedClass)
-                        .sharedYear(sharedYear)
+                        .classroom(classroom)
                         .sharedAt(LocalDateTime.now())
                         .build();
 
@@ -235,10 +233,8 @@ public class MaterialShareService {
         Classroom classroom = classroomRepository.findById(classId)
                 .orElseThrow(() -> new IllegalArgumentException("반을 찾을 수 없습니다."));
 
-        List<MaterialShare> shares = materialShareRepository.findByClassInfoAndTeacherId(
-                classroom.getGradeLevel(),
-                classroom.getClassNumber(),
-                classroom.getYear(),
+        List<MaterialShare> shares = materialShareRepository.findByClassIdAndTeacherId(
+                classId,
                 teacherId
         );
 

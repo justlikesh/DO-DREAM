@@ -34,6 +34,5 @@ public class MaterialShareResponse {
         private boolean success;
         private String message;
         private LocalDateTime sharedAt;
-        private String deepLink;
     }
 }

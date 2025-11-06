@@ -1,6 +1,7 @@
 package A704.DODREAM.material.entity;
 
 import A704.DODREAM.material.enums.ShareType;
+import A704.DODREAM.user.entity.Classroom;
 import A704.DODREAM.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -46,14 +47,9 @@ public class MaterialShare {
     @Builder.Default
     private ShareType shareType = ShareType.INDIVIDUAL;
 
-    @Column(name = "shared_grade")
-    private Integer sharedGrade;
-
-    @Column(name = "shared_class")
-    private Integer sharedClass;
-
-    @Column(name = "shared_year")
-    private Integer sharedYear;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_id")
+    private Classroom classroom;
 
     @CreatedDate
     @Column(name = "shared_at", updatable = false)

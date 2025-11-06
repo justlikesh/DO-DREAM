@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -30,8 +31,9 @@ public class ClassroomResponse {
         private Integer classNumber;
         private String displayName;
         private int studentCount;
+        private int materialCount;
 
-        public static ClassroomInfo from(ClassroomTeacher ct, int studentCount) {
+        public static ClassroomInfo from(ClassroomTeacher ct, int studentCount, int materialCount) {
             Classroom classroom = ct.getClassroom();
             return ClassroomInfo.builder()
                     .classroomId(classroom.getId())
@@ -40,6 +42,7 @@ public class ClassroomResponse {
                     .classNumber(classroom.getClassNumber())
                     .displayName(classroom.getDisplayName())
                     .studentCount(studentCount)
+                    .materialCount(materialCount)
                     .build();
         }
     }

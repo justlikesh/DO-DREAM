@@ -1,6 +1,7 @@
 package A704.DODREAM.material.entity;
 
 import A704.DODREAM.material.enums.ContentType;
+import A704.DODREAM.material.enums.LabelColor;
 import A704.DODREAM.material.enums.ProcessingStatus;
 import A704.DODREAM.user.entity.User;
 import jakarta.persistence.CascadeType;
@@ -73,6 +74,10 @@ public class Material {
   @Column(name = "processing_status", nullable = false, length = 20)
   @Builder.Default
   private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
+
+  @Enumerated(EnumType.STRING)
+  @Column(length = 20)
+  private LabelColor label;
 
   @CreatedDate
   @Column(name = "created_at", updatable = false)

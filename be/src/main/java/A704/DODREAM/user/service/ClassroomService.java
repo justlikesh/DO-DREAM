@@ -1,5 +1,6 @@
 package A704.DODREAM.user.service;
 
+import A704.DODREAM.material.repository.MaterialShareRepository;
 import A704.DODREAM.user.dto.StudentListResponse;
 import A704.DODREAM.user.dto.ClassroomResponse;
 import A704.DODREAM.user.repository.ClassroomRepository;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,7 @@ public class ClassroomService {
     private final StudentProfileRepository studentProfileRepository;
     private final ClassroomRepository classroomRepository;
     private final TeacherProfileRepository teacherProfileRepository;
+    private final MaterialShareRepository materialShareRepository;
 
     // 선생님의 담당 반 목록
     public ClassroomResponse getTeacherClassrooms(Long teacherId) {
@@ -43,7 +46,11 @@ public class ClassroomService {
                             int studentCount = studentProfileRepository
                                     .findByClassroomIdWithUser(ct.getClassroom().getId())
                                     .size();
-                            return ClassroomResponse.ClassroomInfo.from(ct, studentCount);
+                            int materialCount = materialShareRepository
+                                    .findByClassIdAndTeacherId(ct.getClassroom().getId(), ct.getTeacher().getId())
+                                    .size();
+
+                            return ClassroomResponse.ClassroomInfo.from(ct, studentCount, materialCount);
                         })
                         .toList();
 
