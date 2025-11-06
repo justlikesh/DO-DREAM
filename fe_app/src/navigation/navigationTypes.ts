@@ -4,6 +4,10 @@ import { Book } from '../types/book';
 import { Quiz } from '../types/quiz';
 
 export type RootStackParamList = {
+  Splash: undefined;
+  AuthStart: undefined;
+  Login: undefined;
+  Signup: undefined;
   Library: undefined;
   PlaybackChoice: {
     book: Book;
@@ -45,6 +49,26 @@ export type RootStackParamList = {
 };
 
 // Navigation prop 타입
+export type SplashScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Splash'
+>;
+
+export type AuthStartScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'AuthStart'
+>;
+
+export type LoginScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Login'
+>;
+
+export type SignupScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Signup'
+>;
+
 export type LibraryScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'Library'

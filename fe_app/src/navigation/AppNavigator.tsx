@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigationTypes';
+import { useAuthStore } from '../stores/authStore';
+
+import SplashScreen from '../screens/SplashScreen';
+import AuthStartScreen from '../screens/AuthStartScreen';
+import LoginScreen from '../screens/LoginScreen';
+import SignupScreen from '../screens/SignupScreen';
 
 import LibraryScreen from '../screens/LibraryScreen';
 import PlaybackChoiceScreen from '../screens/PlaybackChoiceScreen';
@@ -17,15 +23,72 @@ import { navigationRef } from './RootNavigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
+  const { hydrate, isHydrated, accessToken } = useAuthStore();
+  const [initialRouteName, setInitialRouteName] = useState<keyof RootStackParamList>('Splash');
+
+  useEffect(() => {
+    // 앱 시작 시 저장된 인증 정보 복원
+    hydrate();
+  }, []);
+
+  useEffect(() => {
+    // Hydration 완료 후 초기 화면 결정
+    if (isHydrated) {
+      if (accessToken) {
+        // 로그인되어 있으면 Library로
+        setInitialRouteName('Library');
+      } else {
+        // 로그인되어 있지 않으면 Splash로
+        setInitialRouteName('Splash');
+      }
+    }
+  }, [isHydrated, accessToken]);
+
+  // Hydration 완료될 때까지 대기
+  if (!isHydrated) {
+    return null; // 또는 로딩 화면
+  }
+
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="Library"
+        initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
         }}
       >
+        {/* Auth Stack */}
+        <Stack.Screen
+          name="Splash"
+          component={SplashScreen}
+          options={{
+            title: '스플래시',
+          }}
+        />
+        <Stack.Screen
+          name="AuthStart"
+          component={AuthStartScreen}
+          options={{
+            title: '시작',
+          }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{
+            title: '로그인',
+          }}
+        />
+        <Stack.Screen
+          name="Signup"
+          component={SignupScreen}
+          options={{
+            title: '회원가입',
+          }}
+        />
+
+        {/* Main Stack */}
         <Stack.Screen
           name="Library"
           component={LibraryScreen}
