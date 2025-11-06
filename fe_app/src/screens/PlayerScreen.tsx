@@ -20,7 +20,7 @@ import { getQuizzesByChapterId } from "../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../triggers/TriggerContext";
 import ttsService from "../services/ttsService";
-import { saveProgress, getProgress } from "../services/storage";
+import { saveProgress, getProgress } from "../services/appStorage";
 import { LocalProgress } from "../types/progress";
 import { PlayMode, PlayModeLabels, PlayModeIcons } from "../types/playMode";
 import { 
