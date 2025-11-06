@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.checkerframework.checker.units.qual.N;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,8 +17,7 @@ public class MaterialShareListResponse {
 
     private Long studentId;
     private String studentName;
-    private Long teacherId;
-    private String teacherName;
+
     private int totalCount;
     private List<SharedMaterialInfo> materials;
 
@@ -42,7 +40,6 @@ public class MaterialShareListResponse {
         private Long teacherId;
         private String teacherName;
 
-        private String shareMessage;
         private LocalDateTime sharedAt;
         private LocalDateTime accessedAt;
         private boolean isAccessed;
@@ -61,7 +58,6 @@ public class MaterialShareListResponse {
                     .processingStatus(share.getMaterial().getProcessingStatus().name())
                     .teacherId(share.getTeacher().getId())
                     .teacherName(share.getTeacher().getName())
-                    .shareMessage(share.getShareMessage())
                     .sharedAt(share.getSharedAt())
                     .accessedAt(share.getAccessedAt())
                     .isAccessed(share.getAccessedAt() != null)

@@ -1,17 +1,15 @@
 package A704.DODREAM.user.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Builder;
+import lombok.Getter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "teacher_profiles")
+@Getter
 public class TeacherProfile {
 
 	@Id
@@ -21,11 +19,13 @@ public class TeacherProfile {
 	@OneToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "user_id")
 	private User user;
-
+    
 	private String teacherNo;
 
+    @OneToMany(mappedBy = "teacher")
+    private List<ClassroomTeacher> classroomTeachers = new ArrayList<>();
 
-	public static TeacherProfile create(User user, String teacherNo) {
+    public static TeacherProfile create(User user, String teacherNo) {
 		TeacherProfile teacherProfile = new TeacherProfile();
 		teacherProfile.user = user;
 		teacherProfile.teacherNo = teacherNo;
