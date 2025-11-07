@@ -11,6 +11,7 @@ const AUTH_ENDPOINTS = {
   VERIFY: '/api/auth/student/verify',       // 사전 인증 (학번/이름 확인)
   REGISTER: '/api/auth/student/register',   // 회원가입 (기기 등록)
   LOGIN: '/api/auth/student/login',         // 로그인
+  REFRESH: '/api/auth/student/refresh',     // 토큰 재발급
 };
 
 export const authApi = {
@@ -38,6 +39,15 @@ export const authApi = {
    */
   login: async (data: StudentLoginRequest): Promise<AuthResponse> => {
     const response = await apiClient.post(AUTH_ENDPOINTS.LOGIN, data);
+    return response.data;
+  },
+
+  /**
+   * 학생 토큰 재발급
+   * 쿠키에 담긴 Refresh Token으로 Access Token을 재발급하고, Refresh Token을 회전
+   */
+  refresh: async (data: StudentLoginRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post(AUTH_ENDPOINTS.REFRESH, data);
     return response.data;
   },
 };
