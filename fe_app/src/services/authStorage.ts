@@ -1,3 +1,10 @@
+/**
+ * 인증 전용 저장소
+ * - Access Token
+ * - Refresh Token
+ * - Student Info (로그인 사용자 정보)
+ * - Biometric Enabled (생체인증 사용 여부)
+ */
 import { storage } from './appStorage';
 
 /**
@@ -15,10 +22,16 @@ const AUTH_KEYS = {
  */
 export const saveAccessToken = (token: string): void => {
   try {
+    if (!token || token === 'undefined' || typeof token !== 'string') {
+      console.error('[AuthStorage] Invalid access token:', token);
+      throw new Error('Invalid access token');
+    }
+    
     storage.set(AUTH_KEYS.ACCESS_TOKEN, token);
-    console.log('[AuthStorage] Access token saved');
+    console.log('[AuthStorage] Access token saved successfully');
   } catch (error) {
     console.error('[AuthStorage] Failed to save access token:', error);
+    throw error;
   }
 };
 
@@ -27,7 +40,8 @@ export const saveAccessToken = (token: string): void => {
  */
 export const getAccessToken = (): string | null => {
   try {
-    return storage.getString(AUTH_KEYS.ACCESS_TOKEN) ?? null;
+    const token = storage.getString(AUTH_KEYS.ACCESS_TOKEN);
+    return token ?? null;
   } catch (error) {
     console.error('[AuthStorage] Failed to get access token:', error);
     return null;
@@ -51,10 +65,16 @@ export const removeAccessToken = (): void => {
  */
 export const saveRefreshToken = (token: string): void => {
   try {
+    if (!token || token === 'undefined' || typeof token !== 'string') {
+      console.error('[AuthStorage] Invalid refresh token:', token);
+      throw new Error('Invalid refresh token');
+    }
+    
     storage.set(AUTH_KEYS.REFRESH_TOKEN, token);
     console.log('[AuthStorage] Refresh token saved');
   } catch (error) {
     console.error('[AuthStorage] Failed to save refresh token:', error);
+    throw error;
   }
 };
 
@@ -111,10 +131,16 @@ export const isBiometricEnabled = (): boolean => {
  */
 export const saveStudentInfo = (studentInfo: object): void => {
   try {
+    if (!studentInfo) {
+      console.error('[AuthStorage] Invalid student info:', studentInfo);
+      throw new Error('Invalid student info');
+    }
+    
     storage.set(AUTH_KEYS.STUDENT_INFO, JSON.stringify(studentInfo));
     console.log('[AuthStorage] Student info saved');
   } catch (error) {
     console.error('[AuthStorage] Failed to save student info:', error);
+    throw error;
   }
 };
 
