@@ -1,31 +1,22 @@
-import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  AccessibilityInfo,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-type SplashScreenNavigationProp = NativeStackNavigationProp<any>;
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { SplashScreenNavigationProp } from "../../navigation/navigationTypes";
 
 export default function SplashScreen() {
   const navigation = useNavigation<SplashScreenNavigationProp>();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.replace('AuthStart');
+      navigation.replace("AuthStart");
     }, 2000);
 
     return () => clearTimeout(timer);
   }, [navigation]);
 
   const handleSkip = () => {
-    navigation.replace('AuthStart');
+    navigation.replace("AuthStart");
   };
 
   return (
@@ -34,7 +25,7 @@ export default function SplashScreen() {
       accessible={false} // 스크린리더 무시
       importantForAccessibility="no-hide-descendants"
     >
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <TouchableOpacity
           style={styles.skipButton}
           onPress={handleSkip}
@@ -48,12 +39,20 @@ export default function SplashScreen() {
 
         <View style={styles.content}>
           <View style={styles.logoContainer}>
-            <Image source={require('../../assets/male.png')} style={styles.logo} />
-            <Image source={require('../../assets/female.png')} style={styles.logo} />
-            <Text style={styles.appName}>두드림</Text>
+            <Image
+              source={require("../../../assets/male.png")}
+              style={styles.logo}
+            />
+            <Image
+              source={require("../../../assets/female.png")}
+              style={styles.logo}
+            />
           </View>
-          
-          <Text style={styles.tagline}>시각장애 학생을 위한{'\n'}학습 지원 서비스</Text>
+
+          <Text style={styles.appName}>두드림</Text>
+          <Text style={styles.tagline}>
+            시각장애 학생을 위한{"\n"}학습 지원 서비스
+          </Text>
         </View>
       </SafeAreaView>
     </View>
@@ -63,13 +62,13 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#192B55',
+    backgroundColor: "#192B55",
   },
   safeArea: {
     flex: 1,
   },
   skipButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 20,
     right: 24,
     zIndex: 10,
@@ -78,33 +77,37 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontSize: 18,
-    color: '#ffffff',
-    fontWeight: '600',
+    color: "#ffffff",
+    fontWeight: "600",
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
   },
   logoContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
     marginBottom: 40,
   },
   logo: {
     width: 120,
     height: 120,
-    resizeMode: 'contain'
+    resizeMode: "contain",
   },
   appName: {
     fontSize: 72,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
+    fontWeight: "bold",
+    color: "#ffffff",
+    textAlign: "center",
   },
   tagline: {
     fontSize: 20,
-    color: '#ffffff',
-    textAlign: 'center',
+    color: "#ffffff",
+    textAlign: "center",
     opacity: 0.9,
     lineHeight: 32,
   },
