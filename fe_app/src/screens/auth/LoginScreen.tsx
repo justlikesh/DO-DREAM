@@ -1,330 +1,200 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
+  StyleSheet,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { biometricUtil } from '../../utils/biometric';
-import { accessibilityUtil } from '../../utils/accessibility';
-import { useAuthStore } from '../../stores/authStore';
-import { getStudentId } from '../../services/appStorage';
-
-type LoginScreenNavigationProp = NativeStackNavigationProp<any>;
+  ActivityIndicator,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { LoginScreenNavigationProp } from "../../navigation/navigationTypes";
+import { useAuthStore } from "../../stores/authStore";
+import { biometricUtil } from "../../utils/biometric";
+import { accessibilityUtil } from "../../utils/accessibility";
+import { getDeviceId, getDeviceSecret } from "../../services/appStorage";
 
 export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { loginWithBiometric, checkBiometricStatus } = useAuthStore();
-  
-  const [isLoading, setIsLoading] = useState(false);
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricType, setBiometricType] = useState<string>('');
+  const { loginWithBiometric, isLoading } = useAuthStore();
+  const [biometricType, setBiometricType] = useState<string>("생체인증");
 
   useEffect(() => {
-    checkBiometricAvailability();
+    initializeBiometric();
   }, []);
 
-  const checkBiometricAvailability = async () => {
+  const initializeBiometric = async () => {
+    // 생체인증 타입 확인
+    const type = await biometricUtil.getBiometricTypeDescription();
+    setBiometricType(type);
+
+    // 화면 진입 시 음성 안내
+    accessibilityUtil.announce(
+      `${type} 로그인 화면입니다. ${type} 버튼을 눌러주세요.`
+    );
+  };
+
+  const handleBiometricLogin = async () => {
     try {
-      // 생체인증이 등록되어 있는지 확인
-      const isRegistered = checkBiometricStatus();
-      
-      if (!isRegistered) {
-        accessibilityUtil.announceWithVibration(
-          '등록된 생체인증 정보가 없습니다. 회원가입을 먼저 진행해주세요.',
-          'error'
-        );
-        
+      // 1. 저장된 기기 정보 확인
+      const deviceId = getDeviceId();
+      const deviceSecret = getDeviceSecret();
+
+      if (!deviceId || !deviceSecret) {
         Alert.alert(
-          '생체인증 미등록',
-          '등록된 생체인증 정보가 없습니다. 회원가입을 먼저 진행해주세요.',
-          [
-            {
-              text: '회원가입하기',
-              onPress: () => navigation.replace('Signup'),
-            },
-            {
-              text: '취소',
-              onPress: () => navigation.goBack(),
-              style: 'cancel',
-            },
-          ]
+          "로그인 불가",
+          "등록된 기기 정보가 없습니다. 회원가입을 먼저 진행해주세요."
+        );
+        accessibilityUtil.announceWithVibration(
+          "등록된 정보가 없습니다. 회원가입을 먼저 진행해주세요",
+          "warning"
+        );
+        navigation.replace("AuthStart");
+        return;
+      }
+
+      // 2. 생체인증 가능 여부 확인
+      const isAvailable = await biometricUtil.isSupported();
+      if (!isAvailable) {
+        Alert.alert("생체인증 불가", "이 기기는 생체인증을 지원하지 않습니다.");
+        accessibilityUtil.announceWithVibration(
+          "생체인증을 지원하지 않는 기기입니다",
+          "error"
         );
         return;
       }
 
-      // 기기 생체인증 사용 가능 여부 확인
-      const { available, reason } = await biometricUtil.canUseBiometric();
-      setBiometricAvailable(available);
-
-      if (available) {
-        const typeDesc = await biometricUtil.getBiometricTypeDescription();
-        setBiometricType(typeDesc);
-        accessibilityUtil.announce(`${typeDesc}로 로그인하세요`);
-      } else {
-        accessibilityUtil.announceWithVibration(
-          reason || '생체인증을 사용할 수 없습니다.',
-          'error'
-        );
-        
+      // 3. 생체인증 등록 여부 확인
+      const isEnrolled = await biometricUtil.isEnrolled();
+      if (!isEnrolled) {
         Alert.alert(
-          '생체인증 불가',
-          reason || '생체인증을 사용할 수 없습니다.',
-          [
-            {
-              text: '확인',
-              onPress: () => navigation.goBack(),
-            },
-          ]
+          "생체인증 미등록",
+          "기기에 생체인증이 등록되어 있지 않습니다."
         );
+        accessibilityUtil.announceWithVibration(
+          "기기에 생체인증을 먼저 등록해주세요",
+          "warning"
+        );
+        return;
       }
-    } catch (error) {
-      console.error('[Login] Biometric check error:', error);
-      setBiometricAvailable(false);
-    }
-  };
 
-  const handleBiometricLogin = async () => {
-    if (!biometricAvailable) {
-      accessibilityUtil.announceWithVibration(
-        '생체인증을 사용할 수 없습니다.',
-        'error'
-      );
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // 생체인증 실행
+      // 4. 생체인증 실행
+      accessibilityUtil.announce(`${biometricType}을 진행해주세요`);
       const result = await biometricUtil.authenticate({
-        promptMessage: `${biometricType}로 로그인하세요`,
-        cancelLabel: '취소',
+        promptMessage: `${biometricType}으로 로그인하세요`,
+        cancelLabel: "취소",
       });
 
-      if (result.success) {
-        // 생체인증 성공
-        accessibilityUtil.announceWithVibration('인증 성공', 'success');
-        
-        // 저장된 학번 가져오기
-        const studentId = getStudentId();
-        
-        if (!studentId) {
-          throw new Error('저장된 학번이 없습니다. 다시 회원가입해주세요.');
-        }
-
-        // TODO: 백엔드 API 호출
-        // const response = await loginApi(studentId);
-        // loginWithBiometric(studentId, response.accessToken, response.student);
-        
-        // 임시: 더미 데이터로 로그인
-        const dummyStudent = {
-          id: 1,
-          studentId: studentId,
-          name: '홍길동',
-          grade: 1,
-          classNumber: 1,
-        };
-        
-        loginWithBiometric(
-          studentId,
-          'dummy-access-token-' + Date.now(),
-          dummyStudent
-        );
-        
-        // 로그인 성공 후 Library 화면으로 이동
-        navigation.replace('Library');
-        
-      } else {
-        // 생체인증 실패
-        accessibilityUtil.announceWithVibration(
-          result.error || '인증에 실패했습니다.',
-          'error'
-        );
-        
-        Alert.alert(
-          '인증 실패',
-          result.error || '인증에 실패했습니다. 다시 시도해주세요.',
-          [{ text: '확인' }]
-        );
+      if (!result.success) {
+        throw new Error(result.error || "생체인증 실패");
       }
-    } catch (error) {
-      console.error('[Login] Login error:', error);
-      
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : '로그인 중 오류가 발생했습니다.';
-      
-      accessibilityUtil.announceWithVibration(errorMessage, 'error');
-      
-      Alert.alert(
-        '로그인 오류',
-        errorMessage,
-        [{ text: '확인' }]
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleGoBack = () => {
-    navigation.goBack();
+      // 5. 로그인 API 호출 (Store에서 처리)
+      accessibilityUtil.announce("로그인 중입니다");
+      await loginWithBiometric();
+
+      // 6. 성공
+      accessibilityUtil.announceWithVibration("로그인 성공", "success");
+      navigation.replace("Library");
+    } catch (error: any) {
+      console.error("[LoginScreen] Login failed:", error);
+      accessibilityUtil.announceWithVibration(
+        error.message || "로그인 실패",
+        "error"
+      );
+      Alert.alert("로그인 실패", error.message || "로그인에 실패했습니다");
+    }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={handleGoBack}
-        accessible={true}
-        accessibilityLabel="뒤로가기"
-        accessibilityRole="button"
+    <View style={styles.container}>
+      <Text
+        style={styles.title}
+        accessible={false} // 버튼에서 읽으므로 중복 방지
       >
-        <Text style={styles.backButtonText}>← 뒤로</Text>
+        로그인
+      </Text>
+
+      <Text style={styles.subtitle} accessible={false}>
+        생체 인증으로 로그인하세요
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+        onPress={handleBiometricLogin}
+        disabled={isLoading}
+        accessibilityLabel={`${biometricType} 로그인`}
+        accessibilityHint={`${biometricType}을 사용하여 로그인합니다`}
+        accessibilityState={{ disabled: isLoading }}
+      >
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#FFF" />
+        ) : (
+          <>
+            <Text style={styles.loginButtonText}>{biometricType} 시작</Text>
+          </>
+        )}
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text
-            style={styles.title}
-            accessible={true}
-            accessibilityRole="header"
-          >
-            로그인
-          </Text>
-          <Text style={styles.subtitle}>
-            {biometricType || '생체 인증'}으로{'\n'}로그인하세요
-          </Text>
-        </View>
-
-        <View style={styles.buttonSection}>
-          <TouchableOpacity
-            style={[
-              styles.biometricButton,
-              !biometricAvailable && styles.biometricButtonDisabled,
-            ]}
-            onPress={handleBiometricLogin}
-            disabled={!biometricAvailable || isLoading}
-            accessible={true}
-            accessibilityLabel={`${biometricType} 인증하기`}
-            accessibilityRole="button"
-            accessibilityHint="생체 인증을 시작합니다"
-            accessibilityState={{ disabled: !biometricAvailable || isLoading }}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#ffffff" />
-            ) : (
-              <>
-                <Text style={styles.biometricIcon}>🔐</Text>
-                <Text style={styles.biometricButtonText}>
-                  {biometricType} 인증
-                </Text>
-                <Text style={styles.biometricButtonSubtext}>
-                  탭하여 인증 시작
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.helpButton}
-            onPress={() => navigation.navigate('Signup')}
-            accessible={true}
-            accessibilityLabel="회원가입하기"
-            accessibilityRole="button"
-          >
-            <Text style={styles.helpText}>
-              처음 사용하시나요? 회원가입하기
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+        disabled={isLoading}
+        accessibilityLabel="뒤로 가기"
+        accessibilityHint="이전 화면으로 돌아갑니다"
+      >
+        <Text style={styles.backButtonText}>뒤로 가기</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  backButton: {
-    paddingTop: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    alignSelf: 'flex-start',
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: '#2196F3',
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: 'space-around',
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 40,
+    backgroundColor: "#FFF",
+    padding: 24,
+    justifyContent: "center",
   },
   title: {
     fontSize: 48,
-    fontWeight: 'bold',
-    color: '#333333',
-    marginBottom: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 16,
   },
   subtitle: {
     fontSize: 24,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 36,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 64,
   },
-  buttonSection: {
-    gap: 24,
-    marginBottom: 60,
-  },
-  biometricButton: {
-    backgroundColor: '#4CAF50',
+  loginButton: {
+    backgroundColor: "#007AFF",
+    padding: 24,
     borderRadius: 16,
-    padding: 40,
-    alignItems: 'center',
-    minHeight: 200,
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#45a049',
+    alignItems: "center",
+    minHeight: 120,
+    justifyContent: "center",
   },
-  biometricButtonDisabled: {
-    backgroundColor: '#CCCCCC',
-    borderColor: '#999999',
+  loginButtonIcon: {
+    fontSize: 48,
+    marginBottom: 12,
   },
-  biometricIcon: {
-    fontSize: 64,
-    marginBottom: 20,
+  loginButtonText: {
+    color: "#FFF",
+    fontSize: 28,
+    fontWeight: "bold",
   },
-  biometricButtonText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
+  buttonDisabled: {
+    backgroundColor: "#CCC",
   },
-  biometricButtonSubtext: {
-    fontSize: 18,
-    color: '#ffffff',
-    opacity: 0.9,
+  backButton: {
+    marginTop: 24,
+    padding: 20,
+    alignItems: "center",
   },
-  helpButton: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  helpText: {
+  backButtonText: {
+    color: "#666",
     fontSize: 20,
-    color: '#2196F3',
-    textDecorationLine: 'underline',
   },
 });
