@@ -8,7 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { accessibilityUtil } from '../utils/accessibility';
+import { accessibilityUtil } from '../../utils/accessibility';
 
 type AuthStartScreenNavigationProp = NativeStackNavigationProp<any>;
 

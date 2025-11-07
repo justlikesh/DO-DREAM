@@ -14,21 +14,21 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   PlayerScreenNavigationProp,
   PlayerScreenRouteProp,
-} from "../navigation/navigationTypes";
-import { getChapterById } from "../data/dummyChapters";
-import { getQuizzesByChapterId } from "../data/dummyQuizzes";
+} from "../../navigation/navigationTypes";
+import { getChapterById } from "../../data/dummyChapters";
+import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
-import { TriggerContext } from "../triggers/TriggerContext";
-import ttsService from "../services/ttsService";
-import { saveProgress, getProgress } from "../services/appStorage";
-import { LocalProgress } from "../types/progress";
-import { PlayMode, PlayModeLabels, PlayModeIcons } from "../types/playMode";
+import { TriggerContext } from "../../triggers/TriggerContext";
+import ttsService from "../../services/ttsService";
+import { saveProgress, getProgress } from "../../services/appStorage";
+import { LocalProgress } from "../../types/progress";
+import { PlayMode, PlayModeLabels, PlayModeIcons } from "../../types/playMode";
 import { 
   createBookmark, 
   isBookmarked, 
   getBookmarkIdBySection, 
   deleteBookmark 
-} from "../services/bookmarkStorage";
+} from "../../services/bookmarkStorage";
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();

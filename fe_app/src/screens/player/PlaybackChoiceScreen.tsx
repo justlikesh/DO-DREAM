@@ -11,9 +11,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { 
   PlaybackChoiceScreenNavigationProp,
   PlaybackChoiceScreenRouteProp 
-} from '../navigation/navigationTypes';
-import { getChaptersByBookId } from '../data/dummyChapters';
-import { getQuizzesByChapterId } from '../data/dummyQuizzes';
+} from '../../navigation/navigationTypes';
+import { getChaptersByBookId } from '../../data/dummyChapters';
+import { getQuizzesByChapterId } from '../../data/dummyQuizzes';
 import * as Haptics from 'expo-haptics';
 
 export default function PlaybackChoiceScreen() {

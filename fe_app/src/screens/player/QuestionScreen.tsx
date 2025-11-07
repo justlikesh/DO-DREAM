@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { QuestionScreenNavigationProp } from '../navigation/navigationTypes';
+import { QuestionScreenNavigationProp } from '../../navigation/navigationTypes';
 
 interface Message {
   id: string;

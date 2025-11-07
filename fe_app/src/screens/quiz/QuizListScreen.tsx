@@ -12,10 +12,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   QuizListScreenNavigationProp,
   QuizListScreenRouteProp,
-} from '../navigation/navigationTypes';
-import { getQuizzesByChapterId } from '../data/dummyQuizzes';
-import { getChapterById } from '../data/dummyChapters';
-import { Quiz } from '../types/quiz';
+} from '../../navigation/navigationTypes';
+import { getQuizzesByChapterId } from '../../data/dummyQuizzes';
+import { getChapterById } from '../../data/dummyChapters';
+import { Quiz } from '../../types/quiz';
 
 export default function QuizListScreen() {
   const navigation = useNavigation<QuizListScreenNavigationProp>();

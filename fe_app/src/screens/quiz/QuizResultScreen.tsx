@@ -12,7 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   QuizResultScreenNavigationProp,
   QuizResultScreenRouteProp,
-} from '../navigation/navigationTypes';
+} from '../../navigation/navigationTypes';
 import * as Haptics from 'expo-haptics';
 
 export default function QuizResultScreen() {

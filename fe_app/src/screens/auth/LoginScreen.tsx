@@ -10,10 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { biometricUtil } from '../utils/biometric';
-import { accessibilityUtil } from '../utils/accessibility';
-import { useAuthStore } from '../stores/authStore';
-import { getStudentId } from '../services/appStorage';
+import { biometricUtil } from '../../utils/biometric';
+import { accessibilityUtil } from '../../utils/accessibility';
+import { useAuthStore } from '../../stores/authStore';
+import { getStudentId } from '../../services/appStorage';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<any>;
 

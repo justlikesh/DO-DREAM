@@ -4,19 +4,19 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigationTypes';
 import { useAuthStore } from '../stores/authStore';
 
-import SplashScreen from '../screens/SplashScreen';
-import AuthStartScreen from '../screens/AuthStartScreen';
-import LoginScreen from '../screens/LoginScreen';
-import SignupScreen from '../screens/SignupScreen';
+import SplashScreen from '../screens/auth/SplashScreen';
+import AuthStartScreen from '../screens/auth/AuthStartScreen';
+import LoginScreen from '../screens/auth/LoginScreen';
+import SignupScreen from '../screens/auth/SignupScreen';
 
-import LibraryScreen from '../screens/LibraryScreen';
-import PlaybackChoiceScreen from '../screens/PlaybackChoiceScreen';
-import PlayerScreen from '../screens/PlayerScreen';
-import QuestionScreen from '../screens/QuestionScreen';
-import QuizListScreen from '../screens/QuizListScreen';
-import QuizScreen from '../screens/QuizScreen';
-import QuizResultScreen from '../screens/QuizResultScreen';
-import BookmarkListScreen from '../screens/BookmarkListScreen';
+import LibraryScreen from '../screens/library/LibraryScreen';
+import PlaybackChoiceScreen from '../screens/player/PlaybackChoiceScreen';
+import PlayerScreen from '../screens/player/PlayerScreen';
+import QuestionScreen from '../screens/player/QuestionScreen';
+import QuizListScreen from '../screens/quiz/QuizListScreen';
+import QuizScreen from '../screens/quiz/QuizScreen';
+import QuizResultScreen from '../screens/quiz/QuizResultScreen';
+import BookmarkListScreen from '../screens/library/BookmarkListScreen';
 
 import { navigationRef } from './RootNavigation';
 

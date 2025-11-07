@@ -14,9 +14,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { biometricUtil } from "../utils/biometric";
-import { accessibilityUtil } from "../utils/accessibility";
-import { useAuthStore } from "../stores/authStore";
+import { biometricUtil } from "../../utils/biometric";
+import { accessibilityUtil } from "../../utils/accessibility";
+import { useAuthStore } from "../../stores/authStore";
 import * as Speech from "expo-speech";
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<any>;

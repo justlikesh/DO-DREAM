@@ -13,10 +13,10 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   QuizScreenNavigationProp,
   QuizScreenRouteProp,
-} from "../navigation/navigationTypes";
+} from "../../navigation/navigationTypes";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-import { TriggerContext } from "../triggers/TriggerContext";
+import { TriggerContext } from "../../triggers/TriggerContext";
 
 interface Answer {
   questionId: string;

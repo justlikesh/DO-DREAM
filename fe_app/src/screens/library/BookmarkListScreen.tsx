@@ -13,15 +13,15 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   BookmarkListScreenNavigationProp,
   BookmarkListScreenRouteProp,
-} from '../navigation/navigationTypes';
+} from '../../navigation/navigationTypes';
 import {
   getBookmarksByChapter,
   deleteBookmark,
   incrementBookmarkRepeatCount,
-} from '../services/bookmarkStorage';
-import { Bookmark } from '../types/bookmark';
-import { getChapterById } from '../data/dummyChapters';
-import ttsService from '../services/ttsService';
+} from '../../services/bookmarkStorage';
+import { Bookmark } from '../../types/bookmark';
+import { getChapterById } from '../../data/dummyChapters';
+import ttsService from '../../services/ttsService';
 import * as Haptics from 'expo-haptics';
 
 export default function BookmarkListScreen() {
