@@ -29,7 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class StudentAuthService {
 	private final UserRepository userRepository;
-	private final SchoolRepository  schoolRepository;
+	private final SchoolRepository schoolRepository;
 	private final ClassroomRepository classroomRepository;
 	private final StudentRegistryRepository studentRegistryRepository;
 	private final StudentProfileRepository studentProfileRepository;
@@ -97,7 +97,9 @@ public class StudentAuthService {
 		return user.getId();
 	}
 
-	/** 검증 + 가입을 분리했으니, 회원가입 시에도 한 번 더 재검증 */
+	/**
+	 * 검증 + 가입을 분리했으니, 회원가입 시에도 한 번 더 재검증
+	 */
 	// @Transactional
 	// public Long signup(StudentSignupRequest req) {
 	// 	// 1) 레지스트리 재검증
@@ -125,7 +127,6 @@ public class StudentAuthService {
 	//
 	// 	return user.getId();
 	// }
-
 	@Transactional(readOnly = true)
 	public User authenticate(StudentLoginRequest req) {
 		DeviceCredential cred = deviceCredentialRepository.findByDeviceId(req.deviceId())

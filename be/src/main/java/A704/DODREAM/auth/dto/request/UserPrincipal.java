@@ -6,4 +6,5 @@ public record UserPrincipal(
 	Long userId,
 	String name,
 	String role
-) implements Serializable {}
+) implements Serializable {
+}

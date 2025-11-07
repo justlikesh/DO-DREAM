@@ -26,11 +26,15 @@ public class ClassroomRegistry {
 	@Column(nullable = false)
 	private Integer year;
 
-	/** 학년 */
+	/**
+	 * 학년
+	 */
 	@Column(name = "grade_level", nullable = false)
 	private Integer gradeLevel;
 
-	/** 반 */
+	/**
+	 * 반
+	 */
 	@Column(name = "class_number", nullable = false)
 	private Integer classNumber;
 }

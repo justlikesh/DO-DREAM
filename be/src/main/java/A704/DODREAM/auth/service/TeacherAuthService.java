@@ -2,6 +2,10 @@ package A704.DODREAM.auth.service;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import A704.DODREAM.auth.dto.request.TeacherLoginRequest;
 import A704.DODREAM.auth.dto.request.TeacherSignupRequest;
 import A704.DODREAM.auth.dto.request.TeacherVerifyRequest;
@@ -9,10 +13,8 @@ import A704.DODREAM.auth.entity.PasswordCredential;
 import A704.DODREAM.auth.repository.PasswordCredentialRepository;
 import A704.DODREAM.registry.entity.ClassroomRegistry;
 import A704.DODREAM.registry.entity.ClassroomTeacherRegistry;
-import A704.DODREAM.registry.entity.SchoolRegistry;
 import A704.DODREAM.registry.entity.TeacherRegistry;
 import A704.DODREAM.registry.repository.ClassroomTeacherRegistryRepository;
-import A704.DODREAM.registry.repository.SchoolRegistryRepository;
 import A704.DODREAM.registry.repository.TeacherRegistryRepository;
 import A704.DODREAM.user.entity.Classroom;
 import A704.DODREAM.user.entity.ClassroomTeacher;
@@ -26,9 +28,6 @@ import A704.DODREAM.user.repository.SchoolRepository;
 import A704.DODREAM.user.repository.TeacherProfileRepository;
 import A704.DODREAM.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -47,14 +46,16 @@ public class TeacherAuthService {
 	@Transactional(readOnly = true)
 	public void verify(TeacherVerifyRequest req) {
 		boolean ok = teacherRegistryRepository.existsByNameAndTeacherNumber(req.name(), req.teacherNumber());
-		if (!ok) throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
+		if (!ok)
+			throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
 	}
 
 	@Transactional
 	public Long signup(TeacherSignupRequest req) {
 		// 1) 레지스트리 재검증
 		boolean ok = teacherRegistryRepository.existsByNameAndTeacherNumber(req.name(), req.teacherNumber());
-		if (!ok) throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
+		if (!ok)
+			throw new IllegalArgumentException("학사정보(이름/교원번호)가 일치하지 않습니다.");
 
 		// 2) 이메일 중복 검사
 		if (passwordCredentialRepository.existsByEmail(req.email())) {
@@ -159,7 +160,8 @@ public class TeacherAuthService {
 			throw new IllegalArgumentException("이메일 혹은 비밀번호가 올바르지 않습니다.");
 
 		User user = cred.getUser();
-		if (user.getRole() != Role.TEACHER) throw new IllegalStateException("교사 계정이 아닙니다.");
+		if (user.getRole() != Role.TEACHER)
+			throw new IllegalStateException("교사 계정이 아닙니다.");
 		return user;
 	}
 }

@@ -22,7 +22,7 @@ public class TeacherRegistry {
 
 	private String teacherNumber;
 
-	@ManyToOne(fetch= FetchType.LAZY)
-	@JoinColumn(name="school_id")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "school_id")
 	private SchoolRegistry school;
 }

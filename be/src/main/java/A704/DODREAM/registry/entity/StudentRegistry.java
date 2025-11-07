@@ -1,6 +1,5 @@
 package A704.DODREAM.registry.entity;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -23,8 +22,8 @@ public class StudentRegistry {
 
 	private String studentNumber;
 
-	@ManyToOne(fetch= FetchType.LAZY)
-	@JoinColumn(name="school_id")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "school_id")
 	private SchoolRegistry school;
 
 	private Integer gradeLevel;
