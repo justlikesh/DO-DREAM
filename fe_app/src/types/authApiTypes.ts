@@ -20,6 +20,15 @@ export interface StudentRegisterRequest {
 }
 
 /**
+ * 학생 로그인 요청
+ * POST /api/auth/student/login
+ */
+export interface StudentLoginRequest {
+  deviceId: string;
+  deviceSecret: string;
+}
+
+/**
  * 사전 인증 응답 (verify 성공 시)
  */
 export interface VerifyResponse {

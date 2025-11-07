@@ -2,6 +2,7 @@ import apiClient from './apiClient';
 import type {
   StudentVerifyRequest,
   StudentRegisterRequest,
+  StudentLoginRequest,
   AuthResponse,
   VerifyResponse,
 } from '../types/authApiTypes';
@@ -9,6 +10,7 @@ import type {
 const AUTH_ENDPOINTS = {
   VERIFY: '/api/auth/student/verify',       // 사전 인증 (학번/이름 확인)
   REGISTER: '/api/auth/student/register',   // 회원가입 (기기 등록)
+  LOGIN: '/api/auth/student/login',         // 로그인
 };
 
 export const authApi = {
@@ -27,6 +29,15 @@ export const authApi = {
    */
   register: async (data: StudentRegisterRequest): Promise<AuthResponse> => {
     const response = await apiClient.post(AUTH_ENDPOINTS.REGISTER, data);
+    return response.data;
+  },
+
+  /**
+   * 학생 로그인
+   * 기기 시크릿으로 로그인 (AccessToken 반환, RefreshToken은 쿠키)
+   */
+  login: async (data: StudentLoginRequest): Promise<AuthResponse> => {
+    const response = await apiClient.post(AUTH_ENDPOINTS.LOGIN, data);
     return response.data;
   },
 };
