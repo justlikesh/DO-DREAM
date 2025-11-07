@@ -8,5 +8,6 @@ import A704.DODREAM.auth.entity.DeviceCredential;
 
 public interface DeviceCredentialRepository extends JpaRepository<DeviceCredential, Long> {
 	Optional<DeviceCredential> findByDeviceId(String deviceId);
+
 	boolean existsByDeviceId(String deviceId);
 }

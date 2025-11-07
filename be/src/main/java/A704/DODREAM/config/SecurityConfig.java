@@ -1,7 +1,7 @@
 package A704.DODREAM.config;
 
-import A704.DODREAM.auth.filter.JwtAuthFilter;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -12,7 +12,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import A704.DODREAM.auth.filter.JwtAuthFilter;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class SecurityConfig {
 			"http://localhost:5173",
 			"http://localhost:8080"
 		));
-		config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		config.setAllowedHeaders(List.of("*"));
 		config.setAllowCredentials(true);
 		config.setMaxAge(3600L);
@@ -59,7 +60,8 @@ public class SecurityConfig {
 				// 나머지는 인증 필요
 				.anyRequest().authenticated()
 			)
-			.addFilterBefore(jwtAuthFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+			.addFilterBefore(jwtAuthFilter,
+				org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
 
 		return http.build();
 	}

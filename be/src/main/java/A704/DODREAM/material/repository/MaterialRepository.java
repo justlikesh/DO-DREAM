@@ -1,7 +1,8 @@
 package A704.DODREAM.material.repository;
 
-import A704.DODREAM.material.entity.Material;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import A704.DODREAM.material.entity.Material;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
 

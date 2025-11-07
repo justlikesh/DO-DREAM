@@ -11,9 +11,9 @@ public interface StudentRegistryRepository extends JpaRepository<StudentRegistry
 	Optional<StudentRegistry> findByNameAndStudentNumber(String name, String studentNumber);
 
 	@Query("""
-        select sr from StudentRegistry sr
-        join fetch sr.school s
-        where sr.name = :name and sr.studentNumber = :studentNumber
-    """)
+		    select sr from StudentRegistry sr
+		    join fetch sr.school s
+		    where sr.name = :name and sr.studentNumber = :studentNumber
+		""")
 	Optional<StudentRegistry> findByNameAndStudentNumberFetchSchool(String name, String studentNumber);
 }

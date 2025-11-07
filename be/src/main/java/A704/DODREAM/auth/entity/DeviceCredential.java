@@ -31,7 +31,9 @@ public class DeviceCredential extends BaseTimeEntity {
 	public static DeviceCredential create(User u, String deviceId, String platform,
 		String secretHash) {
 		DeviceCredential dc = new DeviceCredential();
-		dc.user = u; dc.deviceId = deviceId; dc.platform = platform;
+		dc.user = u;
+		dc.deviceId = deviceId;
+		dc.platform = platform;
 		dc.secretHash = secretHash;
 		return dc;
 	}
