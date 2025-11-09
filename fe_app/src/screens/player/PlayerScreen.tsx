@@ -33,7 +33,7 @@ import {
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
   const route = useRoute<PlayerScreenRouteProp>();
-  const { book, chapterId, fromStart } = route.params;
+  const { material, chapterId, fromStart } = route.params;
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -60,7 +60,7 @@ export default function PlayerScreen() {
   };
 
   const chapter = getChapterById(chapterId);
-  const quizzes = getQuizzesByChapterId(chapterId);
+const quizzes = getQuizzesByChapterId(chapterId.toString());
   const hasQuiz = quizzes.length > 0;
 
   const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -86,9 +86,9 @@ export default function PlayerScreen() {
   // 북마크 상태 확인
   useEffect(() => {
     if (!chapter) return;
-    const isCurrentBookmarked = isBookmarked(book.id, chapterId, currentSectionIndex);
+    const isCurrentBookmarked = isBookmarked(material.id.toString(), chapterId, currentSectionIndex);
     setBookmarked(isCurrentBookmarked);
-  }, [currentSectionIndex, book.id, chapterId, chapter]);
+  }, [currentSectionIndex, material.id, chapterId, chapter]);
 
   // 보증 재생: TalkBack 안내가 끝난 뒤 실제로 말하고 있는지 확인하고, 아니면 강제 재생
   const ensureAutoPlay = useCallback(async (delayMs: number) => {
@@ -235,7 +235,7 @@ export default function PlayerScreen() {
   useEffect(() => {
     if (!chapter) return;
 
-    const savedProgress = getProgress(book.id, chapterId);
+    const savedProgress = getProgress(material.id.toString(), chapterId);
     let startIndex = 0;
     let savedPlayMode: PlayMode = "single"; // 기본값
 
@@ -292,7 +292,7 @@ export default function PlayerScreen() {
     // 초기 음성 안내는 TalkBack ON 시 충돌 가능 → 생략
     if (!screenReaderEnabled) {
       AccessibilityInfo.announceForAccessibility(
-        `${book.subject}, ${chapter.title}. ${fromStart ? "처음부터" : savedProgress ? "이어서" : ""} 재생 시작`
+        `${material.title}, ${chapter.title}. ${fromStart ? "처음부터" : savedProgress ? "이어서" : ""} 재생 시작`
       );
     }
 
@@ -364,7 +364,7 @@ export default function PlayerScreen() {
     }
 
     return () => clearTimeout(autoPlayTimer);
-  }, [chapter, book.id, chapterId, fromStart, ttsSpeed, screenReaderEnabled, ensureAutoPlay]);
+  }, [chapter, material.id, chapterId, fromStart, ttsSpeed, screenReaderEnabled, ensureAutoPlay]);
 
   // 진행도 저장(디바운스)
   useEffect(() => {
@@ -387,7 +387,7 @@ export default function PlayerScreen() {
   const saveProgressData = (isCompleted: boolean) => {
     if (!chapter) return;
     const progress: LocalProgress = {
-      materialId: book.id,
+      materialId: material.id.toString(),
       chapterId: chapterId,
       currentSectionIndex,
       lastAccessedAt: new Date().toISOString(),
@@ -508,7 +508,7 @@ export default function PlayerScreen() {
     setIsPlaying(false);
     AccessibilityInfo.announceForAccessibility("질문하기 화면으로 이동합니다");
     navigation.navigate("Question", {
-      book,
+      material,
       chapterId,
       sectionIndex: currentSectionIndex,
     });
@@ -519,11 +519,9 @@ export default function PlayerScreen() {
       ttsService.stop();
       setIsPlaying(false);
       AccessibilityInfo.announceForAccessibility("퀴즈 화면으로 이동합니다");
-      navigation.navigate("Quiz", {
-        book,
-        chapterId,
-        quizId: quizzes[0].id,
-      });
+      navigation.navigate('Quiz', { quiz: quizzes[0] });
+    } else {
+      AccessibilityInfo.announceForAccessibility("퀴즈가 없습니다");
     }
   };
 
@@ -535,7 +533,7 @@ export default function PlayerScreen() {
     
     if (bookmarked) {
       // 북마크 제거
-      const bookmarkId = getBookmarkIdBySection(book.id, chapterId, currentSectionIndex);
+      const bookmarkId = getBookmarkIdBySection(material.id.toString(), chapterId, currentSectionIndex);
       if (bookmarkId) {
         const success = deleteBookmark(bookmarkId);
         if (success) {
@@ -548,7 +546,7 @@ export default function PlayerScreen() {
       // 북마크 추가
       try {
         createBookmark({
-          materialId: book.id,
+          materialId: material.id.toString(),
           chapterId: chapterId,
           sectionId: currentSection.id,
           sectionIndex: currentSectionIndex,
@@ -571,7 +569,7 @@ export default function PlayerScreen() {
     setIsPlaying(false);
     AccessibilityInfo.announceForAccessibility("북마크 목록 화면으로 이동합니다");
     navigation.navigate("BookmarkList", {
-      book,
+      material,
       chapterId,
     });
   };
@@ -670,7 +668,7 @@ export default function PlayerScreen() {
 
         {/* 챕터 정보 */}
         <View style={styles.headerInfo}>
-          <Text style={styles.subjectText}>{book.subject}</Text>
+          <Text style={styles.subjectText}>{material.title}</Text>
           <Text style={styles.chapterTitle}>{chapter.title}</Text>
           <Text style={styles.modeIndicator}>
             {PlayModeIcons[playMode]} {PlayModeLabels[playMode]}

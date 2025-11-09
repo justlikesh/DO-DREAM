@@ -19,8 +19,8 @@ import * as Speech from "expo-speech";
 import { TriggerContext } from "../../triggers/TriggerContext";
 
 interface Answer {
-  questionId: string;
-  selectedOptionId: string;
+  questionId: number;
+  selectedOptionId: number;
   isCorrect: boolean;
 }
 
@@ -30,7 +30,7 @@ export default function QuizScreen() {
   const { quiz } = route.params;
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [isTalkBackEnabled, setIsTalkBackEnabled] = useState<boolean>(false);
 
@@ -197,7 +197,7 @@ export default function QuizScreen() {
     navigation.goBack();
   };
 
-  const handleOptionPress = (optionId: string, optionNumber: number) => {
+  const handleOptionPress = (optionId: number, optionNumber: number) => {
     setSelectedOptionId(optionId);
     Haptics.selectionAsync();
 
@@ -288,22 +288,13 @@ export default function QuizScreen() {
         setSelectedOptionId(null);
       }
 
-      setAnswers((prev) => prev.slice(0, -1));
       setCurrentQuestionIndex((prev) => prev - 1);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
-  if (!currentQuestion) {
-    return (
-      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-        <Text>문제를 불러올 수 없습니다.</Text>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleGoBack}

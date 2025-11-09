@@ -9,33 +9,33 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LibraryScreenNavigationProp } from '../../navigation/navigationTypes';
-import { dummyBooks, studentName } from '../../data/dummyBooks';
-import { Book } from '../../types/book';
+import { dummyMaterials, studentName } from '../../data/dummyMaterials';
+import { Material } from '../../types/material';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
 
-  const handleBookPress = (book: Book) => {
-    console.log('선택한 교재:', book.subject);
-    navigation.navigate('PlaybackChoice', { book });
+  const handleMaterialPress = (material: Material) => {
+    console.log('선택한 교재:', material.title);
+    navigation.navigate('PlaybackChoice', { material });
   };
 
-  const renderBookButton = ({ item }: { item: Book }) => {
-    const accessibilityLabel = `${item.subject}, 현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. ${
+  const renderMaterialButton = ({ item }: { item: Material }) => {
+    const accessibilityLabel = `${item.title}, 현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. ${
       item.hasProgress ? '이어듣기 가능' : '처음부터 시작'
     }`;
 
     return (
       <TouchableOpacity
-        style={styles.bookButton}
-        onPress={() => handleBookPress(item)}
+        style={styles.materialButton}
+        onPress={() => handleMaterialPress(item)}
         accessible={true}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessibilityHint="두 번 탭하여 교재를 선택하세요"
       >
-        <View style={styles.bookContent}>
-          <Text style={styles.subjectText}>{item.subject}</Text>
+        <View style={styles.materialContent}>
+          <Text style={styles.subjectText}>{item.title}</Text>
           
           <Text style={styles.chapterText}>
             현재 {item.currentChapter}챕터
@@ -65,9 +65,9 @@ export default function LibraryScreen() {
       </View>
 
       <FlatList
-        data={dummyBooks}
-        renderItem={renderBookButton}
-        keyExtractor={(item) => item.id}
+        data={dummyMaterials}
+        renderItem={renderMaterialButton}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         accessible={false}
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
   },
-  bookButton: {
+  materialButton: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     marginBottom: 16,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     minHeight: 88,
   },
-  bookContent: {
+  materialContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

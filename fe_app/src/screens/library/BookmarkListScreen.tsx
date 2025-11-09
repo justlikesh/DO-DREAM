@@ -27,7 +27,7 @@ import * as Haptics from 'expo-haptics';
 export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
   const route = useRoute<BookmarkListScreenRouteProp>();
-  const { book, chapterId } = route.params;
+  const { material, chapterId } = route.params;
 
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [isReviewMode, setIsReviewMode] = useState(false);
@@ -64,7 +64,7 @@ export default function BookmarkListScreen() {
   }, [isReviewMode]);
 
   const loadBookmarks = () => {
-    const loaded = getBookmarksByChapter(book.id, chapterId);
+    const loaded = getBookmarksByChapter(material.id.toString(), chapterId);
     setBookmarks(loaded);
   };
 
@@ -241,7 +241,7 @@ export default function BookmarkListScreen() {
 
     // PlayerScreen으로 돌아가면서 해당 섹션으로 이동
     navigation.navigate('Player', {
-      book,
+      material,
       chapterId,
       fromStart: false,
       initialSectionIndex: bookmark.sectionIndex,
@@ -293,14 +293,21 @@ export default function BookmarkListScreen() {
           accessibilityLabel="뒤로 가기"
           accessibilityRole="button"
           accessibilityHint="이전 화면으로 돌아갑니다"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
 
         <View style={styles.headerTitle}>
-          <Text style={styles.titleText}>북마크 목록</Text>
-          <Text style={styles.countText}>총 {bookmarks.length}개</Text>
+          <Text 
+            style={styles.titleText}
+            accessible={true}
+            accessibilityRole="header"
+          >
+            북마크
+          </Text>
+          <Text style={styles.countText}>
+            {bookmarks.length}개
+          </Text>
         </View>
 
         <View style={{ width: 70 }} />
@@ -308,21 +315,33 @@ export default function BookmarkListScreen() {
 
       {/* 챕터 정보 */}
       <View style={styles.chapterInfo}>
-        <Text style={styles.subjectText}>{book?.subject || '과목 정보 없음'}</Text>
-        <Text style={styles.chapterTitle}>{chapter?.title || '챕터 정보 없음'}</Text>
+        <Text style={styles.subjectText}>{material.title}</Text>
+        <Text style={styles.chapterTitle}>{chapter.title}</Text>
       </View>
 
-      {/* 북마크 리스트 */}
+      {/* 북마크 목록 */}
       <ScrollView
         ref={scrollViewRef}
         style={styles.listArea}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        accessible={false}
       >
         {bookmarks.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>저장된 북마크가 없습니다</Text>
-            <Text style={styles.emptyHint}>
-              {'학습 중 중요한 부분을 북마크하면\n이곳에서 다시 들을 수 있습니다'}
+            <Text 
+              style={styles.emptyText}
+              accessible={true}
+              accessibilityRole="text"
+            >
+              북마크가 없습니다
+            </Text>
+            <Text 
+              style={styles.emptyHint}
+              accessible={true}
+              accessibilityRole="text"
+            >
+              학습 중 중요한 부분을{'\n'}북마크로 저장해보세요
             </Text>
           </View>
         ) : (
@@ -331,30 +350,29 @@ export default function BookmarkListScreen() {
               key={bookmark.id}
               style={[
                 styles.bookmarkCard,
-                isReviewMode && index === currentReviewIndex && styles.activeBookmarkCard,
+                isReviewMode && currentReviewIndex === index && styles.activeBookmarkCard,
               ]}
             >
-              {/* 북마크 정보 */}
+              {/* 북마크 내용 (탭하면 해당 섹션으로 이동) */}
               <TouchableOpacity
                 style={styles.bookmarkContent}
                 onPress={() => handleGoToSection(bookmark)}
-                onLongPress={() => handlePlayBookmark(bookmark)}
                 accessible={true}
-                accessibilityLabel={`북마크 ${index + 1}. 섹션 ${bookmark.sectionIndex + 1}. ${getSectionTypeLabel(bookmark.sectionType || 'paragraph')}. ${bookmark.sectionText || '내용 없음'}`}
+                accessibilityLabel={`${bookmark.sectionIndex + 1}번째 섹션. ${getSectionTypeLabel(bookmark.sectionType)}. ${bookmark.sectionText}. ${formatDate(bookmark.createdAt)}에 저장. ${bookmark.repeatCount}회 복습함`}
                 accessibilityRole="button"
-                accessibilityHint="탭하면 해당 섹션으로 이동합니다. 길게 누르면 이 섹션만 다시 듣습니다"
+                accessibilityHint="탭하면 해당 섹션으로 이동합니다"
               >
                 <View style={styles.bookmarkHeader}>
                   <Text style={styles.sectionNumber}>
-                    섹션 {bookmark.sectionIndex + 1}
+                    #{bookmark.sectionIndex + 1}
                   </Text>
                   <Text style={styles.sectionType}>
-                    {getSectionTypeLabel(bookmark.sectionType || 'paragraph')}
+                    {getSectionTypeLabel(bookmark.sectionType)}
                   </Text>
                 </View>
 
-                <Text style={styles.bookmarkText} numberOfLines={3}>
-                  {bookmark.sectionText || '내용 없음'}
+                <Text style={styles.bookmarkText}>
+                  {bookmark.sectionText}
                 </Text>
 
                 <View style={styles.bookmarkFooter}>

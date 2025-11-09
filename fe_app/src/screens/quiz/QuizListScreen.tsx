@@ -20,13 +20,13 @@ import { Quiz } from '../../types/quiz';
 export default function QuizListScreen() {
   const navigation = useNavigation<QuizListScreenNavigationProp>();
   const route = useRoute<QuizListScreenRouteProp>();
-  const { book, chapterId } = route.params;
+  const { material, chapterId } = route.params;
 
-  const quizzes = getQuizzesByChapterId(chapterId);
+  const quizzes = getQuizzesByChapterId(chapterId.toString());
   const chapter = getChapterById(chapterId);
 
   useEffect(() => {
-    const announcement = `${book.subject}, ${chapter?.title} 퀴즈 목록. ${quizzes.length}개의 퀴즈가 있습니다.`;
+    const announcement = `${material.title}, ${chapter?.title} 퀴즈 목록. ${quizzes.length}개의 퀴즈가 있습니다.`;
     AccessibilityInfo.announceForAccessibility(announcement);
   }, []);
 
@@ -115,7 +115,7 @@ export default function QuizListScreen() {
             accessible={true}
             accessibilityRole="header"
           >
-            {book.subject}
+            {material.title}
           </Text>
           <Text style={styles.chapterTitle}>{chapter?.title}</Text>
         </View>
@@ -124,7 +124,7 @@ export default function QuizListScreen() {
       <FlatList
         data={quizzes}
         renderItem={renderQuizItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         accessible={false}

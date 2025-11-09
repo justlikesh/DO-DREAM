@@ -15,7 +15,7 @@ export const storage = new MMKV();
 
 // Storage Keys
 const KEYS = {
-  PROGRESS: (materialId: string, chapterId: string) => 
+  PROGRESS: (materialId: string, chapterId: number) => 
     `progress_${materialId}_${chapterId}`,
   STUDENT_NUMBER: 'student_number',
   TTS_SPEED: 'tts_speed',
@@ -36,7 +36,7 @@ export const saveProgress = (progress: LocalProgress): void => {
 
 export const getProgress = (
   materialId: string,
-  chapterId: string
+  chapterId: number
 ): LocalProgress | null => {
   try {
     const key = KEYS.PROGRESS(materialId, chapterId);
@@ -50,7 +50,7 @@ export const getProgress = (
   }
 };
 
-export const deleteProgress = (materialId: string, chapterId: string): void => {
+export const deleteProgress = (materialId: string, chapterId: number): void => {
   try {
     const key = KEYS.PROGRESS(materialId, chapterId);
     storage.delete(key);

@@ -5,8 +5,8 @@ import { Bookmark, BookmarkCreateInput } from '../types/bookmark';
 /**
  * 북마크 관련 Storage Keys
  */
-const BOOKMARK_KEY = (bookmarkId: string) => `bookmark_${bookmarkId}`;
-const BOOKMARK_LIST_KEY = (materialId: string, chapterId: string) => 
+const BOOKMARK_KEY = (bookmarkId: number) => `bookmark_${bookmarkId}`;
+const BOOKMARK_LIST_KEY = (materialId: string, chapterId: number) => 
   `bookmark_list_${materialId}_${chapterId}`;
 const ALL_BOOKMARKS_KEY = 'all_bookmarks_ids';
 
@@ -15,8 +15,9 @@ const ALL_BOOKMARKS_KEY = 'all_bookmarks_ids';
  */
 export const createBookmark = (input: BookmarkCreateInput): Bookmark => {
   try {
-    const studentId = getStudentInfo() || 'unknown';
-    const bookmarkId = `${input.materialId}_${input.chapterId}_${input.sectionIndex}_${Date.now()}`;
+    const studentInfo = getStudentInfo();
+    const studentId = studentInfo?.id || 0;
+    const bookmarkId = Date.now(); // number 타입의 고유 ID
     
     // 섹션 텍스트를 최대 100자로 제한
     const truncatedText = input.sectionText.length > 100 
@@ -42,13 +43,13 @@ export const createBookmark = (input: BookmarkCreateInput): Bookmark => {
     // 챕터별 북마크 리스트에 추가
     const listKey = BOOKMARK_LIST_KEY(input.materialId, input.chapterId);
     const existingList = storage.getString(listKey);
-    const bookmarkIds: string[] = existingList ? JSON.parse(existingList) : [];
+    const bookmarkIds: number[] = existingList ? JSON.parse(existingList) : [];
     bookmarkIds.push(bookmarkId);
     storage.set(listKey, JSON.stringify(bookmarkIds));
 
     // 전체 북마크 ID 리스트에 추가 (전체 조회용)
     const allBookmarksIds = storage.getString(ALL_BOOKMARKS_KEY);
-    const allIds: string[] = allBookmarksIds ? JSON.parse(allBookmarksIds) : [];
+    const allIds: number[] = allBookmarksIds ? JSON.parse(allBookmarksIds) : [];
     if (!allIds.includes(bookmarkId)) {
       allIds.push(bookmarkId);
       storage.set(ALL_BOOKMARKS_KEY, JSON.stringify(allIds));
@@ -65,7 +66,7 @@ export const createBookmark = (input: BookmarkCreateInput): Bookmark => {
 /**
  * 북마크 조회 (단일)
  */
-export const getBookmark = (bookmarkId: string): Bookmark | null => {
+export const getBookmark = (bookmarkId: number): Bookmark | null => {
   try {
     const data = storage.getString(BOOKMARK_KEY(bookmarkId));
     if (!data) return null;
@@ -82,14 +83,14 @@ export const getBookmark = (bookmarkId: string): Bookmark | null => {
  */
 export const getBookmarksByChapter = (
   materialId: string, 
-  chapterId: string
+  chapterId: number
 ): Bookmark[] => {
   try {
     const listKey = BOOKMARK_LIST_KEY(materialId, chapterId);
     const data = storage.getString(listKey);
     if (!data) return [];
 
-    const bookmarkIds: string[] = JSON.parse(data);
+    const bookmarkIds: number[] = JSON.parse(data);
     const bookmarks: Bookmark[] = [];
 
     for (const id of bookmarkIds) {
@@ -115,7 +116,7 @@ export const getAllBookmarks = (): Bookmark[] => {
     const allBookmarksIds = storage.getString(ALL_BOOKMARKS_KEY);
     if (!allBookmarksIds) return [];
 
-    const ids: string[] = JSON.parse(allBookmarksIds);
+    const ids: number[] = JSON.parse(allBookmarksIds);
     const bookmarks: Bookmark[] = [];
 
     for (const id of ids) {
@@ -138,7 +139,7 @@ export const getAllBookmarks = (): Bookmark[] => {
 /**
  * 북마크 삭제
  */
-export const deleteBookmark = (bookmarkId: string): boolean => {
+export const deleteBookmark = (bookmarkId: number): boolean => {
   try {
     const bookmark = getBookmark(bookmarkId);
     if (!bookmark) {
@@ -153,7 +154,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
     const listKey = BOOKMARK_LIST_KEY(bookmark.materialId, bookmark.chapterId);
     const existingList = storage.getString(listKey);
     if (existingList) {
-      const bookmarkIds: string[] = JSON.parse(existingList);
+      const bookmarkIds: number[] = JSON.parse(existingList);
       const filtered = bookmarkIds.filter(id => id !== bookmarkId);
       if (filtered.length > 0) {
         storage.set(listKey, JSON.stringify(filtered));
@@ -165,7 +166,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
     // 전체 북마크 ID 리스트에서 제거
     const allBookmarksIds = storage.getString(ALL_BOOKMARKS_KEY);
     if (allBookmarksIds) {
-      const allIds: string[] = JSON.parse(allBookmarksIds);
+      const allIds: number[] = JSON.parse(allBookmarksIds);
       const filtered = allIds.filter(id => id !== bookmarkId);
       if (filtered.length > 0) {
         storage.set(ALL_BOOKMARKS_KEY, JSON.stringify(filtered));
@@ -187,7 +188,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
  */
 export const isBookmarked = (
   materialId: string,
-  chapterId: string,
+  chapterId: number,
   sectionIndex: number
 ): boolean => {
   try {
@@ -204,9 +205,9 @@ export const isBookmarked = (
  */
 export const getBookmarkIdBySection = (
   materialId: string,
-  chapterId: string,
+  chapterId: number,
   sectionIndex: number
-): string | null => {
+): number | null => {
   try {
     const bookmarks = getBookmarksByChapter(materialId, chapterId);
     const bookmark = bookmarks.find(b => b.sectionIndex === sectionIndex);
@@ -220,7 +221,7 @@ export const getBookmarkIdBySection = (
 /**
  * 북마크 재생 횟수 증가
  */
-export const incrementBookmarkRepeatCount = (bookmarkId: string): boolean => {
+export const incrementBookmarkRepeatCount = (bookmarkId: number): boolean => {
   try {
     const bookmark = getBookmark(bookmarkId);
     if (!bookmark) return false;
@@ -241,7 +242,7 @@ export const incrementBookmarkRepeatCount = (bookmarkId: string): boolean => {
  */
 export const deleteBookmarksByChapter = (
   materialId: string,
-  chapterId: string
+  chapterId: number
 ): boolean => {
   try {
     const bookmarks = getBookmarksByChapter(materialId, chapterId);

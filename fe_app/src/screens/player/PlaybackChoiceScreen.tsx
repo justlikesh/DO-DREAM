@@ -12,40 +12,40 @@ import {
   PlaybackChoiceScreenNavigationProp,
   PlaybackChoiceScreenRouteProp 
 } from '../../navigation/navigationTypes';
-import { getChaptersByBookId } from '../../data/dummyChapters';
+import { getChaptersByMaterialId } from '../../data/dummyChapters';
 import { getQuizzesByChapterId } from '../../data/dummyQuizzes';
 import * as Haptics from 'expo-haptics';
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
-  const { book } = route.params;
+  const { material } = route.params;
 
-  const chapters = getChaptersByBookId(book.id);
+  const chapters = getChaptersByMaterialId(material.id.toString());
   const firstChapter = chapters[0];
   
   // 학습 진도가 1번 이상 있는지 확인 (hasProgress가 true면 최소 1번은 학습함)
-  const hasStudied = book.hasProgress;
+  const hasStudied = material.hasProgress;
   
   // 첫 번째 챕터의 퀴즈 가져오기
-  const quizzes = firstChapter ? getQuizzesByChapterId(firstChapter.id) : [];
+  const quizzes = firstChapter ? getQuizzesByChapterId(firstChapter.chapterId.toString()) : [];
   const hasQuiz = quizzes.length > 0;
   const showQuizButton = hasStudied && hasQuiz;
 
   useEffect(() => {
-    const announcement = `${book.subject}, ${book.currentChapter}챕터. 이어듣기 또는 처음부터 선택하세요.${
+    const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기 또는 처음부터 선택하세요.${
       showQuizButton ? ' 퀴즈도 풀 수 있습니다.' : ''
     }`;
     AccessibilityInfo.announceForAccessibility(announcement);
-  }, [book.subject, book.currentChapter, showQuizButton]);
+  }, [material.title, material.currentChapter, showQuizButton]);
 
   const handleFromStart = () => {
     AccessibilityInfo.announceForAccessibility('처음부터 시작합니다.');
     
     if (firstChapter) {
       navigation.navigate('Player', {
-        book,
-        chapterId: firstChapter.id,
+        material,
+        chapterId: firstChapter.chapterId,
         fromStart: true,
       });
     }
@@ -56,8 +56,8 @@ export default function PlaybackChoiceScreen() {
     
     if (firstChapter) {
       navigation.navigate('Player', {
-        book,
-        chapterId: firstChapter.id,
+        material,
+        chapterId: firstChapter.chapterId,
         fromStart: false,
       });
     }
@@ -75,7 +75,7 @@ export default function PlaybackChoiceScreen() {
       // 퀴즈가 여러 개면 퀴즈 목록으로
       AccessibilityInfo.announceForAccessibility('퀴즈 목록으로 이동합니다');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate('QuizList', { book, chapterId: firstChapter.id });
+      navigation.navigate('QuizList', { material, chapterId: firstChapter.chapterId });
     }
   };
 
@@ -103,16 +103,16 @@ export default function PlaybackChoiceScreen() {
           accessible={true}
           accessibilityRole="header"
         >
-          {book.subject}
+          {material.title}
         </Text>
         <Text style={styles.chapterText}>
-          {book.currentChapter}챕터
+          {material.currentChapter}챕터
         </Text>
       </View>
 
       {/* 선택 버튼들 */}
       <View style={styles.buttonSection}>
-        {book.hasProgress && (
+        {material.hasProgress && (
           <TouchableOpacity
             style={[styles.choiceButton, styles.continueButton]}
             onPress={handleContinue}

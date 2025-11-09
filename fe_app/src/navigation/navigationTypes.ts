@@ -1,6 +1,6 @@
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Book } from '../types/book';
+import { Material } from '../types/material';
 import { Quiz } from '../types/quiz';
 
 export type RootStackParamList = {
@@ -10,41 +10,39 @@ export type RootStackParamList = {
   Signup: undefined;
   Library: undefined;
   PlaybackChoice: {
-    book: Book;
+    material: Material;
   };
   Player: {
-    book: Book;
-    chapterId: string;
+    material: Material;
+    chapterId: number;
     fromStart: boolean;
     initialSectionIndex?: number;
   };
   Question: {
-    book: Book;
-    chapterId: string;
+    material: Material;
+    chapterId: number;
     sectionIndex: number;
   };
   QuizList: {
-    book: Book;
-    chapterId: string;
+    material: Material;
+    chapterId: number;
   };
   Quiz: {
-    book: Book;
-    chapterId: string;
-    quizId: string;
+    quiz: Quiz;
   };
   QuizResult: {
     quiz: Quiz;
     score: number;
     totalQuestions: number;
     answers: {
-      questionId: string;
-      selectedOptionId: string;
+      questionId: number;
+      selectedOptionId: number;
       isCorrect: boolean;
     }[];
   };
   BookmarkList: {
-    book: Book;
-    chapterId: string;
+    material: Material;
+    chapterId: number;
   };
 };
 
