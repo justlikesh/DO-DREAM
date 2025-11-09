@@ -53,7 +53,7 @@ export const getAccessToken = (): string | null => {
  */
 export const removeAccessToken = (): void => {
   try {
-    storage.remove(AUTH_KEYS.ACCESS_TOKEN);
+    storage.delete(AUTH_KEYS.ACCESS_TOKEN);
     console.log('[AuthStorage] Access token removed');
   } catch (error) {
     console.error('[AuthStorage] Failed to remove access token:', error);
@@ -95,7 +95,7 @@ export const getRefreshToken = (): string | null => {
  */
 export const removeRefreshToken = (): void => {
   try {
-    storage.remove(AUTH_KEYS.REFRESH_TOKEN);
+    storage.delete(AUTH_KEYS.REFRESH_TOKEN);
     console.log('[AuthStorage] Refresh token removed');
   } catch (error) {
     console.error('[AuthStorage] Failed to remove refresh token:', error);
@@ -162,7 +162,7 @@ export const getStudentInfo = <T = any>(): T | null => {
  */
 export const removeStudentInfo = (): void => {
   try {
-    storage.remove(AUTH_KEYS.STUDENT_INFO);
+    storage.delete(AUTH_KEYS.STUDENT_INFO);
     console.log('[AuthStorage] Student info removed');
   } catch (error) {
     console.error('[AuthStorage] Failed to remove student info:', error);

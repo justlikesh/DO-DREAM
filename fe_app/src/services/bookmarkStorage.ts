@@ -1,4 +1,5 @@
-import { storage, getStudentId } from './appStorage';
+import { storage } from './appStorage';
+import { getStudentInfo } from './authStorage';
 import { Bookmark, BookmarkCreateInput } from '../types/bookmark';
 
 /**
@@ -14,7 +15,7 @@ const ALL_BOOKMARKS_KEY = 'all_bookmarks_ids';
  */
 export const createBookmark = (input: BookmarkCreateInput): Bookmark => {
   try {
-    const studentId = getStudentId() || 'unknown';
+    const studentId = getStudentInfo() || 'unknown';
     const bookmarkId = `${input.materialId}_${input.chapterId}_${input.sectionIndex}_${Date.now()}`;
     
     // 섹션 텍스트를 최대 100자로 제한
@@ -146,7 +147,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
     }
 
     // 개별 북마크 삭제
-    storage.remove(BOOKMARK_KEY(bookmarkId));
+    storage.delete(BOOKMARK_KEY(bookmarkId));
 
     // 챕터별 리스트에서 제거
     const listKey = BOOKMARK_LIST_KEY(bookmark.materialId, bookmark.chapterId);
@@ -157,7 +158,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
       if (filtered.length > 0) {
         storage.set(listKey, JSON.stringify(filtered));
       } else {
-        storage.remove(listKey);
+        storage.delete(listKey);
       }
     }
 
@@ -169,7 +170,7 @@ export const deleteBookmark = (bookmarkId: string): boolean => {
       if (filtered.length > 0) {
         storage.set(ALL_BOOKMARKS_KEY, JSON.stringify(filtered));
       } else {
-        storage.remove(ALL_BOOKMARKS_KEY);
+        storage.delete(ALL_BOOKMARKS_KEY);
       }
     }
 
@@ -265,14 +266,14 @@ export const clearAllBookmarks = (): boolean => {
     const allBookmarks = getAllBookmarks();
     
     for (const bookmark of allBookmarks) {
-      storage.remove(BOOKMARK_KEY(bookmark.id));
+      storage.delete(BOOKMARK_KEY(bookmark.id));
     }
 
     // 모든 리스트 키 삭제
     const allKeys = storage.getAllKeys();
     allKeys.forEach((key: string) => {
       if (key.startsWith('bookmark_list_') || key === ALL_BOOKMARKS_KEY) {
-        storage.remove(key);
+        storage.delete(key);
       }
     });
 

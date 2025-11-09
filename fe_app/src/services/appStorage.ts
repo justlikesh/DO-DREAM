@@ -7,11 +7,11 @@
  * 
  * 참고: 인증 관련은 authStorage.ts 사용
  */
-import { createMMKV } from 'react-native-mmkv';
+import { MMKV } from 'react-native-mmkv';
 import { LocalProgress } from '../types/progress';
 
 // MMKV 인스턴스 생성
-export const storage = createMMKV();
+export const storage = new MMKV();
 
 // Storage Keys
 const KEYS = {
@@ -53,7 +53,7 @@ export const getProgress = (
 export const deleteProgress = (materialId: string, chapterId: string): void => {
   try {
     const key = KEYS.PROGRESS(materialId, chapterId);
-    storage.remove(key);
+    storage.delete(key);
   } catch (error) {
     console.error('Failed to delete progress:', error);
   }
@@ -64,7 +64,7 @@ export const clearAllProgress = (): void => {
     const allKeys = storage.getAllKeys();
     allKeys.forEach((key: string) => {
       if (key.startsWith('progress_')) {
-        storage.remove(key);
+        storage.delete(key);
       }
     });
   } catch (error) {
@@ -186,9 +186,9 @@ export const getPlatform = (): string | null => {
  */
 export const clearDeviceInfo = (): void => {
   try {
-    storage.remove(KEYS.DEVICE_ID);
-    storage.remove(KEYS.DEVICE_SECRET);
-    storage.remove(KEYS.PLATFORM);
+    storage.delete(KEYS.DEVICE_ID);
+    storage.delete(KEYS.DEVICE_SECRET);
+    storage.delete(KEYS.PLATFORM);
     console.log('[AppStorage] Device info cleared');
   } catch (error) {
     console.error('[AppStorage] Failed to clear device info:', error);
