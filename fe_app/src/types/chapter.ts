@@ -1,6 +1,6 @@
 export interface Chapter {
-  id: string;
-  bookId: string;
+  chapterId: number;
+  materialId: string;
   chapterNumber: number;
   title: string;
   content: string;
