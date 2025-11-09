@@ -242,6 +242,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.error('[AuthStore] Registration error:', error);
       console.error('[AuthStore] Error response:', error.response?.data);
       
+      // 409 에러 처리 (이미 등록된 계정)
+      if (error.response?.status === 409) {
+        console.log('[AuthStore] 409 error - Account already registered');
+        
+        const customError = new Error('이미 가입된 계정입니다');
+        (customError as any).code = 'ALREADY_REGISTERED';
+        (customError as any).status = 409;
+        
+        set({ 
+          error: '이미 가입된 계정입니다',
+          isLoading: false 
+        });
+        
+        throw customError;
+      }
+      
+      // 500 에러 처리 (기존 로직 유지)
       if (error.response?.status === 500) {
         console.log('[AuthStore] 500 error - trying login (already registered)');
         
