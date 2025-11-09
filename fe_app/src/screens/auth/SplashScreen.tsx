@@ -5,35 +5,70 @@ import { useNavigation } from "@react-navigation/native";
 import type { SplashScreenNavigationProp } from "../../navigation/navigationTypes";
 import { useAuthStore } from "../../stores/authStore";
 
+// 개발용 Mock 로그인 활성화 (테스트 완료 후 false로 변경)
+const ENABLE_MOCK_LOGIN = true;
+
 export default function SplashScreen() {
   const navigation = useNavigation<SplashScreenNavigationProp>();
-  const { accessToken } = useAuthStore();
+  const { accessToken, setAccessToken, setStudent } = useAuthStore();
 
   useEffect(() => {
     console.log('[SplashScreen] Mounted');
     console.log('[SplashScreen] AccessToken:', accessToken ? 'EXISTS' : 'NULL');
 
+    // 개발용 Mock 로그인
+    if (ENABLE_MOCK_LOGIN && !accessToken) {
+      console.log('[SplashScreen] Mock login enabled - injecting fake data');
+      
+      // 임시 토큰 주입
+      setAccessToken('mock-access-token-for-development-12345');
+      
+      // 임시 학생 정보 주입
+      setStudent({
+        id: 1,
+        studentNumber: '2024001',
+        name: '테스트학생',
+        createdAt: new Date().toISOString(),
+      });
+      
+      console.log('[SplashScreen] Mock login complete');
+    }
+
     // 2초 후 자동 이동
     const timer = setTimeout(() => {
-      if (accessToken) {
-        console.log('[SplashScreen] Navigating to Library');
+      // Mock 로그인 활성화 시 무조건 Library로
+      if (ENABLE_MOCK_LOGIN) {
+        console.log('[SplashScreen] Navigating to Library (Mock mode)');
         navigation.replace("Library");
       } else {
-        console.log('[SplashScreen] Navigating to AuthStart');
-        navigation.replace("AuthStart");
+        // 정상 플로우
+        if (accessToken) {
+          console.log('[SplashScreen] Navigating to Library');
+          navigation.replace("Library");
+        } else {
+          console.log('[SplashScreen] Navigating to AuthStart');
+          navigation.replace("AuthStart");
+        }
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [accessToken, navigation]);
+  }, [accessToken, navigation, setAccessToken, setStudent]);
 
   const handleSkip = () => {
     console.log('[SplashScreen] Skip button pressed');
     
-    if (accessToken) {
+    // Mock 로그인 활성화 시 무조건 Library로
+    if (ENABLE_MOCK_LOGIN) {
+      console.log('[SplashScreen] Skip to Library (Mock mode)');
       navigation.replace("Library");
     } else {
-      navigation.replace("AuthStart");
+      // 정상 플로우
+      if (accessToken) {
+        navigation.replace("Library");
+      } else {
+        navigation.replace("AuthStart");
+      }
     }
   };
 
@@ -71,6 +106,12 @@ export default function SplashScreen() {
           <Text style={styles.tagline}>
             시각장애 학생을 위한{"\n"}학습 지원 서비스
           </Text>
+          
+          {ENABLE_MOCK_LOGIN && (
+            <View style={styles.mockBadge}>
+              <Text style={styles.mockBadgeText}>Mock Login Mode</Text>
+            </View>
+          )}
         </View>
       </SafeAreaView>
     </View>
@@ -128,5 +169,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     opacity: 0.9,
     lineHeight: 32,
+  },
+  mockBadge: {
+    marginTop: 40,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255, 0, 0, 0.8)",
+    borderRadius: 8,
+  },
+  mockBadgeText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
