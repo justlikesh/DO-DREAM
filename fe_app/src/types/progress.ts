@@ -2,9 +2,9 @@ import { PlayMode } from './playMode';
 
 export interface MaterialProgress {
   progressId?: string;
-  studentId: string;
-  materialId: string; // bookId와 동일
-  chapterId: string;
+  studentId: number;
+  materialId: string;
+  chapterId: number;
   currentPage: number;
   totalPage: number;
   progressPercentage: number; // 진행률 (%)
@@ -15,7 +15,7 @@ export interface MaterialProgress {
 // 로컬 저장용 간소화된 타입
 export interface LocalProgress {
   materialId: string;
-  chapterId: string;
+  chapterId: number;
   currentSectionIndex: number;
   lastAccessedAt: string; // ISO string
   isCompleted: boolean;

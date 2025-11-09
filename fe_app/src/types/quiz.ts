@@ -1,14 +1,14 @@
 export interface QuizOption {
-  id: string;
-  quizId: string;
+  id: number;
+  quizId: number;
   optionText: string;
   optionOrder: number;
   isCorrect: boolean;
 }
 
 export interface QuizQuestion {
-  id: string;
-  quizId: string;
+  id: number;
+  quizId: number;
   questionText: string;
   questionOrder: number;
   createdAt: Date;
@@ -16,7 +16,7 @@ export interface QuizQuestion {
 }
 
 export interface Quiz {
-  id: string;
+  id: number;
   materialId: string;
   chapterId: string;
   title: string;
@@ -26,9 +26,9 @@ export interface Quiz {
 }
 
 export interface QuizAttempt {
-  id: string;
-  quizId: string;
-  studentId: string;
+  id: number;
+  quizId: number;
+  studentId: number;  // 학생 고유 ID (학번으로 변경해서 보여줘야 함)
   score: number;
   totalQuestions: number;
   startedAt: Date;
@@ -36,10 +36,10 @@ export interface QuizAttempt {
 }
 
 export interface StudentAnswer {
-  id: string;
-  attemptId: string;
-  quizId: string;
-  optionId: string;
+  id: number;
+  attemptId: number;
+  quizId: number;
+  optionId: number;
   isCorrect: boolean;
   answeredAt: Date;
   reviewedAt?: Date;
