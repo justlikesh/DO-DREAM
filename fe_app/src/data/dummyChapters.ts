@@ -2,8 +2,8 @@ import { Chapter } from "../types/chapter";
 
 export const dummyChapters: Chapter[] = [
   {
-    id: 'ch-1-1',
-    bookId: '1',
+    chapterId: 1,
+    materialId: '1',
     chapterNumber: 1,
     title: 'Unit 1: Greetings',
     content: '인사 표현 배우기',
@@ -31,8 +31,8 @@ export const dummyChapters: Chapter[] = [
     ],
   },
   {
-    id: 'ch-1-2',
-    bookId: '1',
+    chapterId: 2,
+    materialId: '1',
     chapterNumber: 2,
     title: 'Unit 2: Introducing Yourself',
     content: '자기소개하기',
@@ -55,8 +55,56 @@ export const dummyChapters: Chapter[] = [
     ],
   },
   {
-    id: 'ch-2-1',
-    bookId: '2',
+    chapterId: 3,
+    materialId: '1',
+    chapterNumber: 3,
+    title: 'Unit 3: Daily Routines',
+    content: '일상 생활 표현하기',
+    sections: [
+      {
+        id: 'sec-13',
+        text: '3단원: 일상 생활 표현하기',
+        type: 'heading',
+      },
+      {
+        id: 'sec-14',
+        text: '아침에 일어나는 것은 "wake up"이라고 합니다.',
+        type: 'paragraph',
+      },
+      {
+        id: 'sec-15',
+        text: '학교에 가는 것은 "go to school"이라고 표현합니다.',
+        type: 'paragraph',
+      },
+    ],
+  },
+  {
+    chapterId: 4,
+    materialId: '1',
+    chapterNumber: 4,
+    title: 'Unit 4: Family Members',
+    content: '가족 구성원 표현하기',
+    sections: [
+      {
+        id: 'sec-16',
+        text: '4단원: 가족 구성원',
+        type: 'heading',
+      },
+      {
+        id: 'sec-17',
+        text: '가족 구성원을 영어로 표현하는 방법을 배워봅시다.',
+        type: 'paragraph',
+      },
+      {
+        id: 'sec-18',
+        text: 'Father는 아버지, Mother는 어머니를 의미합니다.',
+        type: 'paragraph',
+      },
+    ],
+  },
+  {
+    chapterId: 5,
+    materialId: '2',
     chapterNumber: 1,
     title: '1장: 식물의 구조',
     content: '식물의 뿌리, 줄기, 잎의 역할',
@@ -88,14 +136,38 @@ export const dummyChapters: Chapter[] = [
       },
     ],
   },
+  {
+    chapterId: 6,
+    materialId: '2',
+    chapterNumber: 2,
+    title: '2장: 광합성',
+    content: '식물의 광합성 과정',
+    sections: [
+      {
+        id: 'sec-19',
+        text: '2장: 광합성',
+        type: 'heading',
+      },
+      {
+        id: 'sec-20',
+        text: '광합성은 식물이 빛 에너지를 이용하여 양분을 만드는 과정입니다.',
+        type: 'paragraph',
+      },
+      {
+        id: 'sec-21',
+        text: '엽록체에서 일어나며, 이산화탄소와 물을 이용합니다.',
+        type: 'paragraph',
+      },
+    ],
+  },
 ];
 
 // 특정 교재의 챕터 목록 가져오기
-export function getChaptersByBookId(bookId: string): Chapter[] {
-  return dummyChapters.filter(chapter => chapter.bookId === bookId);
+export function getChaptersByMaterialId(materialId: string): Chapter[] {
+  return dummyChapters.filter(chapter => chapter.materialId === materialId);
 }
 
 // 특정 챕터 가져오기
-export function getChapterById(chapterId: string): Chapter | undefined {
-  return dummyChapters.find(chapter => chapter.id === chapterId);
+export function getChapterById(chapterId: number): Chapter | undefined {
+  return dummyChapters.find(chapter => chapter.chapterId === chapterId);
 }
