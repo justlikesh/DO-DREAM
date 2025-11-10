@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -18,21 +18,29 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const { loginWithBiometric, isLoading } = useAuthStore();
   const [biometricType, setBiometricType] = useState<string>("생체인증");
+  const autoAuthStartedRef = useRef(false);
 
   useEffect(() => {
-    initializeBiometric();
+    // 1) 타입 확인 + 안내 멘트
+    // 2) 안내가 끝나도록 약간의 지연 후 자동 인증 시작 (토크백 겹침 방지)
+    const init = async () => {
+      const type = await biometricUtil.getBiometricTypeDescription();
+      setBiometricType(type);
+
+      accessibilityUtil.announce(
+        `${type} 로그인 화면입니다. ${type} 버튼을 눌러 로그인하세요.`
+      );
+
+      if (!autoAuthStartedRef.current) {
+        autoAuthStartedRef.current = true;
+        setTimeout(() => {
+          handleBiometricLogin();
+        }, 800); // TalkBack 안내와 겹치지 않게 지연
+      }
+    };
+
+    init();
   }, []);
-
-  const initializeBiometric = async () => {
-    // 생체인증 타입 확인
-    const type = await biometricUtil.getBiometricTypeDescription();
-    setBiometricType(type);
-
-    // 화면 진입 시 음성 안내
-    accessibilityUtil.announce(
-      `${type} 로그인 화면입니다. ${type} 버튼을 눌러주세요.`
-    );
-  };
 
   const handleBiometricLogin = async () => {
     try {
@@ -81,8 +89,9 @@ export default function LoginScreen() {
       // 4. 생체인증 실행
       accessibilityUtil.announce(`${biometricType}을 진행해주세요`);
       const result = await biometricUtil.authenticate({
-        promptMessage: `${biometricType}으로 로그인하세요`,
+        promptMessage: `${biometricType}으로 인증하세요`,
         cancelLabel: "취소",
+        disableDeviceFallback: true,
       });
 
       if (!result.success) {
@@ -99,10 +108,10 @@ export default function LoginScreen() {
     } catch (error: any) {
       console.error("[LoginScreen] Login failed:", error);
       accessibilityUtil.announceWithVibration(
-        error.message || "로그인 실패",
+        error?.message || "로그인 실패",
         "error"
       );
-      Alert.alert("로그인 실패", error.message || "로그인에 실패했습니다");
+      Alert.alert("로그인 실패", error?.message || "로그인에 실패했습니다");
     }
   };
 
@@ -116,7 +125,7 @@ export default function LoginScreen() {
       </Text>
 
       <Text style={styles.subtitle} accessible={false}>
-        생체 인증으로 로그인하세요
+        {biometricType}으로 로그인하세요
       </Text>
 
       <TouchableOpacity
@@ -130,9 +139,7 @@ export default function LoginScreen() {
         {isLoading ? (
           <ActivityIndicator size="large" color="#FFF" />
         ) : (
-          <>
-            <Text style={styles.loginButtonText}>{biometricType} 시작</Text>
-          </>
+          <Text style={styles.loginButtonText}>{biometricType} 시작</Text>
         )}
       </TouchableOpacity>
 
@@ -175,10 +182,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minHeight: 120,
     justifyContent: "center",
-  },
-  loginButtonIcon: {
-    fontSize: 48,
-    marginBottom: 12,
   },
   loginButtonText: {
     color: "#FFF",

@@ -25,14 +25,12 @@ export interface BiometricResult {
  */
 class BiometricUtil {
   /**
-   * 기기가 생체인증을 지원하는지 확인
+   * 하드웨어 지원 여부
    */
   async isSupported(): Promise<boolean> {
     try {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      return compatible;
-    } catch (error) {
-      console.error('생체인증 지원 확인 오류:', error);
+      return await LocalAuthentication.hasHardwareAsync();
+    } catch {
       return false;
     }
   }
@@ -42,58 +40,60 @@ class BiometricUtil {
    */
   async isEnrolled(): Promise<boolean> {
     try {
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      return enrolled;
-    } catch (error) {
-      console.error('생체인증 등록 확인 오류:', error);
+      return await LocalAuthentication.isEnrolledAsync();
+    } catch {
       return false;
     }
   }
 
   /**
-   * 사용 가능한 생체인증 유형 확인
+   * 지원되는 인증 타입(하드웨어 기준)
    */
   async getSupportedTypes(): Promise<BiometricType[]> {
     try {
       const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
-      const biometricTypes: BiometricType[] = [];
+      const result: BiometricType[] = [];
 
       types.forEach((type) => {
         switch (type) {
           case LocalAuthentication.AuthenticationType.FINGERPRINT:
-            biometricTypes.push(BiometricType.FINGERPRINT);
+            result.push(BiometricType.FINGERPRINT);
             break;
           case LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION:
-            biometricTypes.push(BiometricType.FACIAL_RECOGNITION);
+            result.push(BiometricType.FACIAL_RECOGNITION);
             break;
           case LocalAuthentication.AuthenticationType.IRIS:
-            biometricTypes.push(BiometricType.IRIS);
+            result.push(BiometricType.IRIS);
             break;
         }
       });
 
-      return biometricTypes;
-    } catch (error) {
-      console.error('생체인증 유형 확인 오류:', error);
+      return result;
+    } catch {
       return [];
     }
   }
 
   /**
-   * 생체인증 유형 설명 문자열 반환
+   *  화면 표기용 라벨 (등록 상태 우선, 혼합 시 중립) 
    */
   async getBiometricTypeDescription(): Promise<string> {
+    const enrolled = await this.isEnrolled();
     const types = await this.getSupportedTypes();
-    
-    if (types.includes(BiometricType.FACIAL_RECOGNITION)) {
-      return Platform.OS === 'ios' ? 'Face ID' : '얼굴 인식';
-    } else if (types.includes(BiometricType.FINGERPRINT)) {
-      return '지문 인증';
-    } else if (types.includes(BiometricType.IRIS)) {
-      return '홍채 인식';
-    }
-    
-    return '생체 인증';
+
+    // 등록되어 있지 않으면 확정 불가 → 중립 표기
+    if (!enrolled) return '생체인증';
+
+    const hasFingerprint = types.includes(BiometricType.FINGERPRINT);
+    const hasFace = types.includes(BiometricType.FACIAL_RECOGNITION);
+    const hasIris = types.includes(BiometricType.IRIS);
+
+    const onlyFingerprint = hasFingerprint && !hasFace && !hasIris;
+    const onlyFace = hasFace && !hasFingerprint && !hasIris;
+
+    if (onlyFingerprint) return '지문인증';
+    if (onlyFace) return Platform.OS === 'ios' ? 'Face ID' : '얼굴인증';
+    return '생체인증';
   }
 
   /**
@@ -105,80 +105,30 @@ class BiometricUtil {
     disableDeviceFallback?: boolean;
   }): Promise<BiometricResult> {
     try {
-      // 지원 여부 확인
-      const isSupported = await this.isSupported();
-      if (!isSupported) {
-        return {
-          success: false,
-          error: '이 기기는 생체인증을 지원하지 않습니다.',
-        };
+      const supported = await this.isSupported();
+      const enrolled = await this.isEnrolled();
+
+      if (!supported || !enrolled) {
+        return { success: false, error: '생체인증을 사용할 수 없습니다.' };
       }
 
-      // 등록 여부 확인
-      const isEnrolled = await this.isEnrolled();
-      if (!isEnrolled) {
-        return {
-          success: false,
-          error: '등록된 생체인증 정보가 없습니다. 기기 설정에서 생체인증을 등록해주세요.',
-        };
-      }
-
-      // 생체인증 유형 확인
-      const types = await this.getSupportedTypes();
-      const biometricType = types[0] || BiometricType.NONE;
-      const typeDescription = await this.getBiometricTypeDescription();
-
-      // 생체인증 실행
+      const typeDesc = await this.getBiometricTypeDescription();
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: options?.promptMessage || `${typeDescription}로 인증하세요`,
+        promptMessage: options?.promptMessage || `${typeDesc}으로 인증하세요`,
         cancelLabel: options?.cancelLabel || '취소',
         disableDeviceFallback: options?.disableDeviceFallback ?? true,
+        // 안드로이드에서 확인 단계 요구(오탭/중복 입력 방지)
+        requireConfirmation: Platform.OS === 'android',
       });
 
       if (result.success) {
-        return {
-          success: true,
-          biometricType,
-        };
+        return { success: true };
       } else {
-        return {
-          success: false,
-          error: '인증에 실패했습니다.',
-        };
+        return { success: false, error: '인증에 실패했습니다.' };
       }
-    } catch (error) {
-      console.error('생체인증 오류:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '인증 중 오류가 발생했습니다.',
-      };
+    } catch (e: any) {
+      return { success: false, error: e?.message ?? '인증 오류' };
     }
-  }
-
-  /**
-   * 생체인증 사용 가능 여부 확인 (지원 + 등록)
-   */
-  async canUseBiometric(): Promise<{
-    available: boolean;
-    reason?: string;
-  }> {
-    const isSupported = await this.isSupported();
-    if (!isSupported) {
-      return {
-        available: false,
-        reason: '이 기기는 생체인증을 지원하지 않습니다.',
-      };
-    }
-
-    const isEnrolled = await this.isEnrolled();
-    if (!isEnrolled) {
-      return {
-        available: false,
-        reason: '등록된 생체인증 정보가 없습니다.',
-      };
-    }
-
-    return { available: true };
   }
 }
 
