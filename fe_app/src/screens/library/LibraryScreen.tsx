@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Text,
   StyleSheet,
@@ -9,11 +9,19 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LibraryScreenNavigationProp } from '../../navigation/navigationTypes';
-import { dummyMaterials, studentName } from '../../data/dummyMaterials';
+import { dummyMaterials } from '../../data/dummyMaterials';
 import { Material } from '../../types/material';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
+  const student = useAuthStore((state) => state.student);
+  const hydrate = useAuthStore((state) => state.hydrate);
+
+  // 컴포넌트 마운트 시 저장된 인증 정보 불러오기
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   const handleMaterialPress = (material: Material) => {
     console.log('선택한 교재:', material.title);
@@ -51,6 +59,9 @@ export default function LibraryScreen() {
     );
   };
 
+  // 학생 이름 표시 (로그인 정보가 있으면 실제 이름, 없으면 기본값)
+  const displayName = student?.name || '학생';
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -58,9 +69,9 @@ export default function LibraryScreen() {
           style={styles.studentName}
           accessible={true}
           accessibilityRole="header"
-          accessibilityLabel={`${studentName} 학생의 서재`}
+          accessibilityLabel={`${displayName} 학생의 서재`}
         >
-          {studentName}
+          {displayName}
         </Text>
       </View>
 
