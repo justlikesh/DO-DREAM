@@ -73,12 +73,6 @@ export default function Join({ onLoginSuccess }: JoinProps) {
     if (!password) return showErrorToast('비밀번호를 입력해주세요');
 
     setIsLoggingIn(true);
-    void Swal.fire({
-      title: '로그인 중…',
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      didOpen: () => Swal.showLoading(),
-    });
 
     try {
       const res = await fetch(`${API_BASE}/api/auth/teacher/login`, {
