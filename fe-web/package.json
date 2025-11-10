@@ -25,6 +25,7 @@
     "@tiptap/extension-underline": "^3.7.2",
     "@tiptap/react": "^3.7.2",
     "@tiptap/starter-kit": "^3.7.2",
+    "lottie-web": "^5.13.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.546.0",
     "react": "^19.1.1",
