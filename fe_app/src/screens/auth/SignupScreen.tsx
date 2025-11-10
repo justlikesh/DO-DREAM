@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,12 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  findNodeHandle,
+  AccessibilityInfo,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { SignupScreenNavigationProp } from "../../navigation/navigationTypes";
@@ -47,7 +53,11 @@ export default function SignupScreen() {
 
     // 다음 단계로
     setCurrentStep("verify");
-    accessibilityUtil.announce("입력하신 정보를 확인해주세요");
+    // 학번을 한 자리씩 읽도록 공백으로 구분
+    const studentNumberSpaced = studentNumber.split("").join(" ");
+    // accessibilityUtil.announce(
+    //   `입력하신 정보를 확인해주세요. 학번 ${studentNumberSpaced}, 이름 ${name}. 맞으면 확인 버튼을 탭하세요.`
+    // );
   };
 
   // Step 2: 정보 확인 및 사전 인증
@@ -155,90 +165,110 @@ export default function SignupScreen() {
     switch (currentStep) {
       case "input":
         return (
-          <View style={styles.container}>
-            <Text style={styles.title}>회원가입</Text>
-            <Text style={styles.subtitle}>학번과 이름을 입력해주세요</Text>
-
-            {/* 학번 입력 */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>학번</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.textInput}
-                  value={studentNumber}
-                  onChangeText={setStudentNumber}
-                  placeholder="학번을 입력하세요"
-                  placeholderTextColor="#999"
-                  keyboardType="numeric"
-                  accessibilityLabel="학번 입력"
-                  accessibilityHint="숫자로 학번을 입력하세요"
-                />
-                <TouchableOpacity
-                  style={styles.voiceButton}
-                  accessibilityLabel="음성 입력"
-                  accessibilityHint="음성으로 학번을 입력합니다"
-                >
-                  <Text style={styles.voiceButtonText}>🎤</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* 이름 입력 */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>이름</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.textInput}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="이름을 입력하세요"
-                  placeholderTextColor="#999"
-                  accessibilityLabel="이름 입력"
-                  accessibilityHint="한글로 이름을 입력하세요"
-                />
-                <TouchableOpacity
-                  style={styles.voiceButton}
-                  accessibilityLabel="음성 입력"
-                  accessibilityHint="음성으로 이름을 입력합니다"
-                >
-                  <Text style={styles.voiceButtonText}>🎤</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* 다음 버튼 */}
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                (!studentNumber || !name) && styles.buttonDisabled,
-              ]}
-              onPress={handleInputComplete}
-              disabled={!studentNumber || !name || isLoading}
-              accessibilityLabel="다음"
-              accessibilityHint="입력한 정보를 확인합니다"
-              accessibilityState={{ disabled: !studentNumber || !name }}
+          <KeyboardAvoidingView
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>다음</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              <View style={styles.contentContainer}>
+                <Text style={styles.title}>회원가입</Text>
+                <Text style={styles.subtitle}>학번과 이름을 입력해주세요</Text>
+
+                {/* 학번 입력 */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>학번</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.textInput}
+                      value={studentNumber}
+                      onChangeText={setStudentNumber}
+                      placeholder="학번을 입력하세요"
+                      placeholderTextColor="#999"
+                      keyboardType="numeric"
+                      accessibilityLabel="학번 입력"
+                      accessibilityHint="숫자로 학번을 입력하세요"
+                    />
+                    <TouchableOpacity
+                      style={styles.voiceButton}
+                      accessibilityLabel="음성 입력"
+                      accessibilityHint="음성으로 학번을 입력합니다"
+                    >
+                      <Text style={styles.voiceButtonText}>🎤</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 이름 입력 */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>이름</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      style={styles.textInput}
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="이름을 입력하세요"
+                      placeholderTextColor="#999"
+                      accessibilityLabel="이름 입력"
+                      accessibilityHint="한글로 이름을 입력하세요"
+                    />
+                    <TouchableOpacity
+                      style={styles.voiceButton}
+                      accessibilityLabel="음성 입력"
+                      accessibilityHint="음성으로 이름을 입력합니다"
+                    >
+                      <Text style={styles.voiceButtonText}>🎤</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* 다음 버튼 */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    (!studentNumber || !name) && styles.buttonDisabled,
+                  ]}
+                  onPress={handleInputComplete}
+                  disabled={!studentNumber || !name || isLoading}
+                  accessibilityLabel="다음"
+                  accessibilityHint="입력한 정보를 확인합니다"
+                  accessibilityState={{ disabled: !studentNumber || !name }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>다음</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         );
 
       case "verify":
         return (
           <View style={styles.container}>
             <Text style={styles.title}>정보 확인</Text>
-            <Text style={styles.subtitle}>입력하신 정보가 맞나요?</Text>
+            {/* <Text style={styles.subtitle}>입력하신 정보가 맞나요?</Text> */}
 
-            <View style={styles.infoBox}>
+            <View
+              style={styles.infoBox}
+              accessible={true}
+              accessibilityLabel={`학번 ${studentNumber.split("").join(" ")}`}
+            >
               <Text style={styles.infoLabel}>학번</Text>
               <Text style={styles.infoValue}>{studentNumber}</Text>
             </View>
 
-            <View style={styles.infoBox}>
+            <View
+              style={styles.infoBox}
+              accessible={true}
+              accessibilityLabel={`이름 ${name}`}
+            >
               <Text style={styles.infoLabel}>이름</Text>
               <Text style={styles.infoValue}>{name}</Text>
             </View>
@@ -300,13 +330,27 @@ export default function SignupScreen() {
     }
   };
 
-  return <View style={styles.screen}>{renderStepContent()}</View>;
+  return (
+    <SafeAreaView style={styles.screen}>{renderStepContent()}</SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#FFF",
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+    minHeight: "100%",
   },
   container: {
     flex: 1,
@@ -316,7 +360,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 12,
+    marginBottom: 36,
     textAlign: "center",
   },
   subtitle: {
