@@ -17,6 +17,7 @@ import QuizListScreen from "../screens/quiz/QuizListScreen";
 import QuizScreen from "../screens/quiz/QuizScreen";
 import QuizResultScreen from "../screens/quiz/QuizResultScreen";
 import BookmarkListScreen from "../screens/library/BookmarkListScreen";
+import SettingsScreen from "../screens/settings/SettingsScreen";
 
 import { navigationRef } from "./RootNavigation";
 
@@ -42,7 +43,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} onReady={() => console.log('Navigation ready')}>
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{
@@ -113,6 +114,11 @@ export default function AppNavigator() {
           component={BookmarkListScreen}
           options={{ title: "북마크 목록" }}
         />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: "사용자 설정" }}
+        />        
       </Stack.Navigator>
     </NavigationContainer>
   );

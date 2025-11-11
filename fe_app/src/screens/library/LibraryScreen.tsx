@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   View,
+  AccessibilityInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,6 +27,12 @@ export default function LibraryScreen() {
   const handleMaterialPress = (material: Material) => {
     console.log('선택한 교재:', material.title);
     navigation.navigate('PlaybackChoice', { material });
+  };
+  
+  // 설정 버튼 핸들러
+  const handleSettingsPress = () => {
+    AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
+    navigation.navigate('Settings');
   };
 
   const renderMaterialButton = ({ item }: { item: Material }) => {
@@ -73,6 +80,19 @@ export default function LibraryScreen() {
         >
           {displayName}
         </Text>
+        
+        {/* 설정 버튼 */}
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={handleSettingsPress}
+          accessible={true}
+          accessibilityLabel="사용자 설정"
+          accessibilityRole="button"
+          accessibilityHint="TTS 속도 및 화면 설정을 변경합니다."
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={styles.settingsIcon}>⚙️</Text>
+        </TouchableOpacity>        
       </View>
 
       <FlatList
@@ -93,6 +113,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   header: {
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center', 
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 24,
@@ -103,6 +126,23 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     color: '#333333',
+    // 버튼 공간을 위해 flex 사용 가능 (옵션)
+    // flex: 1, 
+  },
+  settingsButton: { 
+    padding: 10,
+    minWidth: 44, 
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fde676',
+    borderRadius: 12,
+    borderStyle: 'solid',
+    borderWidth: 2,
+    borderColor: '#f8d93cff',
+  },
+  settingsIcon: {
+    fontSize: 28,
   },
   listContent: {
     paddingHorizontal: 24,

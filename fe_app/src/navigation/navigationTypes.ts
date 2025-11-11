@@ -41,9 +41,10 @@ export type RootStackParamList = {
     }[];
   };
   BookmarkList: {
-    material: Material;
-    chapterId: number;
+    material?: Material;
+    chapterId?: number;
   };
+  Settings: undefined;
 };
 
 // Navigation prop 타입
@@ -107,6 +108,11 @@ export type BookmarkListScreenNavigationProp = NativeStackNavigationProp<
   'BookmarkList'
 >;
 
+export type SettingsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Settings'
+>;
+
 // Route prop 타입
 export type PlaybackChoiceScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -141,4 +147,9 @@ export type QuizResultScreenRouteProp = RouteProp<
 export type BookmarkListScreenRouteProp = RouteProp<
   RootStackParamList,
   'BookmarkList'
+>;
+
+export type SettingsScreenRouteProp = RouteProp<
+  RootStackParamList,
+  'Settings'
 >;
