@@ -60,3 +60,7 @@ android/
 # Firebase
 google-services.json
 GoogleService-Info.plist
+
+# VisualStudioCode
+.vscode/
+*.code-workspace
