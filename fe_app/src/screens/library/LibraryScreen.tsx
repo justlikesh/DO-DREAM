@@ -13,22 +13,14 @@ import { LibraryScreenNavigationProp } from '../../navigation/navigationTypes';
 import { dummyMaterials } from '../../data/dummyMaterials';
 import { Material } from '../../types/material';
 import { useAuthStore } from '../../stores/authStore';
-import { useAppSettingsStore } from '../../stores/appSettingsStore'; // ✅ Store 추가
+import { useAppSettingsStore } from '../../stores/appSettingsStore';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
   const student = useAuthStore((state) => state.student);
-  const hydrate = useAuthStore((state) => state.hydrate);
 
   // 전역 설정 가져오기
   const settings = useAppSettingsStore((state) => state.settings);
-  const hydrateSettings = useAppSettingsStore((state) => state.hydrate);
-
-  // 컴포넌트 마운트 시 저장된 정보 불러오기
-  useEffect(() => {
-    hydrate();
-    hydrateSettings();
-  }, [hydrate, hydrateSettings]);
 
   const handleMaterialPress = (material: Material) => {
     console.log('선택한 교재:', material.title);

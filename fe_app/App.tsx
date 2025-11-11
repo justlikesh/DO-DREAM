@@ -4,15 +4,33 @@ import { StatusBar } from "expo-status-bar";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { navigationRef } from "./src/navigation/RootNavigation";
 import GlobalVoiceTriggers from "./src/components/GlobalVoiceTriggers";
-import { TriggerProvider } from "./src/triggers/TriggerContext";
+import { TriggerProvider } from "./src/triggers/TriggerContext"; 
 import { useAppSettingsStore } from "./src/stores/appSettingsStore";
+import { useAuthStore } from "./src/stores/authStore";
+import ttsService from "./src/services/ttsService";
 
 export default function App() {
-  const hydrateSettings = useAppSettingsStore((state) => state.hydrate);
+  const hydrateAuth = useAuthStore((state) => state.hydrate);
+  const hydrateSettings = useAppSettingsStore((state) => state.hydrate); 
 
   useEffect(() => {
-    hydrateSettings();
-  }, []);
+    const initializeApp = async () => {
+      // 스토리지에서 인증 정보와 설정 정보를 불러옵니다.
+      hydrateAuth();
+      await hydrateSettings();
+
+      // 불러온 설정값으로 TTS 서비스를 동기화합니다.
+      const currentSettings = useAppSettingsStore.getState().settings;
+      await ttsService.syncWithSettings({
+        rate: currentSettings.ttsRate,
+        pitch: currentSettings.ttsPitch,
+        volume: currentSettings.ttsVolume,
+        voiceId: currentSettings.ttsVoiceId,
+      });
+    };
+
+    initializeApp();
+  }, [hydrateAuth, hydrateSettings]);
 
   return (
     <>
