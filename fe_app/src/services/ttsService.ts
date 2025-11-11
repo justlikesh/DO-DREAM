@@ -13,6 +13,13 @@ export interface PauseSettings {
   default: number;
 }
 
+export interface SyncOptions {
+  rate: number;
+  pitch: number;
+  volume: number;
+  voiceId: string | null;
+}
+
 export interface TTSOptions {
   language?: string;
   pitch?: number;
@@ -83,7 +90,7 @@ class TTSService {
 
       const initialOptions = this.getOptions();
       await Tts.setDefaultLanguage(initialOptions.language || 'ko-KR');
-      await Tts.setDefaultRate(initialOptions.rate || 1.0);
+      await Tts.setDefaultRate((initialOptions.rate || 1.0) / 2);
       await Tts.setDefaultPitch(initialOptions.pitch || 1.0);
       
     } catch (error) {
@@ -101,8 +108,8 @@ class TTSService {
 
     this.options = {
       language: 'ko-KR',
-      pitch: 1.0,
-      rate: 1.0,
+      pitch: options.pitch || 1.0,
+      rate: options.rate || 1.0, // 기본 배속 1.0x
       volume: 1.0,
       pauseSettings: { ...this.defaultPauseSettings },
       ...options,
@@ -119,9 +126,29 @@ class TTSService {
     console.log('[TTS] Initialized with options:', this.options);
   }
 
+  /**
+   * 앱 설정 스토어와 TTS 서비스의 상태를 동기화합니다.
+   * 앱 시작 시 hydrate 이후 호출되어야 합니다.
+   */
+  async syncWithSettings(settings: SyncOptions): Promise<void> {
+    console.log('[TTS] Syncing with app settings:', settings);
+    this.options.rate = settings.rate;
+    this.options.pitch = settings.pitch;
+    this.options.volume = settings.volume;
+    if (settings.voiceId) {
+      this.options.voice = settings.voiceId;
+    }
+
+    if (this.isTtsInitialized) {
+      await this.applyTtsOptions(this.options);
+    } else {
+      console.warn('[TTS] Tts Engine not initialized, skipping sync apply.');
+    }
+  }
+
   private async applyTtsOptions(options: TTSOptions) {
       if (options.language) await Tts.setDefaultLanguage(options.language);
-      if (options.rate !== undefined) await Tts.setDefaultRate(options.rate);
+      if (options.rate !== undefined) await Tts.setDefaultRate(options.rate / 2);
       if (options.pitch !== undefined) await Tts.setDefaultPitch(options.pitch);
       if (options.voice) await Tts.setDefaultVoice(options.voice);
   }
@@ -197,7 +224,7 @@ class TTSService {
 
       Tts.speak(currentSection.text, {
         iosVoiceId: this.options.voice || '',
-        rate: this.options.rate || 1.0,
+        rate: (this.options.rate || 1.0) / 2,
         androidParams: {
           KEY_PARAM_STREAM: 'STREAM_MUSIC',
           KEY_PARAM_VOLUME: this.options.volume || 1.0,
@@ -414,6 +441,58 @@ class TTSService {
     console.log('[TTS] Voice changed to:', voice);
     await this.updateAndReplay(() => {
       this.options.voice = voice;
+    });
+  }
+
+  /**
+   * 현재 TTS 설정으로 샘플 텍스트를 재생합니다.
+   * 설정 화면 등에서 테스트용으로 사용됩니다.
+   * @param text 재생할 텍스트
+   */
+  async speakSample(text: string): Promise<void> {
+    if (!this.isTtsInitialized) {
+      console.warn('[TTS] Tts Engine not initialized, skipping sample speak.');
+      return;
+    }
+
+    // speakSample이 완료될 때까지 기다리도록 Promise로 감쌉니다.
+    return new Promise(async (resolve, reject) => {
+      try {
+        await this.stop();
+        await this.applyTtsOptions(this.options);
+  
+        const finishListener = () => {
+          Tts.removeAllListeners('tts-finish');
+          Tts.removeAllListeners('tts-error');
+          resolve();
+        };
+  
+        const errorListener = (error: any) => {
+          Tts.removeAllListeners('tts-finish');
+          Tts.removeAllListeners('tts-error');
+          console.error('[TTS] Failed to speak sample:', error);
+          this.options.onError?.(error as Error);
+          reject(error);
+        };
+  
+        Tts.addEventListener('tts-finish', finishListener);
+        Tts.addEventListener('tts-error', errorListener);
+  
+        console.log('[TTS] Speaking sample with options:', this.options);
+        Tts.speak(text, {
+          iosVoiceId: this.options.voice || '',
+          rate: (this.options.rate || 1.0) / 2,
+          androidParams: {
+            KEY_PARAM_STREAM: 'STREAM_MUSIC',
+            KEY_PARAM_VOLUME: this.options.volume || 1.0,
+            KEY_PARAM_PAN: 0,
+          },
+        });
+      } catch (error) {
+        console.error('[TTS] Failed to initiate sample speak:', error);
+        this.options.onError?.(error as Error);
+        reject(error);
+      }
     });
   }
 

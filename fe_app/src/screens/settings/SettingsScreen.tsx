@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import ttsService from '../../services/ttsService';
 import { useAuthStore } from '../../stores/authStore';
-import { useAppSettingsStore } from '../../stores/appSettingsStore'; // ✅ Store 추가
-import Tts from 'react-native-tts';
+import { useAppSettingsStore } from '../../stores/appSettingsStore';
+import * as Haptics from 'expo-haptics';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -28,6 +28,7 @@ export default function SettingsScreen() {
   const setTTSVoiceId = useAppSettingsStore((state) => state.setTTSVoiceId);
   const setHighContrastMode = useAppSettingsStore((state) => state.setHighContrastMode);
   const setFontSizeScale = useAppSettingsStore((state) => state.setFontSizeScale);
+  const resetSettings = useAppSettingsStore((state) => state.resetSettings);
   
   const [availableVoices, setAvailableVoices] = useState<{ 
     id: string; 
@@ -36,6 +37,8 @@ export default function SettingsScreen() {
     quality: number; 
     default?: boolean 
   }[]>([]);
+
+  const [isTestingTts, setIsTestingTts] = useState(false);
 
   useEffect(() => {
     const loadVoices = async () => {
@@ -57,74 +60,83 @@ export default function SettingsScreen() {
   const handleRateChange = useCallback(async (rate: number) => {
     setTTSRate(rate);
     await ttsService.setRate(rate);
-    AccessibilityInfo.announceForAccessibility(`${rate}배`);
+    AccessibilityInfo.announceForAccessibility(`${rate.toFixed(2)}배`);
+    ttsService.speakSample("현재 속도로 재생됩니다.");
   }, [setTTSRate]);
 
   const handlePitchChange = useCallback(async (pitch: number) => {
     setTTSPitch(pitch);
     await ttsService.setPitch(pitch);
-    AccessibilityInfo.announceForAccessibility(`${pitch.toFixed(1)}`);
+    AccessibilityInfo.announceForAccessibility(`높낮이 ${pitch.toFixed(1)}`);
+    ttsService.speakSample("현재 높낮이로 재생됩니다.");
   }, [setTTSPitch]);
 
   const handleVolumeChange = useCallback((volume: number) => {
     setTTSVolume(volume);
     ttsService.setVolume(volume);
     AccessibilityInfo.announceForAccessibility(`${Math.round(volume * 100)}퍼센트`);
+    ttsService.speakSample("현재 볼륨으로 재생됩니다.");
   }, [setTTSVolume]);
 
   const handleVoiceChange = useCallback(async (voiceId: string) => {
     setTTSVoiceId(voiceId);
     await ttsService.setVoice(voiceId);
     const voiceName = availableVoices.find(v => v.id === voiceId)?.name || '선택됨';
-    AccessibilityInfo.announceForAccessibility(`${voiceName}`);
+    AccessibilityInfo.announceForAccessibility(`${voiceName}으로 변경되었습니다.`); 
+    // 샘플 음성 재생
+    ttsService.speakSample("현재 목소리로 재생됩니다.");
   }, [setTTSVoiceId, availableVoices]);
 
   const handleHighContrastChange = useCallback((enabled: boolean) => {
     setHighContrastMode(enabled);
     AccessibilityInfo.announceForAccessibility(enabled ? '켜짐' : '꺼짐');
   }, [setHighContrastMode]);
-
+  
   const handleFontSizeChange = useCallback((scale: number) => {
     setFontSizeScale(scale);
     AccessibilityInfo.announceForAccessibility(`${Math.round(scale * 100)}퍼센트`);
   }, [setFontSizeScale]);
   
   const handleTestTTS = async () => {
-    const isSpeaking = await ttsService.isSpeaking();
-    if (isSpeaking) {
-      await ttsService.stop();
-    }
+    if (isTestingTts) return;
 
-    AccessibilityInfo.announceForAccessibility("테스트");
-
+    AccessibilityInfo.announceForAccessibility("테스트 재생");
+    setIsTestingTts(true);
     try {
-      const onFinish = () => {
-        Tts.removeAllListeners('tts-finish');
-        Tts.removeAllListeners('tts-error');
-      };
-      const onError = (error: any) => {
-        Tts.removeAllListeners('tts-finish');
-        Tts.removeAllListeners('tts-error');
-        console.error("Test TTS Error:", error);
-        AccessibilityInfo.announceForAccessibility("오류");
-      };
-
-      Tts.addEventListener('tts-finish', onFinish);
-      Tts.addEventListener('tts-error', onError);
-
-      Tts.speak("현재 설정으로 재생됩니다.", {
-        iosVoiceId: settings.ttsVoiceId || '',
-        rate: settings.ttsRate,
-        androidParams: {
-          KEY_PARAM_STREAM: 'STREAM_MUSIC',
-          KEY_PARAM_VOLUME: settings.ttsVolume,
-          KEY_PARAM_PAN: 0,
-        },
-      });
-    } catch (error) {
-      console.error("Test TTS Error:", error);
-      AccessibilityInfo.announceForAccessibility("오류");
+      await ttsService.speakSample("현재 설정으로 재생됩니다.");
+    } finally {
+      setIsTestingTts(false);
     }
+  };
+
+  const handleResetSettings = () => {
+    Alert.alert(
+      "설정 초기화",
+      "모든 설정을 기본값으로 되돌리시겠습니까?",
+      [
+        {
+          text: "취소",
+          style: "cancel",
+          onPress: () => AccessibilityInfo.announceForAccessibility("취소되었습니다."),
+        },
+        {
+          text: "확인",
+          style: "destructive",
+          onPress: async () => {
+            resetSettings();
+            const defaultSettings = useAppSettingsStore.getState().settings;
+            await ttsService.syncWithSettings({
+              rate: defaultSettings.ttsRate,
+              pitch: defaultSettings.ttsPitch,
+              volume: defaultSettings.ttsVolume,
+              voiceId: defaultSettings.ttsVoiceId,
+            });
+            AccessibilityInfo.announceForAccessibility("모든 설정이 기본값으로 초기화되었습니다.");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
   };
   
   const renderButtonControl = (
@@ -409,13 +421,16 @@ export default function SettingsScreen() {
             </Text>
             
             <View style={styles.voiceList}>
-              {availableVoices.map((voice) => (
-                <TouchableOpacity
+              {availableVoices.map((voice) => {
+                const isSelected = settings.ttsVoiceId === voice.id;
+                const accessibilityLabel = `목소리, ${voice.name}, ${isSelected ? '선택됨' : '선택 안됨'}`;
+                return (
+                  <TouchableOpacity
                   key={voice.id}
                   style={[
                     styles.voiceBtn,
-                    settings.ttsVoiceId === voice.id && styles.voiceBtnSel,
-                    HC && settings.ttsVoiceId === voice.id && styles.voiceBtnSelHC,
+                    isSelected && styles.voiceBtnSel,
+                    HC && isSelected && styles.voiceBtnSelHC,
                   ]}
                   onPress={() => handleVoiceChange(voice.id)}
                   accessible={true}
@@ -426,17 +441,23 @@ export default function SettingsScreen() {
                   <Text style={[
                     styles.voiceTxt,
                     { fontSize: (baseSize - 2) * scale },
-                    settings.ttsVoiceId === voice.id && styles.voiceTxtSel,
-                    HC && settings.ttsVoiceId === voice.id && styles.voiceTxtSelHC,
+                    isSelected && styles.voiceTxtSel,
+                    HC && isSelected && styles.voiceTxtSelHC,
                   ]}>
                     {voice.name}
                   </Text>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </View>
           </View>
 
-          {renderAction('테스트', handleTestTTS, '#FFC107', '#FFA000')}
+          {renderAction(
+            isTestingTts ? '재생 중...' : '테스트', 
+            handleTestTTS, 
+            isTestingTts ? '#4CAF50' : '#FFC107', // 재생 중일 때 녹색, 평상시 노란색
+            isTestingTts ? '#388E3C' : '#FFA000'
+          )}
         </View>
 
         <View style={[styles.section, HC && styles.sectionHC]}>
@@ -497,6 +518,8 @@ export default function SettingsScreen() {
               1.0.0
             </Text>
           </View>
+
+          {renderAction('기본값으로 되돌리기', handleResetSettings, '#F44336', '#D32F2F')}
         </View>
       </ScrollView>
     </SafeAreaView>

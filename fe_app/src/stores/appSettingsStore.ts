@@ -4,7 +4,7 @@
  * - 고대비 모드, 글자 크기
  * - MMKV와 자동 동기화
  */
-import { create } from 'zustand';
+import { create } from 'zustand'; 
 import {
   getTTSSpeed, saveTTSSpeed,
   getTTSPitch, saveTTSPitch,
@@ -12,7 +12,7 @@ import {
   getTTSVoiceId, saveTTSVoiceId,
   getHighContrastMode, saveHighContrastMode,
   getFontSizeScale, saveFontSizeScale,
-} from '../services/appStorage';
+} from '../services/appStorage'; 
 
 export interface AppSettings {
   ttsRate: number;
@@ -174,12 +174,9 @@ export const useAppSettingsStore = create<AppSettingsStore>((set, get) => ({
       saveTTSSpeed(DEFAULT_SETTINGS.ttsRate);
       saveTTSPitch(DEFAULT_SETTINGS.ttsPitch);
       saveTTSVolume(DEFAULT_SETTINGS.ttsVolume);
-      if (DEFAULT_SETTINGS.ttsVoiceId) {
-        saveTTSVoiceId(DEFAULT_SETTINGS.ttsVoiceId);
-      }
       saveHighContrastMode(DEFAULT_SETTINGS.highContrastMode);
       saveFontSizeScale(DEFAULT_SETTINGS.fontSizeScale);
-
+      saveTTSVoiceId(''); // 빈 문자열로 저장하여 voice id 초기화
       set({ settings: DEFAULT_SETTINGS });
       console.log('[AppSettingsStore] Settings reset to default');
     } catch (error) {
