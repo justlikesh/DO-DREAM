@@ -14,83 +14,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import ttsService from '../../services/ttsService';
 import { useAuthStore } from '../../stores/authStore';
+import { useAppSettingsStore } from '../../stores/appSettingsStore'; // ✅ Store 추가
 import Tts from 'react-native-tts';
-import { 
-    getTTSSpeed, saveTTSSpeed,
-    getTTSPitch, saveTTSPitch,
-    getTTSVolume, saveTTSVolume,
-    getTTSVoiceId, saveTTSVoiceId,
-    getHighContrastMode, saveHighContrastMode,
-    getFontSizeScale, saveFontSizeScale
-} from '../../services/appStorage';
 
-// --- 설정 값 타입 정의 ---
-export interface AppSettings {
-  ttsRate: number;
-  ttsPitch: number;
-  ttsVolume: number;
-  ttsVoiceId: string | null;
-  highContrastMode: boolean;
-  fontSizeScale: number;
-}
-
-const DEFAULT_SETTINGS: AppSettings = {
-  ttsRate: 1.0,
-  ttsPitch: 1.0,
-  ttsVolume: 1.0,
-  ttsVoiceId: null,
-  highContrastMode: false,
-  fontSizeScale: 1.2,
-};
-
-// --- MMKV 저장소 훅 ---
-const useSettings = () => {
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-
-  const loadSettings = useCallback(() => {
-    const loadedSettings: AppSettings = {
-        ttsRate: getTTSSpeed(),
-        ttsPitch: getTTSPitch(),
-        ttsVolume: getTTSVolume(),
-        ttsVoiceId: getTTSVoiceId(),
-        highContrastMode: getHighContrastMode(),
-        fontSizeScale: getFontSizeScale() || 1.2,
-    };
-    
-    setSettings(loadedSettings);
-    
-    ttsService.setRate(loadedSettings.ttsRate);
-    ttsService.setPitch(loadedSettings.ttsPitch);
-    ttsService.setVolume(loadedSettings.ttsVolume);
-    if (loadedSettings.ttsVoiceId) {
-        ttsService.setVoice(loadedSettings.ttsVoiceId);
-    }
-  }, []);
-
-  const saveSettings = useCallback(async (newSettings: AppSettings) => {
-    saveTTSSpeed(newSettings.ttsRate);
-    saveTTSPitch(newSettings.ttsPitch);
-    saveTTSVolume(newSettings.ttsVolume);
-    if (newSettings.ttsVoiceId) saveTTSVoiceId(newSettings.ttsVoiceId);
-    saveHighContrastMode(newSettings.highContrastMode);
-    saveFontSizeScale(newSettings.fontSizeScale);
-    
-    setSettings(newSettings);
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
-  return { settings, saveSettings, loadSettings };
-};
-
-// --- 메인 컴포넌트 ---
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { settings, saveSettings } = useSettings();
-  const [availableVoices, setAvailableVoices] = useState<{ id: string; name: string; language: string; quality: number; default?: boolean }[]>([]);
   const logout = useAuthStore((state) => state.logout);
+  
+  const settings = useAppSettingsStore((state) => state.settings);
+  const setTTSRate = useAppSettingsStore((state) => state.setTTSRate);
+  const setTTSPitch = useAppSettingsStore((state) => state.setTTSPitch);
+  const setTTSVolume = useAppSettingsStore((state) => state.setTTSVolume);
+  const setTTSVoiceId = useAppSettingsStore((state) => state.setTTSVoiceId);
+  const setHighContrastMode = useAppSettingsStore((state) => state.setHighContrastMode);
+  const setFontSizeScale = useAppSettingsStore((state) => state.setFontSizeScale);
+  
+  const [availableVoices, setAvailableVoices] = useState<{ 
+    id: string; 
+    name: string; 
+    language: string; 
+    quality: number; 
+    default?: boolean 
+  }[]>([]);
 
   useEffect(() => {
     const loadVoices = async () => {
@@ -100,36 +45,49 @@ export default function SettingsScreen() {
       
       setAvailableVoices(voices);
 
+      // 저장된 음성이 없다면 첫 번째 음성을 기본값으로
       if (!settings.ttsVoiceId && voices.length > 0) {
-          handleSettingChange('ttsVoiceId', voices[0].id);
+        handleVoiceChange(voices[0].id);
       }
     };
     loadVoices();
-  }, []); 
+  }, []);
 
-  const handleSettingChange = useCallback(async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    const newSettings = { ...settings, [key]: value };
-    await saveSettings(newSettings);
+  // 각 설정별 핸들러 (Store 액션 호출 + TTS 서비스 적용)
+  const handleRateChange = useCallback(async (rate: number) => {
+    setTTSRate(rate);
+    await ttsService.setRate(rate);
+    AccessibilityInfo.announceForAccessibility(`${rate}배`);
+  }, [setTTSRate]);
 
-    if (key === 'ttsRate') {
-      await ttsService.setRate(value as number);
-      AccessibilityInfo.announceForAccessibility(`${value}배`);
-    } else if (key === 'ttsPitch') {
-      await ttsService.setPitch(value as number);
-      AccessibilityInfo.announceForAccessibility(`${(value as number).toFixed(1)}`);
-    } else if (key === 'ttsVolume') {
-      ttsService.setVolume(value as number);
-      AccessibilityInfo.announceForAccessibility(`${Math.round((value as number) * 100)}퍼센트`);
-    } else if (key === 'ttsVoiceId') {
-      await ttsService.setVoice(value as string);
-      const voiceName = availableVoices.find(v => v.id === value)?.name || '선택됨';
-      AccessibilityInfo.announceForAccessibility(`${voiceName}`);
-    } else if (key === 'highContrastMode') {
-      AccessibilityInfo.announceForAccessibility(value ? '켜짐' : '꺼짐');
-    } else if (key === 'fontSizeScale') {
-       AccessibilityInfo.announceForAccessibility(`${Math.round((value as number) * 100)}퍼센트`);
-    }
-  }, [settings, saveSettings, availableVoices]);
+  const handlePitchChange = useCallback(async (pitch: number) => {
+    setTTSPitch(pitch);
+    await ttsService.setPitch(pitch);
+    AccessibilityInfo.announceForAccessibility(`${pitch.toFixed(1)}`);
+  }, [setTTSPitch]);
+
+  const handleVolumeChange = useCallback((volume: number) => {
+    setTTSVolume(volume);
+    ttsService.setVolume(volume);
+    AccessibilityInfo.announceForAccessibility(`${Math.round(volume * 100)}퍼센트`);
+  }, [setTTSVolume]);
+
+  const handleVoiceChange = useCallback(async (voiceId: string) => {
+    setTTSVoiceId(voiceId);
+    await ttsService.setVoice(voiceId);
+    const voiceName = availableVoices.find(v => v.id === voiceId)?.name || '선택됨';
+    AccessibilityInfo.announceForAccessibility(`${voiceName}`);
+  }, [setTTSVoiceId, availableVoices]);
+
+  const handleHighContrastChange = useCallback((enabled: boolean) => {
+    setHighContrastMode(enabled);
+    AccessibilityInfo.announceForAccessibility(enabled ? '켜짐' : '꺼짐');
+  }, [setHighContrastMode]);
+
+  const handleFontSizeChange = useCallback((scale: number) => {
+    setFontSizeScale(scale);
+    AccessibilityInfo.announceForAccessibility(`${Math.round(scale * 100)}퍼센트`);
+  }, [setFontSizeScale]);
   
   const handleTestTTS = async () => {
     const isSpeaking = await ttsService.isSpeaking();
@@ -171,24 +129,15 @@ export default function SettingsScreen() {
   
   const renderButtonControl = (
     label: string, 
-    key: keyof AppSettings, 
+    value: number,
     min: number, 
     max: number, 
     step: number,
-    value: number,
     displayFormatter: (v: number) => string,
-    unit: string
+    unit: string,
+    onDecrease: () => void,
+    onIncrease: () => void
   ) => {
-    const handleDecrease = () => {
-      const newValue = Math.max(min, Number((value - step).toFixed(2)));
-      handleSettingChange(key, newValue);
-    };
-
-    const handleIncrease = () => {
-      const newValue = Math.min(max, Number((value + step).toFixed(2)));
-      handleSettingChange(key, newValue);
-    };
-
     const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
@@ -237,7 +186,7 @@ export default function SettingsScreen() {
               value <= min && styles.ctrlBtnDisabled,
               HC && styles.ctrlBtnHC
             ]}
-            onPress={handleDecrease}
+            onPress={onDecrease}
             disabled={value <= min}
             accessible={true}
             accessibilityLabel="감소"
@@ -261,7 +210,7 @@ export default function SettingsScreen() {
               value >= max && styles.ctrlBtnDisabled,
               HC && styles.ctrlBtnHC
             ]}
-            onPress={handleIncrease}
+            onPress={onIncrease}
             disabled={value >= max}
             accessible={true}
             accessibilityLabel="증가"
@@ -283,7 +232,7 @@ export default function SettingsScreen() {
     );
   };
 
-  const renderSwitch = (label: string, key: keyof AppSettings, value: boolean) => {
+  const renderSwitch = (label: string, value: boolean, onChange: (v: boolean) => void) => {
     const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
@@ -300,7 +249,7 @@ export default function SettingsScreen() {
           {label}
         </Text>
         <Switch
-          onValueChange={(v) => handleSettingChange(key, v)}
+          onValueChange={onChange}
           value={value}
           trackColor={{ false: '#9E9E9E', true: '#4CAF50' }}
           thumbColor={value ? '#FFFFFF' : '#F5F5F5'}
@@ -355,9 +304,8 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView 
       style={[styles.container, HC && styles.containerHC]} 
-      edges={['top']}  // ✅ bottom 제거 (스크롤 방해 방지)
+      edges={['top']}
     >
-      {/* 헤더 */}
       <View style={[styles.header, HC && styles.headerHC]}>
         <TouchableOpacity
           onPress={handleGoBack}
@@ -392,10 +340,8 @@ export default function SettingsScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        // ✅ 키보드 회피 옵션 추가
         keyboardShouldPersistTaps="handled"
       >
-        {/* 음성 설정 */}
         <View style={[styles.section, HC && styles.sectionHC]}>
           <Text 
             style={[
@@ -409,9 +355,44 @@ export default function SettingsScreen() {
             음성 설정
           </Text>
 
-          {renderButtonControl('재생 속도', 'ttsRate', 0.5, 2.0, 0.1, settings.ttsRate, (v) => v.toFixed(1), '배')}
-          {renderButtonControl('높낮이', 'ttsPitch', 0.5, 2.0, 0.1, settings.ttsPitch, (v) => v.toFixed(1), '')}
-          {renderButtonControl('볼륨', 'ttsVolume', 0.0, 1.0, 0.1, settings.ttsVolume, (v) => Math.round(v * 100).toString(), '%')}
+          {/* 재생 속도 */}
+          {renderButtonControl(
+            '재생 속도',
+            settings.ttsRate,
+            0.5,
+            2.0,
+            0.1,
+            (v) => v.toFixed(1),
+            '배',
+            () => handleRateChange(Math.max(0.5, Number((settings.ttsRate - 0.1).toFixed(2)))),
+            () => handleRateChange(Math.min(2.0, Number((settings.ttsRate + 0.1).toFixed(2))))
+          )}
+
+          {/* 높낮이 */}
+          {renderButtonControl(
+            '높낮이',
+            settings.ttsPitch,
+            0.5,
+            2.0,
+            0.1,
+            (v) => v.toFixed(1),
+            '',
+            () => handlePitchChange(Math.max(0.5, Number((settings.ttsPitch - 0.1).toFixed(2)))),
+            () => handlePitchChange(Math.min(2.0, Number((settings.ttsPitch + 0.1).toFixed(2))))
+          )}
+
+          {/* 볼륨 */}
+          {renderButtonControl(
+            '볼륨',
+            settings.ttsVolume,
+            0.0,
+            1.0,
+            0.1,
+            (v) => Math.round(v * 100).toString(),
+            '%',
+            () => handleVolumeChange(Math.max(0.0, Number((settings.ttsVolume - 0.1).toFixed(2)))),
+            () => handleVolumeChange(Math.min(1.0, Number((settings.ttsVolume + 0.1).toFixed(2))))
+          )}
 
           {/* 음성 선택 */}
           <View style={styles.voiceSection}>
@@ -436,7 +417,7 @@ export default function SettingsScreen() {
                     settings.ttsVoiceId === voice.id && styles.voiceBtnSel,
                     HC && settings.ttsVoiceId === voice.id && styles.voiceBtnSelHC,
                   ]}
-                  onPress={() => handleSettingChange('ttsVoiceId', voice.id)}
+                  onPress={() => handleVoiceChange(voice.id)}
                   accessible={true}
                   accessibilityLabel={voice.name}
                   accessibilityRole="radio"
@@ -458,7 +439,6 @@ export default function SettingsScreen() {
           {renderAction('테스트', handleTestTTS, '#FFC107', '#FFA000')}
         </View>
 
-        {/* 화면 설정 */}
         <View style={[styles.section, HC && styles.sectionHC]}>
           <Text 
             style={[
@@ -472,11 +452,22 @@ export default function SettingsScreen() {
             화면 설정
           </Text>
 
-          {renderSwitch('고대비 모드', 'highContrastMode', settings.highContrastMode)}
-          {renderButtonControl('글자 크기', 'fontSizeScale', 0.8, 2.0, 0.1, settings.fontSizeScale, (v) => Math.round(v * 100).toString(), '%')}
+          {renderSwitch('고대비 모드', settings.highContrastMode, handleHighContrastChange)}
+          
+          {/* 글자 크기 */}
+          {renderButtonControl(
+            '글자 크기',
+            settings.fontSizeScale,
+            0.8,
+            2.0,
+            0.1,
+            (v) => Math.round(v * 100).toString(),
+            '%',
+            () => handleFontSizeChange(Math.max(0.8, Number((settings.fontSizeScale - 0.1).toFixed(2)))),
+            () => handleFontSizeChange(Math.min(2.0, Number((settings.fontSizeScale + 0.1).toFixed(2))))
+          )}
         </View>
 
-        {/* 앱 정보 */}
         <View style={[styles.section, HC && styles.sectionHC]}>
           <Text 
             style={[
@@ -512,15 +503,9 @@ export default function SettingsScreen() {
   );
 }
 
-// --- 스타일 ---
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#FFFFFF' 
-  },
-  containerHC: { 
-    backgroundColor: '#000000' 
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  containerHC: { backgroundColor: '#000000' },
   
   header: {
     flexDirection: 'row',
@@ -530,20 +515,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: '#E0E0E0',
   },
-  headerHC: { 
-    borderBottomColor: '#FFFFFF' 
-  },
-  backBtn: { 
-    padding: 12, 
-    minWidth: 80, 
-    minHeight: 60, 
-    justifyContent: 'center' 
-  },
-  backTxt: { 
-    fontSize: 28, 
-    color: '#2196F3', 
-    fontWeight: '700' 
-  },
+  headerHC: { borderBottomColor: '#FFFFFF' },
+  backBtn: { padding: 12, minWidth: 80, minHeight: 60, justifyContent: 'center' },
+  backTxt: { fontSize: 28, color: '#2196F3', fontWeight: '700' },
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -553,15 +527,8 @@ const styles = StyleSheet.create({
     marginRight: 80,
   },
   
-  // ✅ ScrollView flex 보장
-  scroll: { 
-    flex: 1 
-  },
-  scrollContent: { 
-    padding: 20, 
-    paddingBottom: 60,  // ✅ 하단 여백 충분히 확보
-    flexGrow: 1  // ✅ 컨텐츠가 적어도 스크롤 가능하도록
-  },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 60, flexGrow: 1 },
   
   section: {
     marginBottom: 32,
@@ -571,10 +538,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E0E0E0',
   },
-  sectionHC: { 
-    backgroundColor: '#1A1A1A', 
-    borderColor: '#FFFFFF' 
-  },
+  sectionHC: { backgroundColor: '#1A1A1A', borderColor: '#FFFFFF' },
   sectionTitle: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -585,20 +549,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#BDBDBD',
   },
   
-  controlGroup: { 
-    marginBottom: 28 
-  },
-  controlLabel: { 
-    fontSize: 24, 
-    fontWeight: '700', 
-    color: '#000000', 
-    marginBottom: 16 
-  },
-  btnRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12 
-  },
+  controlGroup: { marginBottom: 28 },
+  controlLabel: { fontSize: 24, fontWeight: '700', color: '#000000', marginBottom: 16 },
+  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   
   valueBox: {
     flex: 1,
@@ -614,23 +567,10 @@ const styles = StyleSheet.create({
     minHeight: 80,
     gap: 6,
   },
-  valueBoxHC: { 
-    backgroundColor: '#000000', 
-    borderColor: '#FFEB3B' 
-  },
-  valueNum: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#1565C0' 
-  },
-  valueNumHC: { 
-    color: '#FFEB3B' 
-  },
-  valueUnit: { 
-    fontSize: 20, 
-    fontWeight: '600', 
-    color: '#1565C0' 
-  },
+  valueBoxHC: { backgroundColor: '#000000', borderColor: '#FFEB3B' },
+  valueNum: { fontSize: 28, fontWeight: 'bold', color: '#1565C0' },
+  valueNumHC: { color: '#FFEB3B' },
+  valueUnit: { fontSize: 20, fontWeight: '600', color: '#1565C0' },
   
   ctrlBtn: {
     width: 80,
@@ -642,25 +582,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#1565C0',
   },
-  ctrlBtnHC: { 
-    backgroundColor: '#FFEB3B', 
-    borderColor: '#FBC02D' 
-  },
-  ctrlBtnDisabled: { 
-    backgroundColor: '#BDBDBD', 
-    borderColor: '#9E9E9E' 
-  },
-  ctrlBtnTxt: { 
-    fontSize: 40, 
-    fontWeight: 'bold', 
-    color: '#FFFFFF' 
-  },
-  ctrlBtnTxtHC: { 
-    color: '#000000' 
-  },
-  ctrlBtnTxtDisabled: { 
-    color: '#E0E0E0' 
-  },
+  ctrlBtnHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
+  ctrlBtnDisabled: { backgroundColor: '#BDBDBD', borderColor: '#9E9E9E' },
+  ctrlBtnTxt: { fontSize: 40, fontWeight: 'bold', color: '#FFFFFF' },
+  ctrlBtnTxtHC: { color: '#000000' },
+  ctrlBtnTxtDisabled: { color: '#E0E0E0' },
   
   switchRow: {
     flexDirection: 'row',
@@ -669,11 +595,8 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   
-  voiceSection: { 
-    marginBottom: 20,
-  },
-  voiceList: {
-  },
+  voiceSection: { marginBottom: 20 },
+  voiceList: {},
   voiceBtn: {
     backgroundColor: '#E3F2FD',
     borderRadius: 12,
@@ -685,27 +608,11 @@ const styles = StyleSheet.create({
     minHeight: 70,
     justifyContent: 'center',
   },
-  voiceBtnSel: { 
-    backgroundColor: '#2196F3', 
-    borderColor: '#1565C0' 
-  },
-  voiceBtnSelHC: { 
-    backgroundColor: '#FFEB3B', 
-    borderColor: '#FBC02D' 
-  },
-  voiceTxt: { 
-    fontSize: 22, 
-    color: '#1565C0', 
-    fontWeight: '600', 
-    textAlign: 'center' 
-  },
-  voiceTxtSel: { 
-    color: '#FFFFFF', 
-    fontWeight: 'bold' 
-  },
-  voiceTxtSelHC: { 
-    color: '#000000' 
-  },
+  voiceBtnSel: { backgroundColor: '#2196F3', borderColor: '#1565C0' },
+  voiceBtnSelHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
+  voiceTxt: { fontSize: 22, color: '#1565C0', fontWeight: '600', textAlign: 'center' },
+  voiceTxtSel: { color: '#FFFFFF', fontWeight: 'bold' },
+  voiceTxtSelHC: { color: '#000000' },
   
   actionBtn: {
     paddingVertical: 20,
@@ -717,36 +624,13 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     minHeight: 70,
   },
-  actionBtnHC: { 
-    backgroundColor: '#FFEB3B', 
-    borderColor: '#FBC02D' 
-  },
-  actionTxt: { 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    color: '#000000' 
-  },
-  actionTxtHC: { 
-    color: '#000000' 
-  },
+  actionBtnHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
+  actionTxt: { fontSize: 24, fontWeight: 'bold', color: '#000000' },
+  actionTxtHC: { color: '#000000' },
   
-  infoRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center' 
-  },
-  infoLabel: { 
-    fontSize: 22, 
-    color: '#666666', 
-    fontWeight: '600' 
-  },
-  infoValue: { 
-    fontSize: 22, 
-    color: '#333333', 
-    fontWeight: '600' 
-  },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  infoLabel: { fontSize: 22, color: '#666666', fontWeight: '600' },
+  infoValue: { fontSize: 22, color: '#333333', fontWeight: '600' },
   
-  textHC: { 
-    color: '#FFFFFF' 
-  },
+  textHC: { color: '#FFFFFF' },
 });

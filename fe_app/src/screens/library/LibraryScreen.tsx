@@ -13,23 +13,28 @@ import { LibraryScreenNavigationProp } from '../../navigation/navigationTypes';
 import { dummyMaterials } from '../../data/dummyMaterials';
 import { Material } from '../../types/material';
 import { useAuthStore } from '../../stores/authStore';
+import { useAppSettingsStore } from '../../stores/appSettingsStore'; // ✅ Store 추가
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
   const student = useAuthStore((state) => state.student);
   const hydrate = useAuthStore((state) => state.hydrate);
 
-  // 컴포넌트 마운트 시 저장된 인증 정보 불러오기
+  // 전역 설정 가져오기
+  const settings = useAppSettingsStore((state) => state.settings);
+  const hydrateSettings = useAppSettingsStore((state) => state.hydrate);
+
+  // 컴포넌트 마운트 시 저장된 정보 불러오기
   useEffect(() => {
     hydrate();
-  }, [hydrate]);
+    hydrateSettings();
+  }, [hydrate, hydrateSettings]);
 
   const handleMaterialPress = (material: Material) => {
     console.log('선택한 교재:', material.title);
     navigation.navigate('PlaybackChoice', { material });
   };
   
-  // 설정 버튼 핸들러
   const handleSettingsPress = () => {
     AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
     navigation.navigate('Settings');
@@ -39,6 +44,11 @@ export default function LibraryScreen() {
     const accessibilityLabel = `${item.title}, 현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. ${
       item.hasProgress ? '이어듣기 가능' : '처음부터 시작'
     }`;
+
+    // 폰트 크기 동적 적용
+    const baseFontSize = 24;
+    const scaledFontSize = baseFontSize * settings.fontSizeScale;
+    const scaledChapterFontSize = 18 * settings.fontSizeScale;
 
     return (
       <TouchableOpacity
@@ -50,9 +60,12 @@ export default function LibraryScreen() {
         accessibilityHint="두 번 탭하여 교재를 선택하세요"
       >
         <View style={styles.materialContent}>
-          <Text style={styles.subjectText}>{item.title}</Text>
+          {/* 글자 크기 동적 적용 */}
+          <Text style={[styles.subjectText, { fontSize: scaledFontSize }]}>
+            {item.title}
+          </Text>
           
-          <Text style={styles.chapterText}>
+          <Text style={[styles.chapterText, { fontSize: scaledChapterFontSize }]}>
             현재 {item.currentChapter}챕터
           </Text>
 
@@ -66,21 +79,31 @@ export default function LibraryScreen() {
     );
   };
 
-  // 학생 이름 표시 (로그인 정보가 있으면 실제 이름, 없으면 기본값)
   const displayName = student?.name || '학생';
 
+  // 고대비 모드 적용
+  const HC = settings.highContrastMode;
+  const headerFontSize = 36 * settings.fontSizeScale;
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+    <SafeAreaView 
+      style={[styles.container, HC && styles.containerHC]} 
+      edges={['top', 'bottom']}
+    >
+      <View style={[styles.header, HC && styles.headerHC]}>
         <Text 
-          style={styles.studentName}
+          style={[
+            styles.studentName, 
+            { fontSize: headerFontSize },
+            HC && styles.textHC
+          ]}
           accessible={true}
           accessibilityRole="header"
           accessibilityLabel={`${displayName} 학생의 서재`}
         >
           {displayName}
         </Text>
-        
+
         {/* 설정 버튼 */}
         <TouchableOpacity
           style={styles.settingsButton}
@@ -92,7 +115,7 @@ export default function LibraryScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={styles.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>        
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -112,6 +135,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  // 고대비 모드 스타일
+  containerHC: {
+    backgroundColor: '#000000',
+  },
   header: {
     flexDirection: 'row', 
     justifyContent: 'space-between',
@@ -122,12 +149,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: '#e0e0e0',
   },
+  headerHC: {
+    borderBottomColor: '#ffffff',
+  },
   studentName: {
     fontSize: 36,
     fontWeight: 'bold',
     color: '#333333',
-    // 버튼 공간을 위해 flex 사용 가능 (옵션)
-    // flex: 1, 
+  },
+  textHC: {
+    color: '#ffffff',
   },
   settingsButton: { 
     padding: 10,
@@ -135,11 +166,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fde676',
-    borderRadius: 12,
-    borderStyle: 'solid',
-    borderWidth: 2,
-    borderColor: '#f8d93cff',
   },
   settingsIcon: {
     fontSize: 28,
