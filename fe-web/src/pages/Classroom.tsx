@@ -2,21 +2,15 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import {
   ArrowLeft,
-  LogOut,
   FileText,
-  FolderOpen,
-  Users,
   Search,
   SortDesc,
   SortAsc,
   Trash2,
   Tag,
-  Clock,
-  NotebookPen,
 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import './Classroom.css';
-import './ClassroomList.css';
 import teacherAvatar from '../assets/classList/teacher.png';
 import maleImg from '../assets/classroom/male.png';
 import femaleImg from '../assets/classroom/female.png';
@@ -333,7 +327,7 @@ export default function Classroom() {
 
   /* ===== UI ===== */
   return (
-    <div className="cl-root cl-root--no-page-scroll">
+    <div className="cl-root cl-root--no-page-scroll classroom-page">
       {/* 헤더 */}
       <header className="cl-header">
         <div className="cl-header-wrapper">
@@ -400,7 +394,6 @@ export default function Classroom() {
           <section className="cl-card">
             <div className="cl-card-head">
               <div className="cl-head-left">
-                <FolderOpen size={18} />
                 <h3>공유된 학습 자료</h3>
               </div>
               <div className="cl-head-right">
@@ -492,7 +485,6 @@ export default function Classroom() {
           <section className="cl-card">
             <div className="cl-card-head">
               <div className="cl-head-left">
-                <Users size={18} />
                 <h3>학생 관리 ({filteredStudents.length}명)</h3>
               </div>
               <div className="cl-head-right">

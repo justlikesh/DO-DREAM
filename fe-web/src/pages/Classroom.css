@@ -92,7 +92,7 @@
   height: 36px;
   padding: 0 10px;
   background: #fff;
-  border: 2px solid rgba(0, 0, 0, 0.06);
+  border: none;
   border-radius: 10px;
 }
 .cl-input {
@@ -109,7 +109,7 @@
   padding: 6px 10px;
   border-radius: 10px;
   border: none;
-  background: #eee;
+  background-color: #eee;
   font-size: 12px;
   font-weight: 800;
   color: #374151;
@@ -164,15 +164,20 @@
   gap: 14px;
 }
 .cl-student-card {
-  background: #f8fafc;
   border-radius: 12px;
-  border: 3px dotted #cbd5e1;
   padding: 14px;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 250ms cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 .cl-student-card:hover {
-  background: #fff;
-  border: 3px dotted #192b55;
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(25, 43, 85, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(25, 43, 85, 0.1);
 }
+
 .cl-student-top {
   display: flex;
   align-items: center;
@@ -225,23 +230,4 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
-}
-@media (max-width: 480px) {
-  /* 이 구간은 Classroom 전용 요소가 거의 없어 최소화 */
-}
-
-.cl-student-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cl-student-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 28px rgba(25, 43, 85, 0.16);
-  background: #ffffff;
-  border-color: #192b55;
-}
-
-.cl-student-card:active {
-  transform: translateY(-2px);
 }
