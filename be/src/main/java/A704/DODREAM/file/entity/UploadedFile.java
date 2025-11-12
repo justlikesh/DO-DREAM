@@ -74,6 +74,14 @@ public class UploadedFile {
 
 	private LocalDateTime completedAt;
 
+	// PDF 파싱 관련 필드 (PdfService용)
+	private String jsonS3Key; // 파싱된 JSON의 S3 경로
+
+	private LocalDateTime parsedAt; // 파싱 완료 시각
+
+	@Column(columnDefinition = "TEXT")
+	private String indexes; // 목차 (검색용)
+
 	// 비즈니스 메서드
 	public void updateOcrStatus(OcrStatus status) {
 		this.ocrStatus = status;
@@ -92,6 +100,19 @@ public class UploadedFile {
 	public void addOcrPage(OcrPage page) {
 		this.ocrPages.add(page);
 		page.setUploadedFile(this);
+	}
+
+	// PDF 파싱 관련 setter
+	public void setJsonS3Key(String jsonS3Key) {
+		this.jsonS3Key = jsonS3Key;
+	}
+
+	public void setParsedAt(LocalDateTime parsedAt) {
+		this.parsedAt = parsedAt;
+	}
+
+	public void setIndexes(String indexes) {
+		this.indexes = indexes;
 	}
 
 	@PrePersist

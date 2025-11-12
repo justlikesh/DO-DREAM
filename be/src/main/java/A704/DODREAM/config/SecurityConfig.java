@@ -12,6 +12,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+
 import A704.DODREAM.auth.filter.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 
@@ -47,6 +48,8 @@ public class SecurityConfig {
 			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				// 인가 규칙(화이트리스트)은 여기에서만 관리
+        .requestMatchers("/api/pdf/**").permitAll()
+        .requestMatchers("/document/parse-pdf-from-cloudfront").permitAll()
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 				.requestMatchers("/error", "/error/**").permitAll()
 				.requestMatchers(
@@ -55,6 +58,7 @@ public class SecurityConfig {
 					"/swagger-resources/**"
 				).permitAll()
 				.requestMatchers("/api/auth/**", "/auth/**", "/actuator/**", "/health").permitAll()
+        .requestMatchers(HttpMethod.POST, "/api/files/presigned-url").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
 				// 나머지는 인증 필요
