@@ -15,7 +15,7 @@ public class WebClientConfig {
 	@Bean
 	public WebClient webClient() {
 		HttpClient httpClient = HttpClient.create()
-			.responseTimeout(Duration.ofSeconds(30));
+			.responseTimeout(Duration.ofMinutes(10));  // PDF 파싱은 시간이 오래 걸릴 수 있음 (Gemini API)
 
 		return WebClient.builder()
 			.clientConnector(new ReactorClientHttpConnector(httpClient))
