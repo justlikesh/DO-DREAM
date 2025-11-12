@@ -19,6 +19,17 @@ if not DATABASE_URL:
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     print("경고: GEMINI_API_KEY가 .env 파일에 설정되지 않았습니다.")
+    
+# AWS S3 설정
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-2")  # 서울 리전 기본값
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+
+if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+    print("경고: AWS credentials가 .env 파일에 설정되지 않았습니다.")
+if not S3_BUCKET_NAME:
+    print("경고: S3_BUCKET_NAME이 .env 파일에 설정되지 않았습니다.")
 
 # --- JWT Secret Key 디코딩 ---
 try:

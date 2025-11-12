@@ -1,17 +1,18 @@
 import google.generativeai as genai
 from typing import Dict, Any
 import json
-import os
+from app.document_processor.config import GEMINI_API_KEY
 
 class PDFParser:
     """PDF를 Gemini로 파싱하는 클래스"""
-    
+
     def __init__(self):
         """Gemini API 초기화"""
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
+        if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
-        genai.configure(api_key=api_key)
+
+        print(f"🔑 Gemini API 키 로드됨: {GEMINI_API_KEY[:20]}...")  # 디버깅용
+        genai.configure(api_key=GEMINI_API_KEY)
         
         # Gemini 2.5 Flash 사용
         self.model = genai.GenerativeModel('models/gemini-2.5-flash')
@@ -32,7 +33,13 @@ class PDFParser:
 2. JSON 외의 다른 텍스트는 절대 포함하지 마세요.
 3. 마크다운 코드 블록(```)을 사용하지 마세요.
 4. 문서의 구조를 정확하게 파악하여 계층적으로 표현해주세요.
-5. 모든 텍스트 내용을 빠짐없이 포함해주세요.
+5. 다음 유형의 내용은 추출 대상에서 제외하고, 나머지 본문 내용과 **'개념 플러스'** 내용을 포함합니다:
+**'개념 Check'** 등의 별도 박스나 강조 표시된 **보조 설명 중 '개념 플러스'를 제외한 항목**.
+**'사회적 희소가치', '상징', '상황 정의'** 등 본문 외곽에 위치한 **용어 정의** 박스.
+**'개념 플러스'는 반드시 추출에 포함**하며, 이를 **s_title** 또는 **ss_title** 중 적절한 계층에 넣어주세요.
+6. **'contents' 필드에 여러 항목이 나열될 경우, 슬래시(/)를 구분자로 사용하지 마세요.**
+7. **'contents' 필드의 여러 문장이나 목록 항목은 텍스트 내에서 반드시 불릿 포인트(•)와 줄 바꿈(\n)을 사용하여 원본 문서와 같이 목록 형태로 표현해주세요. 각 항목은 독립된 줄에 위치해야 합니다.** (예: "• 첫 번째 항목\n• 두 번째 항목")
+8. 모든 텍스트 내용을 빠짐없이 포함해주세요. (단, 5번 규칙에 따라 제외될 내용은 제외합니다.)
 
 **출력 형식:**
 {output_format}

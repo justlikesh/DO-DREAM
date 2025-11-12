@@ -1,5 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 # (수정) /api 같은 하위 경로에서 실행할 경우를 대비해 root_path를 설정합니다.
 # 서버의 실제 하위 경로에 맞춰 "/api" 부분을 수정하거나, 하위 경로가 없다면 이 줄을 제거하세요.
 app = FastAPI(
@@ -7,6 +9,19 @@ app = FastAPI(
     description="Spring 서버 JWT와 연동된 FastAPI 서버입니다.",
     version="1.0.0",
     root_path="/ai"  # 예: http://<도메인>/ai/docs 로 접속 시
+)
+
+# CORS 설정 추가
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",  # Spring Boot 서버
+        "http://127.0.0.1:8080",
+        # 필요시 프론트엔드 origin도 추가
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 헤더 허용
 )
 
 # --- 라우터 임포트 ---
