@@ -1,7 +1,7 @@
 import Tts from 'react-native-tts';
 import { Section } from '../types/chapter';
 import { PlayMode } from '../types/playMode';
-import { Platform } from 'react-native';
+import { Platform, AccessibilityInfo } from 'react-native';
 
 export type TTSStatus = 'idle' | 'playing' | 'paused' | 'stopped';
 
@@ -48,8 +48,8 @@ class TTSService {
 
   private speakToken: number = 0;
   private pauseAfterTimer: ReturnType<typeof setTimeout> | null = null;
-  
-  private isTtsInitialized: boolean = false; 
+
+  private isTtsInitialized: boolean = false;
 
   private defaultPauseSettings: PauseSettings = {
     heading: 1500,
@@ -59,31 +59,64 @@ class TTSService {
     default: 500,
   };
 
+  // TalkBack 안내가 먼저 나오도록 대기 시간(ms)
+  private srDelayMs = 2500;
+
+  // 오류 재시도 컨트롤
+  private retryCount = 0;
+  private readonly maxRetry = 2;
+
   constructor() {
     this.setupTtsListeners();
     this.initializeTtsEngine();
   }
 
+  private delay(ms: number) {
+    return new Promise<void>((r) => setTimeout(r, ms));
+  }
+
   private setupTtsListeners() {
-    Tts.addEventListener('tts-start', (event) => {
+    Tts.addEventListener('tts-start', () => {
+      this.status = 'playing';
     });
 
-    Tts.addEventListener('tts-finish', (event) => {
-        console.log('[TTS-Engine] tts-finish event fired');
+    Tts.addEventListener('tts-finish', () => {
+      this.options.onSectionComplete?.();
+      this.status = 'idle';
     });
 
-    Tts.addEventListener('tts-error', (event) => {
-        console.error('[TTS-Engine] tts-error event fired:', event);
-        this.status = 'idle';
-        this.options.onError?.(new Error((event as any).message || 'TTS Engine Error'));
+    Tts.addEventListener('tts-error', async (event) => {
+      console.error('[TTS-Engine] tts-error event fired:', event);
+      this.status = 'idle';
+
+      // 지연 + 보이스 폴백 후 재시도
+      if (this.retryCount < this.maxRetry) {
+        this.retryCount++;
+        await this.ensureVoiceFallback();
+        await this.delay(400 + 200 * this.retryCount);
+        try {
+          // 현재 섹션을 다시 시도
+          await this.stop();
+          await this.delay(120);
+          await this.play();
+          return;
+        } catch (e) {
+          console.warn('[TTS] Retry failed:', e);
+        }
+      }
+
+      this.options.onError?.(new Error((event as any)?.message || 'TTS Engine Error'));
     });
   }
 
   private async initializeTtsEngine() {
     try {
       if (Platform.OS === 'android') {
+        // Android: 다른 오디오를 살짝 낮춰서 충돌 완화
+        // @ts-ignore
+        Tts.setDucking?.(true);
       }
-      
+
       await Tts.getInitStatus();
       this.isTtsInitialized = true;
       console.log('[TTS] Tts Engine Initialized.');
@@ -92,7 +125,6 @@ class TTSService {
       await Tts.setDefaultLanguage(initialOptions.language || 'ko-KR');
       await Tts.setDefaultRate((initialOptions.rate || 1.0) / 2);
       await Tts.setDefaultPitch(initialOptions.pitch || 1.0);
-      
     } catch (error) {
       console.error('[TTS] Failed to initialize Tts Engine:', error);
       this.isTtsInitialized = false;
@@ -118,12 +150,20 @@ class TTSService {
 
     this.clearPauseAfterTimer();
     this.bumpSpeakToken();
-    
+
     if (this.isTtsInitialized) {
-        await this.applyTtsOptions(this.options);
+      await this.applyTtsOptions(this.options);
     }
-    
+
+    // 재시도 카운터 초기화
+    this.retryCount = 0;
+
     console.log('[TTS] Initialized with options:', this.options);
+  }
+
+  /** TalkBack 안내 대기 시간(ms) 조정 */
+  public setScreenReaderLeadDelay(ms: number) {
+    this.srDelayMs = Math.max(0, ms | 0);
   }
 
   /**
@@ -147,10 +187,10 @@ class TTSService {
   }
 
   private async applyTtsOptions(options: TTSOptions) {
-      if (options.language) await Tts.setDefaultLanguage(options.language);
-      if (options.rate !== undefined) await Tts.setDefaultRate(options.rate / 2);
-      if (options.pitch !== undefined) await Tts.setDefaultPitch(options.pitch);
-      if (options.voice) await Tts.setDefaultVoice(options.voice);
+    if (options.language) await Tts.setDefaultLanguage(options.language);
+    if (options.rate !== undefined) await Tts.setDefaultRate(options.rate / 2);
+    if (options.pitch !== undefined) await Tts.setDefaultPitch(options.pitch);
+    if (options.voice) await this.validateAndSetVoice(options.voice);
   }
 
   private bumpSpeakToken() {
@@ -198,10 +238,17 @@ class TTSService {
       console.warn('[TTS] Tts Engine not initialized yet.');
       return;
     }
-
     if (this.currentSectionIndex >= this.sections.length) {
       this.status = 'stopped';
       return;
+    }
+
+    // TalkBack 켜져 있으면 버튼 설명 먼저 나오도록 대기
+    try {
+      const sr = await AccessibilityInfo.isScreenReaderEnabled();
+      if (sr) await this.delay(this.srDelayMs);
+    } catch {
+      // ignore
     }
 
     const currentSection = this.sections[this.currentSectionIndex];
@@ -218,76 +265,77 @@ class TTSService {
     const myToken = ++this.speakToken;
 
     try {
-      console.log('[TTS] Calling Tts.speak()...');
+      await this.speakCurrent(currentSection.text);
 
-      await this.applyTtsOptions(this.options);
-
-      Tts.speak(currentSection.text, {
-        iosVoiceId: this.options.voice || '',
-        rate: (this.options.rate || 1.0) / 2,
-        androidParams: {
-          KEY_PARAM_STREAM: 'STREAM_MUSIC',
-          KEY_PARAM_VOLUME: this.options.volume || 1.0,
-          KEY_PARAM_PAN: 0,
-        },
-      });
-      
-      console.log('[TTS] Tts.speak() call initiated successfully');
-      
       this.status = 'playing';
       this.options.onStart?.();
 
       await this.waitForTtsFinish(myToken, pauseAfter);
-
     } catch (error) {
-      console.error('[TTS] ✗ Tts.speak() threw error:', error);
+      console.error('[TTS] ✗ speakCurrent error:', error);
       this.status = 'idle';
       this.options.onError?.(error as Error);
     }
   }
-  
-  private async waitForTtsFinish(token: number, pauseAfter: number): Promise<void> {
-      try {
-          await new Promise<void>((resolve, reject) => {
-              let finishListener: any = null;
-              let errorListener: any = null;
 
-              finishListener = (event: any) => {
-                  Tts.removeAllListeners('tts-finish');
-                  Tts.removeAllListeners('tts-error');
-                  resolve();
-              };
+  // stop → 짧은 지연 → 옵션 재적용 → speak (레이스/보이스 문제 완화)
+  private async speakCurrent(text: string): Promise<void> {
+    // 강제 정지 후 짧은 지연으로 엔진 상태 안정화
+    await Tts.stop().catch(() => {});
+    await this.delay(80);
 
-              errorListener = (event: any) => {
-                  Tts.removeAllListeners('tts-finish');
-                  Tts.removeAllListeners('tts-error');
-                  reject(new Error(event.message || 'TTS Error'));
-              };
+    await this.applyTtsOptions(this.options);
 
-              Tts.addEventListener('tts-finish', finishListener);
-              Tts.addEventListener('tts-error', errorListener);
-          });
+    // iOS: iosVoiceId, Android: stream/volume
+    await Tts.speak(text, {
+      iosVoiceId: this.options.voice || '',
+      rate: (this.options.rate || 1.0) / 2,
+      androidParams: {
+        KEY_PARAM_STREAM: 'STREAM_MUSIC',
+        KEY_PARAM_VOLUME: this.options.volume || 1.0,
+        KEY_PARAM_PAN: 0,
+      },
+    });
 
-          if (this.speakToken !== token) return;
-          console.log('[TTS] ✓ Tts playback finished');
-
-          this.clearPauseAfterTimer();
-          if (pauseAfter > 0) {
-              this.pauseAfterTimer = setTimeout(() => {
-                  if (this.speakToken !== token) return;
-                  this.handleDone();
-              }, pauseAfter);
-          } else {
-              this.handleDone();
-          }
-      } catch (error) {
-          if (this.speakToken !== token) return;
-          console.error('[TTS] ✗ Tts playback error:', error);
-          this.status = 'idle';
-          this.options.onError?.(error as Error);
-      }
+    console.log('[TTS] Tts.speak() call initiated successfully');
   }
 
+  private async waitForTtsFinish(token: number, pauseAfter: number): Promise<void> {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const finishListener = (event: any) => {
+          Tts.removeAllListeners('tts-finish');
+          Tts.removeAllListeners('tts-error');
+          resolve();
+        };
+        const errorListener = (event: any) => {
+          Tts.removeAllListeners('tts-finish');
+          Tts.removeAllListeners('tts-error');
+          reject(new Error(event?.message || 'TTS Error'));
+        };
+        Tts.addEventListener('tts-finish', finishListener);
+        Tts.addEventListener('tts-error', errorListener);
+      });
+
+      if (this.speakToken !== token) return;
+      console.log('[TTS] ✓ Tts playback finished');
+
+      this.clearPauseAfterTimer();
+      if (pauseAfter > 0) {
+        this.pauseAfterTimer = setTimeout(() => {
+          if (this.speakToken !== token) return;
+          this.handleDone();
+        }, pauseAfter);
+      } else {
+        this.handleDone();
+      }
+    } catch (error) {
+      if (this.speakToken !== token) return;
+      console.error('[TTS] ✗ Tts playback error:', error);
+      this.status = 'idle';
+      this.options.onError?.(error as Error);
+    }
+  }
 
   private handleDone(): void {
     switch (this.playMode) {
@@ -373,7 +421,7 @@ class TTSService {
       await this.play();
     }
   }
-  
+
   async previous(): Promise<void> {
     if (this.currentSectionIndex > 0) {
       await this.goToSection(this.currentSectionIndex - 1, true);
@@ -388,11 +436,11 @@ class TTSService {
 
   private async updateAndReplay(callback: () => void): Promise<void> {
     if (!this.isTtsInitialized) {
-        console.warn('[TTS] Tts Engine not initialized, skipping updateAndReplay.');
-        callback();
-        return;
+      console.warn('[TTS] Tts Engine not initialized, skipping updateAndReplay.');
+      callback();
+      return;
     }
-    
+
     const wasPlaying = this.status === 'playing';
     const currentIndex = this.currentSectionIndex;
 
@@ -416,7 +464,7 @@ class TTSService {
   async setRate(rate: number): Promise<void> {
     console.log('[TTS] Rate changed to:', rate);
     await this.updateAndReplay(() => {
-        this.options.rate = rate;
+      this.options.rate = rate;
     });
   }
 
@@ -460,13 +508,13 @@ class TTSService {
       try {
         await this.stop();
         await this.applyTtsOptions(this.options);
-  
+
         const finishListener = () => {
           Tts.removeAllListeners('tts-finish');
           Tts.removeAllListeners('tts-error');
           resolve();
         };
-  
+
         const errorListener = (error: any) => {
           Tts.removeAllListeners('tts-finish');
           Tts.removeAllListeners('tts-error');
@@ -474,12 +522,12 @@ class TTSService {
           this.options.onError?.(error as Error);
           reject(error);
         };
-  
+
         Tts.addEventListener('tts-finish', finishListener);
         Tts.addEventListener('tts-error', errorListener);
-  
+
         console.log('[TTS] Speaking sample with options:', this.options);
-        Tts.speak(text, {
+        await Tts.speak(text, {
           iosVoiceId: this.options.voice || '',
           rate: (this.options.rate || 1.0) / 2,
           androidParams: {
@@ -495,7 +543,6 @@ class TTSService {
       }
     });
   }
-
 
   setPauseSettings(settings: Partial<PauseSettings>): void {
     this.options.pauseSettings = {
@@ -529,7 +576,7 @@ class TTSService {
   getSections(): Section[] {
     return this.sections;
   }
-  
+
   getOptions(): TTSOptions {
     return this.options;
   }
@@ -538,9 +585,8 @@ class TTSService {
    * 목소리 이름을 사용자 친화적인 한국어로 변환 (통일된 형식)
    */
   private getVoiceDisplayName(voiceId: string, voiceName: string, index: number): string {
-    // 디버깅용 로그
     console.log(`[TTS] Processing voice: id=${voiceId}, name=${voiceName}`);
-    
+
     // 삼성 TTS 목소리 ID 패턴 처리 (SMTl = 여성, SMTm = 남성, SMTh = 고음)
     if (voiceId.includes('SMT')) {
       const match = voiceId.match(/SMT([lmh])(\d+)/);
@@ -583,10 +629,10 @@ class TTSService {
       }
       const voices = await Tts.voices();
       const koVoices = voices.filter((voice) => voice.language?.startsWith('ko'));
-      
+
       console.log('[TTS] Available Korean voices:', koVoices.length);
-      console.log('[TTS] Raw voice data:', koVoices.map(v => ({ id: v.id, name: v.name })));
-      
+      console.log('[TTS] Raw voice data:', koVoices.map((v) => ({ id: v.id, name: v.name })));
+
       // 목소리 이름을 사용자 친화적으로 변환 (통일된 형식)
       const processedVoices = koVoices.map((v, index) => ({
         id: v.id,
@@ -595,13 +641,48 @@ class TTSService {
         quality: v.quality,
         default: index === 0,
       }));
-      
-      console.log('[TTS] Processed voice names:', processedVoices.map(v => v.name));
-      
+
+      console.log('[TTS] Processed voice names:', processedVoices.map((v) => v.name));
+
       return processedVoices;
     } catch (error) {
       console.error('[TTS] Failed to get voices:', error);
       return [];
+    }
+  }
+
+  // voice 검증/설정 (요청한 voice가 없으면 한국어 보이스로 폴백)
+  private async validateAndSetVoice(voiceId?: string) {
+    if (!voiceId) return;
+    try {
+      const voices = await Tts.voices();
+      const hit = voices.find((v: any) => v?.id === voiceId || v?.name === voiceId);
+      if (hit) {
+        await Tts.setDefaultVoice(hit.id || voiceId);
+        return;
+      }
+      const ko = voices.find((v: any) => (v?.language || '').startsWith('ko'));
+      if (ko?.id) {
+        await Tts.setDefaultVoice(ko.id);
+        this.options.voice = ko.id;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private async ensureVoiceFallback() {
+    try {
+      const voices = await Tts.voices();
+      const ko = voices.find((v: any) => (v?.language || '').startsWith('ko'));
+      if (ko?.id) {
+        await Tts.setDefaultVoice(ko.id);
+        this.options.voice = ko.id;
+      } else {
+        this.options.voice = '';
+      }
+    } catch {
+      this.options.voice = '';
     }
   }
 
@@ -613,11 +694,11 @@ class TTSService {
     this.clearPauseAfterTimer();
     this.bumpSpeakToken();
     Tts.stop();
-    
+
     Tts.removeAllListeners('tts-start');
     Tts.removeAllListeners('tts-finish');
     Tts.removeAllListeners('tts-error');
-    
+
     this.sections = [];
     this.currentSectionIndex = 0;
     this.status = 'idle';
