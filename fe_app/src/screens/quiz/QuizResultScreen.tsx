@@ -343,7 +343,7 @@ export default function QuizResultScreen() {
           accessibilityRole="button"
           accessibilityHint="이 퀴즈를 처음부터 다시 풉니다"
         >
-          <Text style={styles.actionButtonText}>🔄 다시 풀기</Text>
+          <Text style={styles.actionButtonText}>다시 풀기</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.libraryButton]}
@@ -352,7 +352,7 @@ export default function QuizResultScreen() {
           accessibilityLabel="서재로 돌아가기"
           accessibilityRole="button"
         >
-          <Text style={styles.actionButtonText}>🏠 서재로</Text>
+          <Text style={styles.actionButtonText}>서재로</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
