@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -96,13 +97,15 @@ public class PdfService {
       // 2. S3 키 생성
       String s3Key = generateS3Key(filename);
 
-      // 3. S3에 업로드
+      // 3. S3에 업로드 (한글 파일명 URL 인코딩 처리)
+      String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8);
+
       PutObjectRequest putRequest = PutObjectRequest.builder()
           .bucket(bucketName)
           .key(s3Key)
           .contentType("application/pdf")
           .metadata(Map.of(
-              "original-filename", filename,
+              "original-filename", encodedFilename,
               "uploaded-by", userId.toString(),
               "uploaded-at", LocalDateTime.now().toString()
           ))
@@ -209,13 +212,15 @@ public class PdfService {
       // 2. S3 키 생성
       String s3Key = generateS3Key(originalFilename);
 
-      // 3. S3에 업로드
+      // 3. S3에 업로드 (한글 파일명 URL 인코딩 처리)
+      String encodedFilename = URLEncoder.encode(originalFilename, StandardCharsets.UTF_8);
+
       PutObjectRequest putRequest = PutObjectRequest.builder()
           .bucket(bucketName)
           .key(s3Key)
           .contentType("application/pdf")
           .metadata(Map.of(
-              "original-filename", originalFilename,
+              "original-filename", encodedFilename,
               "uploaded-by", userId.toString(),
               "uploaded-at", LocalDateTime.now().toString()
           ))
@@ -308,7 +313,7 @@ public class PdfService {
    */
   private String generateS3Key(String originalFileName) {
     String uuid = UUID.randomUUID().toString();
-    String extension = "";
+    String extension = ".pdf";
 
     int lastDotIndex = originalFileName.lastIndexOf('.');
     if (lastDotIndex > 0) {
@@ -418,6 +423,7 @@ public class PdfService {
       // JSON을 예쁘게 포맷팅
       String jsonString = objectMapper.writerWithDefaultPrettyPrinter()
           .writeValueAsString(jsonData);
+      String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
 
       // S3에 업로드
       PutObjectRequest putRequest = PutObjectRequest.builder()
@@ -427,7 +433,7 @@ public class PdfService {
           .metadata(Map.of(
               "original-pdf", pdfS3Key,
               "parsed-at", LocalDateTime.now().toString(),
-              "owner", username
+              "owner", encodedUsername
           ))
           .build();
 
