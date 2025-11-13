@@ -133,6 +133,125 @@ export default function ClassroomList({
     ].join('');
   };
 
+  // PDF 파싱 API 응답 타입(대충만 타입 잡아도 됨)
+  type ParsedPdfResponse = {
+    filename?: string;
+    pdfId?: number;
+    parsedData?: {
+      indexes?: string[];
+      data?: Array<{
+        index: string;
+        index_title: string;
+        titles: Array<{
+          title: string;
+          s_titles?: Array<{
+            s_title?: string;
+            contents?: string;
+            ss_titles?: Array<{
+              ss_title?: string;
+              contents?: string;
+            }>;
+          }>;
+        }>;
+      }>;
+    };
+  };
+
+  // 에디터로 넘길 챕터 타입
+  type ParsedChapter = {
+    id: string;
+    title: string;
+    content: string;
+  };
+
+  /** PDF를 API에 업로드해서 파싱 결과 받아오기 */
+  async function uploadAndParsePdf(
+    file: File,
+    API_BASE: string,
+  ): Promise<ParsedPdfResponse> {
+    // Swagger 가 쓰는 것과 최대한 비슷하게 "영문 안전 파일명"으로 변환
+    const safeBaseName = 'document'; // 진짜로 Swagger 랑 똑같이 가려면 그냥 고정
+    const safeFilename = `${safeBaseName}.pdf`;
+
+    const url = `${API_BASE}/api/pdf/upload-and-parse?filename=${encodeURIComponent(
+      safeFilename,
+    )}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        // Swagger curl 과 동일하게 맞추기
+        accept: '*/*',
+        'Content-Type': 'application/pdf',
+      },
+      body: file,
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('PDF 업로드 오류', res.status, text);
+      throw new Error(
+        text || `PDF 파싱 요청에 실패했습니다. (status: ${res.status})`,
+      );
+    }
+
+    return res.json();
+  }
+
+  /** parsedData 구조를 AdvancedEditor에서 사용할 챕터 배열로 변환 */
+  function buildChaptersFromParsedData(
+    parsedData: ParsedPdfResponse['parsedData'],
+  ): ParsedChapter[] {
+    const chapters: ParsedChapter[] = [];
+    if (!parsedData?.data || parsedData.data.length === 0) return chapters;
+
+    let idCounter = 1;
+
+    parsedData.data.forEach((section) => {
+      section.titles?.forEach((t) => {
+        const htmlParts: string[] = [];
+
+        t.s_titles?.forEach((s) => {
+          // (1) 사회·문화 현상 같은 소제목
+          if (s.s_title) {
+            htmlParts.push(`<h3>${s.s_title}</h3>`);
+          }
+
+          // 본문
+          if (s.contents) {
+            const text = s.contents.replace(/\n/g, '<br/>');
+            htmlParts.push(`<p>${text}</p>`);
+          }
+
+          // ① ~ 내용 리스트
+          if (s.ss_titles && s.ss_titles.length > 0) {
+            htmlParts.push('<ul>');
+            s.ss_titles.forEach((ss) => {
+              const strong = ss.ss_title
+                ? `<strong>${ss.ss_title}</strong> `
+                : '';
+              const text = (ss.contents || '').replace(/\n/g, '<br/>');
+              htmlParts.push(`<li>${strong}${text}</li>`);
+            });
+            htmlParts.push('</ul>');
+          }
+        });
+
+        chapters.push({
+          id: String(idCounter++),
+          // 챕터 탭에 보일 제목
+          title: t.title || `챕터 ${idCounter}`,
+          // 에디터 본문에 들어갈 HTML
+          content:
+            htmlParts.join('\n') || '<p>이 챕터에 대한 내용이 없습니다.</p>',
+        });
+      });
+    });
+
+    return chapters;
+  }
+
   // ✅ 파일 선택 트리거
   const handleCreateMaterial = () => {
     if (fileInputRef.current) fileInputRef.current.click();
@@ -144,6 +263,9 @@ export default function ClassroomList({
     e.target.value = '';
     if (!file) return;
 
+    // 🔹 확장자 제거한 문서 제목 (PDF, TXT 공통)
+    const docTitle = file.name.replace(/\.[^.]+$/, '') || '새로운 자료';
+
     void Swal.fire({
       title: '텍스트 추출 중입니다',
       html: '<div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;"><div style="width: 50px; height: 50px; border: 4px solid #192b55; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div><p style="color: #192b55; font-size: 18px;">파일을 처리하는 중입니다...</p></div><style>@keyframes spin { to { transform: rotate(360deg); } }</style>',
@@ -152,29 +274,62 @@ export default function ClassroomList({
       allowEscapeKey: false,
     });
 
+    const MIN_SHOW_MS = 1200;
+
     try {
-      // 최소 표시 시간(ms)
-      const MIN_SHOW_MS = 1200; // 1.2초 정도가 자연스러움
+      const isPdf =
+        file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 
-      // 실제 추출과 최소 지연을 동시에 기다림
-      const [extracted] = await Promise.all([
-        simulateExtract(file),
-        sleep(MIN_SHOW_MS),
-      ]);
+      if (isPdf) {
+        // 🔹 PDF: 파싱 API 호출
+        const [parsed] = await Promise.all([
+          uploadAndParsePdf(file, API_BASE),
+          sleep(MIN_SHOW_MS),
+        ]);
 
-      await Swal.close();
+        const chapters = buildChaptersFromParsedData(parsed.parsedData);
 
-      navigate('/editor', {
-        state: {
-          fileName: file.name,
-          extractedText: extracted.startsWith('<')
-            ? extracted
-            : `<h1>${file.name}</h1><p>${extracted
-                .replace(/\n/g, '</p><p>')
-                .replace(/<\/p><p>$/, '')}</p>`,
-        },
-      });
+        await Swal.close();
+
+        if (!chapters.length) {
+          await Swal.fire({
+            icon: 'error',
+            title: '파싱 결과가 없습니다',
+            text: 'PDF에서 챕터 정보를 찾지 못했어요. 직접 입력해 주세요.',
+            confirmButtonColor: '#192b55',
+          });
+          return;
+        }
+
+        // 🔹 문서 전체 제목 = 업로드한 문서 제목
+        navigate('/editor', {
+          state: {
+            fileName: docTitle, // ★ 여기!
+            chapters,
+          },
+        });
+      } else {
+        // 🔹 PDF 이외: 기존 데모 정리 + 제목만 통일
+        const [extracted] = await Promise.all([
+          simulateExtract(file),
+          sleep(MIN_SHOW_MS),
+        ]);
+
+        await Swal.close();
+
+        navigate('/editor', {
+          state: {
+            fileName: docTitle, // ★ 여기!
+            extractedText: extracted.startsWith('<')
+              ? extracted
+              : `<h1>${docTitle}</h1><p>${extracted
+                  .replace(/\n/g, '</p><p>')
+                  .replace(/<\/p><p>$/, '')}</p>`,
+          },
+        });
+      }
     } catch (err) {
+      await Swal.close();
       await Swal.fire({
         icon: 'error',
         title: '추출 실패',
