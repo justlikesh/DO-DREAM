@@ -418,7 +418,7 @@ public class PdfService {
       // JSON S3 키 생성 (같은 구조로)
       // parsed-json/user123/2024/01/abc123.json
       String jsonS3Key = pdfS3Key
-          .replace("pdfs/", "parsed-json/")
+          .replace(uploadPrefix + "/", "parsed-json/")
           .replace(".pdf", ".json");
 
       // JSON을 예쁘게 포맷팅
@@ -849,7 +849,7 @@ public class PdfService {
       // 개념 Check JSON S3 키 생성
       // concept-check-json/UUID.json
       String conceptCheckS3Key = pdfS3Key
-          .replace("pdf/", "concept-check-json/")
+          .replace(uploadPrefix + "/", "concept-check-json/")
           .replace(".pdf", ".json");
 
       // JSON을 예쁘게 포맷팅
