@@ -168,6 +168,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         'Content-Type': 'application/pdf',
       },
       body: file,
+      credentials: 'include'
     });
 
     if (!res.ok) {

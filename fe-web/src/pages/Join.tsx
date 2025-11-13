@@ -78,7 +78,7 @@ export default function Join({ onLoginSuccess }: JoinProps) {
       const res = await fetch(`${API_BASE}/api/auth/teacher/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // credentials: 'include', // 🔴 RT가 쿠키로 오므로 필수
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
