@@ -5,7 +5,7 @@
  * - TTS Speed (음성 속도)
  * - Device Info (기기 정보)
  * - App Settings (TTS Pitch, Volume, Voice ID, High Contrast, Font Size)
- * 
+ *
  * * 참고: 인증 관련은 authStorage.ts 사용
  */
 import { MMKV } from 'react-native-mmkv';
@@ -16,7 +16,7 @@ export const storage = new MMKV();
 
 // Storage Keys
 const KEYS = {
-  PROGRESS: (materialId: string, chapterId: number) => 
+  PROGRESS: (materialId: string, chapterId: number) =>
     `progress_${materialId}_${chapterId}`,
   STUDENT_NUMBER: 'student_number',
   TTS_SPEED: 'tts_speed',
@@ -28,6 +28,7 @@ const KEYS = {
   DEVICE_ID: 'device_id',
   DEVICE_SECRET: 'device_secret',
   PLATFORM: 'platform',
+  HAS_SEEN_SPLASH: 'has_seen_splash',
 };
 
 // Progress 관련
@@ -48,7 +49,7 @@ export const getProgress = (
     const key = KEYS.PROGRESS(materialId, chapterId);
     const data = storage.getString(key);
     if (!data) return null;
-    
+
     return JSON.parse(data) as LocalProgress;
   } catch (error) {
     console.error('Failed to parse progress:', error);
@@ -290,6 +291,81 @@ export const clearDeviceInfo = (): void => {
     console.log('[AppStorage] Device info cleared');
   } catch (error) {
     console.error('[AppStorage] Failed to clear device info:', error);
+  }
+};
+
+/**
+ * 재생 위치 저장 (섹션 인덱스 + 재생 모드)
+ */
+export interface PlayerPosition {
+  materialId: string;
+  chapterId: number;
+  sectionIndex: number;
+  playMode: 'single' | 'continuous' | 'repeat';
+  lastAccessedAt: string;
+}
+
+const PLAYER_POSITION_KEY = (materialId: string, chapterId: number) =>
+  `player_position_${materialId}_${chapterId}`;
+
+export const savePlayerPosition = (position: PlayerPosition): void => {
+  try {
+    const key = PLAYER_POSITION_KEY(position.materialId, position.chapterId);
+    storage.set(key, JSON.stringify(position));
+    console.log('[AppStorage] Player position saved:', position);
+  } catch (error) {
+    console.error('[AppStorage] Failed to save player position:', error);
+  }
+};
+
+export const getPlayerPosition = (
+  materialId: string,
+  chapterId: number
+): PlayerPosition | null => {
+  try {
+    const key = PLAYER_POSITION_KEY(materialId, chapterId);
+    const data = storage.getString(key);
+    if (!data) return null;
+
+    return JSON.parse(data) as PlayerPosition;
+  } catch (error) {
+    console.error('[AppStorage] Failed to get player position:', error);
+    return null;
+  }
+};
+
+export const deletePlayerPosition = (
+  materialId: string,
+  chapterId: number
+): void => {
+  try {
+    const key = PLAYER_POSITION_KEY(materialId, chapterId);
+    storage.delete(key);
+    console.log('[AppStorage] Player position deleted');
+  } catch (error) {
+    console.error('[AppStorage] Failed to delete player position:', error);
+  }
+};
+
+/**
+ * 온보딩 / 스플래시 관련
+ * - hasSeenSplash: 첫 실행 시만 스플래시 영상 보여주기 위한 플래그
+ */
+export const saveHasSeenSplash = (seen: boolean = true): void => {
+  try {
+    storage.set(KEYS.HAS_SEEN_SPLASH, seen);
+    console.log('[AppStorage] hasSeenSplash saved:', seen);
+  } catch (error) {
+    console.error('[AppStorage] Failed to save hasSeenSplash flag:', error);
+  }
+};
+
+export const getHasSeenSplash = (): boolean => {
+  try {
+    return storage.getBoolean(KEYS.HAS_SEEN_SPLASH) ?? false;
+  } catch (error) {
+    console.error('[AppStorage] Failed to get hasSeenSplash flag:', error);
+    return false;
   }
 };
 
