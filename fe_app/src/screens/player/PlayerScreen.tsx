@@ -199,9 +199,7 @@ export default function PlayerScreen() {
           }
 
           if (!playSuccess) {
-            console.warn(
-              "[PlayerScreen] ✗ 자동재생 실패 - 모든 재시도 소진"
-            );
+            console.warn("[PlayerScreen] ✗ 자동재생 실패 - 모든 재시도 소진");
             setIsPlaying(false);
           }
         }
@@ -225,9 +223,7 @@ export default function PlayerScreen() {
 
     isHandlingPlayPause.current = true;
     const uiPlaying = isPlayingRef.current;
-    console.log(
-      `[PlayerScreen] 재생/일시정지 시작: UI상태=${uiPlaying}`
-    );
+    console.log(`[PlayerScreen] 재생/일시정지 시작: UI상태=${uiPlaying}`);
 
     try {
       const actualStatus = ttsService.getStatus();
@@ -316,7 +312,11 @@ export default function PlayerScreen() {
 
   // 진행률 저장 (명시적 섹션 인덱스 전달)
   const saveProgressData = useCallback(
-    (isCompleted: boolean, sectionIndex?: number, playModeOverride?: PlayMode) => {
+    (
+      isCompleted: boolean,
+      sectionIndex?: number,
+      playModeOverride?: PlayMode
+    ) => {
       if (!chapter) return;
 
       const sectionIndexToSave =
@@ -363,10 +363,7 @@ export default function PlayerScreen() {
   useEffect(() => {
     if (!chapter) return;
 
-    const savedPosition = getPlayerPosition(
-      material.id.toString(),
-      chapterId
-    );
+    const savedPosition = getPlayerPosition(material.id.toString(), chapterId);
 
     let startIndex = 0;
     let initialPlayMode: PlayMode = "single";
@@ -393,7 +390,10 @@ export default function PlayerScreen() {
       onDone: () => {
         console.log("[PlayerScreen] TTS onDone 콜백");
         setIsPlaying(false);
-        if (ttsService.getCurrentSectionIndex() === chapter.sections.length - 1) {
+        if (
+          ttsService.getCurrentSectionIndex() ===
+          chapter.sections.length - 1
+        ) {
           setIsChapterCompleted(true);
           saveProgressData(true);
           AccessibilityInfo.announceForAccessibility(
@@ -603,7 +603,7 @@ export default function PlayerScreen() {
     [material.id, chapterId, currentSectionIndex]
   );
 
-  // 북마크 토글
+  // 북마크 토글 (이제 헤더 버튼에서만 사용)
   const handleToggleBookmark = useCallback(async () => {
     if (!chapter) return;
 
@@ -717,6 +717,34 @@ export default function PlayerScreen() {
               accessibilityRole="button"
             >
               <Text style={styles.backButtonText}>← 뒤로</Text>
+            </TouchableOpacity>
+
+            {/* 저장 버튼 */}
+            <TouchableOpacity
+              style={[
+                styles.bookmarkHeaderButton,
+                bookmarked && styles.bookmarkHeaderButtonActive,
+              ]}
+              onPress={handleToggleBookmark}
+              accessible
+              accessibilityLabel={
+                bookmarked ? "저장 해제하기" : "이 위치 저장하기"
+              }
+              accessibilityHint={
+                bookmarked
+                  ? "현재 위치의 저장을 해제합니다"
+                  : "현재 학습 위치를 북마크에 저장합니다"
+              }
+              accessibilityRole="button"
+            >
+              <Text
+                style={[
+                  styles.bookmarkHeaderButtonText,
+                  bookmarked && styles.bookmarkHeaderButtonTextActive,
+                ]}
+              >
+                {bookmarked ? "저장 해제" : "저장하기"}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -840,7 +868,7 @@ export default function PlayerScreen() {
             onPress={handleOpenSettings}
             accessible
             accessibilityLabel="더보기"
-            accessibilityHint="재생 모드, 속도, 저장 설정을 변경할 수 있습니다"
+            accessibilityHint="재생 모드, 속도 설정을 변경할 수 있습니다"
             accessibilityRole="button"
           >
             <Text style={styles.moreButtonText}>더보기</Text>
@@ -885,8 +913,6 @@ export default function PlayerScreen() {
         visible={modalVisible}
         currentPlayMode={playMode}
         onPlayModeChange={handlePlayModeChange}
-        onBookmarkToggle={handleToggleBookmark}
-        isBookmarked={bookmarked}
         onClose={handleCloseModal}
       />
     </>
@@ -908,7 +934,7 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     flexDirection: "row",
-    justifyContent: "flex-start",
+    justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 8,
   },
@@ -920,6 +946,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backButtonText: { fontSize: 18, color: "#2196F3", fontWeight: "700" },
+  bookmarkHeaderButton: {
+    marginLeft: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#BDBDBD",
+    backgroundColor: "#F6F6F6",
+    minHeight: HEADER_BTN_MIN_HEIGHT,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bookmarkHeaderButtonActive: {
+    borderColor: "#43A047",
+    backgroundColor: "#E8F5E9",
+  },
+  bookmarkHeaderButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#E68A00",
+  },
+  bookmarkHeaderButtonTextActive: {
+    color: "#1B5E20",
+  },
 
   headerInfo: { marginTop: 4 },
   subjectText: { fontSize: 18, color: "#666666", marginBottom: 4 },
