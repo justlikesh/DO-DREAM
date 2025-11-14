@@ -10,6 +10,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   AccessibilityInfo,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -23,11 +24,19 @@ import {
 
 // 개발용 Mock 로그인 (테스트 완료 후 false로 변경)
 const ENABLE_MOCK_LOGIN = false;
-const VIDEO_DURATION_MS = 4000; // 첫 실행 + 비스크린리더 사용자용 영상 재생 시간
-const SR_DURATION_MS = 1000; // 스크린리더 사용자 또는 재실행 사용자 대기 시간
+// 첫 실행 + 비스크린리더 사용자용 영상 재생 시간
+const VIDEO_DURATION_MS = 5000;
+// 스크린리더 사용자 또는 재실행 사용자 대기 시간
+const SR_DURATION_MS = 2000;
 
 // 앱 시작 시 한 번만 읽어두는 플래그
 const hasSeenSplashOnceRefInit = getHasSeenSplash();
+
+// 전체 스크린 너비, 높이 구하기 (현재 스타일에서 높이/너비 세팅에 사용)
+const windowWidth = Dimensions.get("window").width;
+const windowHeight = Dimensions.get("window").height;
+const screenWidth = Dimensions.get("screen").width;
+const screenHeight = Dimensions.get("screen").height;
 
 export default function SplashScreen() {
   const navigation = useNavigation<SplashScreenNavigationProp>();
@@ -56,18 +65,11 @@ export default function SplashScreen() {
     }
   }, [navigation, accessToken]);
 
-  // 스크린리더 상태 확인 (첫 실행일 때만 의미 있음)
+  // 스크린리더 상태 확인 (대기 시간 계산용)
   useEffect(() => {
-    if (hasSeenSplashOnceRef.current) return; // 이미 본 적 있으면 SR 여부 상관없이 1초만 기다릴 거라 굳이 체크 안 해도 됨
-
+    // 첫 실행 여부와 상관없이, 현재는 "대기 시간" 계산에만 사용
     AccessibilityInfo.isScreenReaderEnabled().then((enabled) => {
       setIsScreenReaderEnabled(enabled);
-
-      if (enabled) {
-        AccessibilityInfo.announceForAccessibility(
-          "두드림을 실행합니다. 잠시만 기다려 주세요."
-        );
-      }
     });
 
     const subscription = AccessibilityInfo.addEventListener(
@@ -93,6 +95,10 @@ export default function SplashScreen() {
       "[SplashScreen] hasSeenSplashOnce:",
       hasSeenSplashOnceRef.current
     );
+    console.log(
+      "[SplashScreen] isScreenReaderEnabled:",
+      isScreenReaderEnabled
+    );
 
     if (ENABLE_MOCK_LOGIN && !accessToken) {
       console.log("[SplashScreen] Mock login enabled - injecting fake data");
@@ -110,13 +116,23 @@ export default function SplashScreen() {
 
     const isFirstRun = !hasSeenSplashOnceRef.current;
 
-    // 첫 실행: SR 켜져 있으면 1초, 아니면 4초
-    // 재실행: SR 여부와 상관없이 1초
+    // 첫 실행: 스크린리더 OFF → 5초, ON → 2초
+    // 재실행: SR 여부와 상관없이 2초
     const effectiveDuration = isFirstRun
       ? isScreenReaderEnabled
         ? SR_DURATION_MS
         : VIDEO_DURATION_MS
       : SR_DURATION_MS;
+
+    console.log(
+      "[SplashScreen] effectiveDuration:",
+      effectiveDuration,
+      "(isFirstRun:",
+      isFirstRun,
+      ", SR:",
+      isScreenReaderEnabled,
+      ")"
+    );
 
     const timer = setTimeout(() => {
       console.log(
@@ -124,7 +140,7 @@ export default function SplashScreen() {
         effectiveDuration
       );
       navigateNext();
-    }, effectiveDuration + 500);
+    }, effectiveDuration);
 
     return () => clearTimeout(timer);
   }, [
@@ -143,12 +159,10 @@ export default function SplashScreen() {
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (!status.isLoaded) return;
 
-    const isFirstRun = !hasSeenSplashOnceRef.current;
-
-    // 첫 실행 + 스크린리더 OFF + 영상이 끝까지 재생된 경우
-    if (status.didJustFinish && !isScreenReaderEnabled && isFirstRun) {
-      console.log("[SplashScreen] Video finished → navigateNext()");
-      navigateNext();
+    if (status.didJustFinish) {
+      // 이제는 영상 종료 시점에 따로 네비게이션하지 않고,
+      // 상단 useEffect의 타이머로만 화면 전환을 제어.
+      console.log("[SplashScreen] Video finished");
     }
   };
 
@@ -161,7 +175,7 @@ export default function SplashScreen() {
       importantForAccessibility="no-hide-descendants"
     >
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-        {/* 첫 실행 + 스크린리더 OFF일 때만 '건너뛰기' 노출 */}
+        {/* 첫 실행 + 스크린리더 OFF일 때만 '건너뛰기' 노출 (정책 유지) */}
         {isFirstRun && !isScreenReaderEnabled && (
           <TouchableOpacity
             style={styles.skipButton}
@@ -182,8 +196,8 @@ export default function SplashScreen() {
             source={require("../../../assets/splash_9-16.mp4")}
             resizeMode={ResizeMode.COVER}
             isLooping={false}
-            // 첫 실행 + 스크린리더 OFF 일 때만 실제 재생
-            shouldPlay={isFirstRun && !isScreenReaderEnabled}
+            // 재실행이든, 스크린리더 ON이든 항상 영상 재생
+            shouldPlay={true}
             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
           />
 
@@ -201,7 +215,9 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#192B55",
+    backgroundColor: "#27394F",
+    width: "100%",
+    height: "100%",
   },
   safeArea: {
     flex: 1,
@@ -223,11 +239,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    objectFit: "cover",
+    paddingVertical: 50,
+    width: screenWidth,
+    height: screenHeight,
   },
   video: {
+    flex: 1,
     width: "100%",
-    aspectRatio: 9/16,
+    aspectRatio: 9 / 16,
   },
   mockBadge: {
     position: "absolute",
