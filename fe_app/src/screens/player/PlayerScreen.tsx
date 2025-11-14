@@ -59,7 +59,15 @@ export default function PlayerScreen() {
   const appSettings = useAppSettingsStore((state) => state.settings);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
-  const { setMode, registerPlayPause } = useContext(TriggerContext);
+
+  const {
+    setMode,
+    registerPlayPause,
+    setCurrentScreenId,
+    registerVoiceHandlers,
+    startVoiceCommandListening,
+    isVoiceCommandListening,
+  } = useContext(TriggerContext);
 
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
@@ -92,7 +100,8 @@ export default function PlayerScreen() {
     ) => {
       if (!chapter) return;
 
-      const sectionIndexToSave = sectionIndex ?? ttsStateRef.current.currentSectionIndex;
+      const sectionIndexToSave =
+        sectionIndex ?? ttsStateRef.current.currentSectionIndex;
       const playModeToSave = playModeOverride ?? ttsStateRef.current.playMode;
 
       if (progressSaveTimerRef.current) {
@@ -152,16 +161,13 @@ export default function PlayerScreen() {
         saveProgressDataRef.current(true);
         AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
       }, []),
-      onSectionChange: useCallback(
-        (newIndex: number) => {
-          setTimeout(
-            () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
-            50
-          );
-          saveProgressDataRef.current(false, newIndex);
-        },
-        []
-      ),
+      onSectionChange: useCallback((newIndex: number) => {
+        setTimeout(
+          () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
+          50
+        );
+        saveProgressDataRef.current(false, newIndex);
+      }, []),
     });
   // --- 훅 사용 끝 ---
 
@@ -205,34 +211,15 @@ export default function PlayerScreen() {
     setBookmarked(isCurrentBookmarked);
   }, [currentSectionIndex, material.id, chapterId, chapter]);
 
-  // 트리거 등록/해제
-  useEffect(() => {
-    setMode("playpause");
-    registerPlayPause(ttsActions.togglePlayPause);
-
-    return () => {
-      console.log("[PlayerScreen] useEffect cleanup 시작");
-      registerPlayPause(null);
-      setMode("voice");
-
-      if (progressSaveTimerRef.current) {
-        clearTimeout(progressSaveTimerRef.current);
-      }
-
-      console.log("[PlayerScreen] useEffect cleanup 완료");
-    };
-  }, [setMode, registerPlayPause, ttsActions.togglePlayPause]);
-
-  // 화면 이탈 시 TTS 완전 정지
+  // 화면 이탈 시 진행 상황 저장
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", async () => {
       console.log("[PlayerScreen] 화면 이탈 감지 - TTS 정지");
-
       saveProgressData(false);
     });
 
     return unsubscribe;
-  }, [navigation, saveProgressDataRef]);
+  }, [navigation, saveProgressData]);
 
   // 질문하기
   const handleQuestionPress = useCallback(async () => {
@@ -281,11 +268,14 @@ export default function PlayerScreen() {
         playMode: newMode,
         lastAccessedAt: new Date().toISOString(),
       });
+      AccessibilityInfo.announceForAccessibility(
+        `${UI_MODE_LABELS[newMode as PlayModeKey]} 모드로 변경했습니다.`
+      );
     },
     [material.id, chapterId, currentSectionIndex, ttsActions]
   );
 
-  // 북마크 토글 (이제 헤더 버튼에서만 사용)
+  // 북마크 토글
   const handleToggleBookmark = useCallback(async () => {
     if (!chapter) return;
 
@@ -338,12 +328,170 @@ export default function PlayerScreen() {
         },
       ]
     );
-  }, [navigation, saveProgressDataRef]);
+  }, [navigation, saveProgressData]);
 
   // 챕터 완료 후 퀴즈 이동
   const handleQuizNavigation = useCallback(() => {
     navigation.replace("QuizList", { material, chapterId });
   }, [navigation, material, chapterId]);
+
+  // 재생 모드 음성 명령 파싱
+  const parseModeVoice = (spoken: string): PlayMode | null => {
+    const t = spoken.trim().toLowerCase();
+    const noSpace = t.replace(/\s+/g, "");
+
+    // single: 하나씩 모드, 한 섹션씩 모드, 한개 모드 등
+    if (
+      noSpace.includes("하나씩") ||
+      noSpace.includes("한개") ||
+      noSpace.includes("한개씩") ||
+      noSpace.includes("한섹션") ||
+      noSpace.includes("한섹션씩")
+    ) {
+      return "single";
+    }
+
+    // continuous: 연속 모드, 계속 모드
+    if (
+      noSpace.includes("연속") ||
+      noSpace.includes("계속모드") ||
+      noSpace.includes("계속재생") ||
+      noSpace.includes("계속으로")
+    ) {
+      return "continuous";
+    }
+
+    // repeat: 반복 모드
+    if (
+      noSpace.includes("반복") ||
+      noSpace.includes("반복모드") ||
+      noSpace.includes("반복재생") ||
+      noSpace.includes("반복으로")
+    ) {
+      return "repeat";
+    }
+
+    return null;
+  };
+
+  // Player 화면 전용 음성 명령(rawText) 처리
+  const handlePlayerVoiceRaw = useCallback(
+    (spoken: string) => {
+      const t = spoken.trim().toLowerCase();
+
+      // 1) 재생 모드 변경
+      const modeFromVoice = parseModeVoice(spoken);
+      if (modeFromVoice) {
+        handlePlayModeChange(modeFromVoice);
+        return;
+      }
+
+      // 2) 저장 / 북마크
+      if (t.includes("저장") || t.includes("북마크")) {
+        handleToggleBookmark();
+        return;
+      }
+
+      // 3) 설정 / 속도 / 모드 / 목소리
+      if (
+        t.includes("설정") ||
+        t.includes("속도") ||
+        t.includes("모드") ||
+        t.includes("목소리")
+      ) {
+        handleOpenSettings();
+        return;
+      }
+
+      // 4) 질문하기 (전역 파서가 놓친 경우 대비)
+      if (t.includes("질문")) {
+        handleQuestionPress();
+        return;
+      }
+
+      // 5) 퀴즈 (전역 파서가 놓친 경우 대비)
+      if (t.includes("퀴즈") || t.includes("문제 풀")) {
+        if (hasQuiz) {
+          handleQuizNavigation();
+        } else {
+          AccessibilityInfo.announceForAccessibility(
+            "이 챕터에는 퀴즈가 없습니다."
+          );
+        }
+        return;
+      }
+
+      // 그 외: 안내
+      console.log("[VoiceCommands][Player] 처리할 수 없는 rawText:", spoken);
+      AccessibilityInfo.announceForAccessibility(
+        "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드처럼 말해 주세요."
+      );
+    },
+    [
+      handlePlayModeChange,
+      handleToggleBookmark,
+      handleOpenSettings,
+      handleQuestionPress,
+      handleQuizNavigation,
+      hasQuiz,
+    ]
+  );
+
+  // 음성 명령 핸들러 등록
+  useEffect(() => {
+    setCurrentScreenId("Player");
+
+    // 볼륨키 모드: 재생/일시정지
+    setMode("playpause");
+    registerPlayPause(ttsActions.togglePlayPause);
+
+    registerVoiceHandlers("Player", {
+      // 전역 명령
+      playPause: ttsActions.togglePlayPause,
+      next: ttsActions.playNext,
+      prev: ttsActions.playPrevious,
+      openQuestion: handleQuestionPress,
+      goBack: handleBackPress,
+      openQuiz: hasQuiz ? handleQuizNavigation : undefined,
+      // Player 전용 rawText 명령
+      rawText: handlePlayerVoiceRaw,
+    });
+
+    return () => {
+      console.log("[PlayerScreen] useEffect cleanup 시작");
+      registerPlayPause(null);
+      setMode("voice");
+      registerVoiceHandlers("Player", {});
+
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
+      }
+      console.log("[PlayerScreen] useEffect cleanup 완료");
+    };
+  }, [
+    setCurrentScreenId,
+    setMode,
+    registerPlayPause,
+    registerVoiceHandlers,
+    ttsActions.togglePlayPause,
+    ttsActions.playNext,
+    ttsActions.playPrevious,
+    handleQuestionPress,
+    handleBackPress,
+    hasQuiz,
+    handleQuizNavigation,
+    handlePlayerVoiceRaw,
+  ]);
+
+  // 화면 진입 시 음성 안내 (처음 쓰는 사용자용)
+  useEffect(() => {
+    const msg =
+      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
+    const timer = setTimeout(() => {
+      AccessibilityInfo.announceForAccessibility(msg);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // 초기 포커스: TalkBack 켜져 있으면 "재생 버튼"에 포커스
   useEffect(() => {
@@ -399,40 +547,59 @@ export default function PlayerScreen() {
               <Text style={styles.backButtonText}>← 뒤로</Text>
             </TouchableOpacity>
 
-            {/* 저장 버튼 */}
-            <TouchableOpacity
-              style={[
-                styles.bookmarkHeaderButton,
-                bookmarked && styles.bookmarkHeaderButtonActive,
-              ]}
-              onPress={handleToggleBookmark}
-              accessible
-              accessibilityLabel={
-                bookmarked ? "저장 해제하기" : "이 위치 저장하기"
-              }
-              accessibilityHint={
-                bookmarked
-                  ? "현재 위치의 저장을 해제합니다"
-                  : "현재 학습 위치를 북마크에 저장합니다"
-              }
-              accessibilityRole="button"
-            >
-              <Text
+            {/* 오른쪽: 음성 명령 버튼 + 저장 버튼 묶음 */}
+            <View style={styles.headerRight}>
+              <TouchableOpacity
                 style={[
-                  styles.bookmarkHeaderButtonText,
-                  bookmarked && styles.bookmarkHeaderButtonTextActive,
+                  styles.voiceCommandButton,
+                  isVoiceCommandListening && styles.voiceCommandButtonActive,
                 ]}
+                onPress={startVoiceCommandListening}
+                accessible
+                accessibilityLabel="음성 명령"
+                accessibilityHint="두 번 탭한 후 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기와 같은 명령을 말씀하세요"
+                accessibilityRole="button"
               >
-                {bookmarked ? "저장 해제" : "저장하기"}
-              </Text>
-            </TouchableOpacity>
+                <Text style={styles.voiceCommandButtonText}>
+                  {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* 저장 버튼 */}
+              <TouchableOpacity
+                style={[
+                  styles.bookmarkHeaderButton,
+                  bookmarked && styles.bookmarkHeaderButtonActive,
+                ]}
+                onPress={handleToggleBookmark}
+                accessible
+                accessibilityLabel={
+                  bookmarked ? "저장 해제하기" : "이 위치 저장하기"
+                }
+                accessibilityHint={
+                  bookmarked
+                    ? "현재 위치의 저장을 해제합니다"
+                    : "현재 학습 위치를 북마크에 저장합니다"
+                }
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.bookmarkHeaderButtonText,
+                    bookmarked && styles.bookmarkHeaderButtonTextActive,
+                  ]}
+                >
+                  {bookmarked ? "저장 해제" : "저장하기"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.headerInfo}>
             <Text style={styles.subjectText}>{material.subject}</Text>
             <Text style={styles.chapterTitle}>{chapter.title}</Text>
             <Text style={styles.modeIndicator}>
-              모드: {UI_MODE_LABELS[playMode]}
+              모드: {UI_MODE_LABELS[playMode as PlayModeKey]}
             </Text>
           </View>
         </View>
@@ -508,7 +675,6 @@ export default function PlayerScreen() {
             ]}
             onPress={() => {
               if (isLastSection) {
-                // 마지막 섹션에서 '다음'을 누르면 완료 처리
                 setIsChapterCompleted(true);
                 saveProgressData(true);
                 AccessibilityInfo.announceForAccessibility("학습 완료");
@@ -517,9 +683,7 @@ export default function PlayerScreen() {
               }
             }}
             accessible
-            accessibilityLabel={
-              isLastSection ? "학습 완료" : "다음 섹션"
-            }
+            accessibilityLabel={isLastSection ? "학습 완료" : "다음 섹션"}
             accessibilityRole="button"
             accessibilityHint={
               isLastSection ? "챕터 학습을 완료하고 퀴즈 화면으로 이동합니다" : ""
@@ -555,7 +719,6 @@ export default function PlayerScreen() {
             <Text style={styles.moreButtonText}>설정 변경</Text>
           </TouchableOpacity>
         </View>
-
       </SafeAreaView>
 
       <PlayerSettingsModal
@@ -603,8 +766,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   backButtonText: { fontSize: 18, color: "#2196F3", fontWeight: "700" },
+
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  voiceCommandButton: {
+    marginRight: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#FF5722",
+    backgroundColor: "#FFF3E0",
+    minHeight: HEADER_BTN_MIN_HEIGHT,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  voiceCommandButtonActive: {
+    borderColor: "#C62828",
+    backgroundColor: "#FFCDD2",
+  },
+  voiceCommandButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#E64A19",
+  },
+
   bookmarkHeaderButton: {
-    marginLeft: 8,
+    marginLeft: 0,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
@@ -699,7 +889,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 14,
-    backgroundColor: "#FF9800", // 완료 버튼 색상 변경
+    backgroundColor: "#FF9800",
     minWidth: 100,
     minHeight: CONTROL_BTN_MIN_HEIGHT,
     alignItems: "center",
@@ -723,7 +913,7 @@ const styles = StyleSheet.create({
 
   disabledButton: {
     backgroundColor: "#BDBDBD",
-    borderColor: "#9E9E9E",
+    borderColor: "#9E9E3E",
     opacity: 0.6,
   },
 
