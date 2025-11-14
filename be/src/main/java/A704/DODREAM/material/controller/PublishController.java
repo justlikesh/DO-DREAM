@@ -3,6 +3,7 @@ package A704.DODREAM.material.controller;
 import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.material.dto.PublishRequest;
 import A704.DODREAM.material.dto.PublishResponseDto;
+import A704.DODREAM.material.dto.PublishedMaterialListResponse;
 import A704.DODREAM.material.service.PublishService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,6 +35,18 @@ public class PublishController {
         Long userId = userPrincipal.userId();
 
         PublishResponseDto response = publishService.publishJsonWithIds(pdfId, userId, publishRequest);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "발행한 자료 목록 조회")
+    @GetMapping("/published")
+    public ResponseEntity<PublishedMaterialListResponse> publisedMaterialList(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ){
+        Long userId = userPrincipal.userId();
+
+        PublishedMaterialListResponse response = publishService.getPublishedMaterialList(userId);
 
         return ResponseEntity.ok(response);
     }

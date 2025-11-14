@@ -6,6 +6,7 @@ import A704.DODREAM.file.entity.UploadedFile;
 import A704.DODREAM.file.repository.UploadedFileRepository;
 import A704.DODREAM.global.exception.CustomException;
 import A704.DODREAM.global.exception.constant.ErrorCode;
+import A704.DODREAM.material.dto.PublishedMaterialListResponse;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.repository.MaterialRepository;
 import A704.DODREAM.user.entity.User;
@@ -81,7 +82,7 @@ public class PublishService {
                     RequestBody.fromString(jsonString, StandardCharsets.UTF_8)
             );
 
-            Optional<Material> materialOpt = materialRepository.findByJsonS3Key(uploadedFile.getJsonS3Key());
+            Optional<Material> materialOpt = materialRepository.findByUploadedFileId(uploadedFile.getId());
 
             Material material;
             if(materialOpt.isPresent()){
@@ -91,12 +92,10 @@ public class PublishService {
                 material.setUpdatedAt(LocalDateTime.now());
             } else {
                 material = Material.builder()
+                        .uploadedFile(uploadedFile)
                         .teacher(teacher)
                         .title(publishRequest.getMaterialTitle())
                         .label(publishRequest.getLabelColor())
-                        .originalFileName(uploadedFile.getOriginalFileName())
-                        .fileUrl(uploadedFile.getS3Key())
-                        .jsonS3Key(uploadedFile.getJsonS3Key())
                         .build();
             }
 
@@ -170,5 +169,16 @@ public class PublishService {
         newMap.putAll(map);
 
         return newMap;
+    }
+
+    public PublishedMaterialListResponse getPublishedMaterialList(Long userId) {
+
+        User teacher = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+
+        List<Material> materials = materialRepository.findAllByTeacherIdWithUploadedFile(teacher.getId());
+
+        return PublishedMaterialListResponse.from(materials);
     }
 }
