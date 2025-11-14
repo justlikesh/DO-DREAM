@@ -51,9 +51,9 @@ public class PublishService {
             uploadedFile = uploadedFileRepository.findById(pdfId)
                     .orElseThrow(() -> new CustomException(ErrorCode.FILE_NOT_FOUND));
 
-            if (!uploadedFile.getUploaderId().equals(userId)) {
-                throw new CustomException(ErrorCode.FORBIDDEN);
-            }
+//            if (!uploadedFile.getUploaderId().equals(userId)) {
+//                throw new CustomException(ErrorCode.FORBIDDEN);
+//            }
 
             if (uploadedFile.getJsonS3Key() == null) {
                 throw new CustomException(ErrorCode.FILE_PARSING_FAILED);
