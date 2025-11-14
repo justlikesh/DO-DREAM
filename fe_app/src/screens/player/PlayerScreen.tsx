@@ -24,9 +24,7 @@ import {
 } from "../../navigation/navigationTypes";
 import { getChapterById } from "../../data/dummyChapters";
 import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
-import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
-import ttsService from "../../services/ttsService";
 import {
   saveProgress,
   savePlayerPosition,
@@ -42,13 +40,15 @@ import {
 } from "../../services/bookmarkStorage";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import PlayerSettingsModal from "../../components/PlayerSettingsModal";
+import ChapterCompletionModal from "../../components/ChapterCompletionModal";
+import { useTTSPlayer } from "../../hooks/useTTSPlayer";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
 const UI_MODE_LABELS: Record<PlayModeKey, string> = {
   continuous: "연속",
   repeat: "반복",
-  single: "1개",
+  single: "한 섹션씩",
 };
 
 export default function PlayerScreen() {
@@ -56,17 +56,8 @@ export default function PlayerScreen() {
   const route = useRoute<PlayerScreenRouteProp>();
   const { material, chapterId, fromStart } = route.params;
 
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const appSettings = useAppSettingsStore((state) => state.settings);
-
-  const [isPlaying, setIsPlaying] = useState(false);
-  const isPlayingRef = useRef(false);
-  useEffect(() => {
-    isPlayingRef.current = isPlaying;
-  }, [isPlaying]);
-
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
-  const [playMode, setPlayMode] = useState<PlayMode>("single");
   const [bookmarked, setBookmarked] = useState(false);
   const { setMode, registerPlayPause } = useContext(TriggerContext);
 
@@ -77,7 +68,6 @@ export default function PlayerScreen() {
   const playButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const prevButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const nextButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
-  const isInitialMount = useRef(true);
 
   // Modal 상태
   const [modalVisible, setModalVisible] = useState(false);
@@ -87,228 +77,11 @@ export default function PlayerScreen() {
   const onControlsLayout = (e: LayoutChangeEvent) =>
     setControlsHeight(e.nativeEvent.layout.height);
 
-  const chapter = getChapterById(chapterId);
+  const chapter = getChapterById(chapterId) || null;
   const quizzes = getQuizzesByChapterId(chapterId.toString());
   const hasQuiz = quizzes.length > 0;
 
   const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // 스크린리더 상태 추적
-  useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isScreenReaderEnabled().then(
-      (enabled) => mounted && setScreenReaderEnabled(enabled)
-    );
-    const sub = AccessibilityInfo.addEventListener(
-      "screenReaderChanged",
-      (enabled) => setScreenReaderEnabled(enabled)
-    );
-    return () => {
-      // @ts-ignore
-      sub?.remove?.();
-    };
-  }, []);
-
-  // TTS 실제 재생 상태 폴링
-  useEffect(() => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const actuallyPlaying = await ttsService.isSpeaking();
-        const status = ttsService.getStatus();
-
-        if (actuallyPlaying !== isPlayingRef.current) {
-          console.log(
-            `[PlayerScreen] 상태 동기화: UI=${isPlayingRef.current} -> 실제=${actuallyPlaying}`
-          );
-          setIsPlaying(actuallyPlaying);
-        }
-
-        if (!actuallyPlaying && status === "idle" && isPlayingRef.current) {
-          console.log("[PlayerScreen] TTS 정지 감지, UI 상태 업데이트");
-          setIsPlaying(false);
-        }
-      } catch (error) {
-        // 폴링 에러 무시
-      }
-    }, 500);
-
-    return () => clearInterval(pollInterval);
-  }, []);
-
-  // 저장(북마크) 상태 동기화
-  useEffect(() => {
-    if (!chapter) return;
-    const isCurrentBookmarked = isBookmarked(
-      material.id.toString(),
-      chapterId,
-      currentSectionIndex
-    );
-    setBookmarked(isCurrentBookmarked);
-  }, [currentSectionIndex, material.id, chapterId, chapter]);
-
-  // 자동 재생 보장 로직 (TalkBack OFF + 연속재생 모드에서만 사용)
-  const ensureAutoPlay = useCallback(async (delayMs: number) => {
-    setTimeout(async () => {
-      try {
-        const status = ttsService.getStatus();
-        console.log(`[PlayerScreen] 자동재생 시도: status=${status}`);
-
-        const speaking = await ttsService.isSpeaking();
-        if (speaking) {
-          console.log("[PlayerScreen] 이미 재생 중");
-          setIsPlaying(true);
-          return;
-        }
-
-        if (status === "idle" || status === "stopped" || status === "paused") {
-          let retryCount = 0;
-          const maxRetries = 3;
-          let playSuccess = false;
-
-          while (retryCount < maxRetries && !playSuccess) {
-            if (retryCount > 0) {
-              await new Promise((r) => setTimeout(r, 500));
-            }
-
-            try {
-              console.log(
-                `[PlayerScreen] 자동재생 시도 ${retryCount + 1}/${maxRetries}`
-              );
-
-              await ttsService.play();
-
-              await new Promise((r) => setTimeout(r, 1000));
-
-              const actuallyPlaying = await ttsService.isSpeaking();
-              console.log(`[PlayerScreen] 재생 확인: ${actuallyPlaying}`);
-
-              if (actuallyPlaying) {
-                playSuccess = true;
-                setIsPlaying(true);
-                console.log("[PlayerScreen] ✓ 자동재생 성공");
-                return;
-              }
-            } catch (error) {
-              console.error(
-                `[PlayerScreen] 재생 시도 ${retryCount + 1} 실패:`,
-                error
-              );
-            }
-
-            retryCount++;
-          }
-
-          if (!playSuccess) {
-            console.warn("[PlayerScreen] ✗ 자동재생 실패 - 모든 재시도 소진");
-            setIsPlaying(false);
-          }
-        }
-      } catch (error) {
-        console.error("[PlayerScreen] 자동재생 오류:", error);
-        setIsPlaying(false);
-      }
-    }, delayMs);
-  }, []);
-
-  // 재생/일시정지 핸들러 (ref 기반)
-  const isHandlingPlayPause = useRef(false);
-  const pendingPlayPauseRequest = useRef(false);
-
-  const handlePlayPause = useCallback(async () => {
-    if (isHandlingPlayPause.current) {
-      console.log("[PlayerScreen] 재생/일시정지 처리 중... 요청 큐잉");
-      pendingPlayPauseRequest.current = true;
-      return;
-    }
-
-    isHandlingPlayPause.current = true;
-    const uiPlaying = isPlayingRef.current;
-    console.log(`[PlayerScreen] 재생/일시정지 시작: UI상태=${uiPlaying}`);
-
-    try {
-      const actualStatus = ttsService.getStatus();
-      const actuallyPlaying = await ttsService.isSpeaking();
-
-      console.log(
-        `[PlayerScreen] TTS 실제 상태: status=${actualStatus}, playing=${actuallyPlaying}`
-      );
-
-      const shouldPause = actuallyPlaying || uiPlaying;
-
-      if (shouldPause) {
-        await ttsService.pause();
-        await new Promise((r) => setTimeout(r, 150));
-        setIsPlaying(false);
-        Haptics.selectionAsync();
-        console.log("[PlayerScreen] ✓ 일시정지 완료");
-      } else {
-        console.log("[PlayerScreen] 재생 시작...");
-
-        if (actualStatus === "paused") {
-          await ttsService.resume();
-        } else {
-          await ttsService.play();
-        }
-
-        await new Promise((r) => setTimeout(r, 600));
-
-        const nowPlaying = await ttsService.isSpeaking();
-
-        if (nowPlaying) {
-          setIsPlaying(true);
-          Haptics.selectionAsync();
-          console.log("[PlayerScreen] ✓ 재생 성공");
-        } else {
-          console.warn("[PlayerScreen] 재생 실패, 1회 재시도...");
-          await ttsService.stop();
-          await new Promise((r) => setTimeout(r, 200));
-          await ttsService.play();
-          await new Promise((r) => setTimeout(r, 600));
-
-          const retryPlaying = await ttsService.isSpeaking();
-          setIsPlaying(retryPlaying);
-
-          if (retryPlaying) {
-            Haptics.selectionAsync();
-            console.log("[PlayerScreen] ✓ 재시도 재생 성공");
-          } else {
-            console.error("[PlayerScreen] ✗ 재시도 재생 실패");
-          }
-        }
-      }
-    } catch (error) {
-      console.error("[PlayerScreen] 재생/일시정지 오류:", error);
-      setIsPlaying(false);
-    } finally {
-      isHandlingPlayPause.current = false;
-
-      if (pendingPlayPauseRequest.current) {
-        pendingPlayPauseRequest.current = false;
-        console.log("[PlayerScreen] 큐잉된 요청 처리");
-        setTimeout(() => handlePlayPause(), 100);
-      }
-    }
-  }, []);
-
-  // 트리거 등록/해제
-  useEffect(() => {
-    setMode("playpause");
-    registerPlayPause(handlePlayPause);
-
-    return () => {
-      console.log("[PlayerScreen] useEffect cleanup 시작");
-      registerPlayPause(null);
-      setMode("voice");
-
-      ttsService.stop();
-
-      if (progressSaveTimerRef.current) {
-        clearTimeout(progressSaveTimerRef.current);
-      }
-
-      console.log("[PlayerScreen] useEffect cleanup 완료");
-    };
-  }, [setMode, registerPlayPause, handlePlayPause]);
 
   // 진행률 저장 (명시적 섹션 인덱스 전달)
   const saveProgressData = useCallback(
@@ -319,11 +92,8 @@ export default function PlayerScreen() {
     ) => {
       if (!chapter) return;
 
-      const sectionIndexToSave =
-        sectionIndex !== undefined
-          ? sectionIndex
-          : ttsService.getCurrentSectionIndex();
-      const playModeToSave = playModeOverride ?? ttsService.getPlayMode();
+      const sectionIndexToSave = sectionIndex ?? ttsStateRef.current.currentSectionIndex;
+      const playModeToSave = playModeOverride ?? ttsStateRef.current.playMode;
 
       if (progressSaveTimerRef.current) {
         clearTimeout(progressSaveTimerRef.current);
@@ -359,182 +129,118 @@ export default function PlayerScreen() {
     [material.id, chapterId, chapter]
   );
 
-  // 초기화 + 자동재생
+  // saveProgressData가 렌더링마다 바뀌지 않도록 ref로 감싸기
+  const saveProgressDataRef = useRef(saveProgressData);
+  useEffect(() => {
+    saveProgressDataRef.current = saveProgressData;
+  }, [saveProgressData]);
+
+  const savedPosition = getPlayerPosition(material.id.toString(), chapterId);
+  const initialSectionIndex =
+    savedPosition && !fromStart ? savedPosition.sectionIndex : 0;
+  const initialPlayMode: PlayMode =
+    savedPosition && !fromStart ? savedPosition.playMode : "single";
+
+  const { isPlaying, currentSectionIndex, playMode, actions: ttsActions } =
+    useTTSPlayer({
+      chapter,
+      initialSectionIndex,
+      initialPlayMode,
+      appSettings,
+      onCompletion: useCallback(() => {
+        setIsChapterCompleted(true);
+        saveProgressDataRef.current(true);
+        AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
+      }, []),
+      onSectionChange: useCallback(
+        (newIndex: number) => {
+          setTimeout(
+            () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
+            50
+          );
+          saveProgressDataRef.current(false, newIndex);
+        },
+        []
+      ),
+    });
+  // --- 훅 사용 끝 ---
+
+  // saveProgressData에서 최신 상태를 참조하기 위한 ref
+  const ttsStateRef = useRef({ currentSectionIndex, playMode });
+  useEffect(() => {
+    ttsStateRef.current = { currentSectionIndex, playMode };
+  }, [currentSectionIndex, playMode]);
+
+  // 자동 재생 (연속 재생 모드일 때)
+  useEffect(() => {
+    if (playMode === "continuous") {
+      ttsActions.ensureAutoPlay(1000);
+    }
+  }, [playMode, ttsActions]);
+
+  // 스크린리더 상태 추적
+  useEffect(() => {
+    let mounted = true;
+    AccessibilityInfo.isScreenReaderEnabled().then(
+      (enabled) => mounted && setScreenReaderEnabled(enabled)
+    );
+    const sub = AccessibilityInfo.addEventListener(
+      "screenReaderChanged",
+      (enabled) => setScreenReaderEnabled(enabled)
+    );
+    return () => {
+      // @ts-ignore
+      sub?.remove?.();
+    };
+  }, []);
+
+  // 저장(북마크) 상태 동기화
   useEffect(() => {
     if (!chapter) return;
+    const isCurrentBookmarked = isBookmarked(
+      material.id.toString(),
+      chapterId,
+      currentSectionIndex
+    );
+    setBookmarked(isCurrentBookmarked);
+  }, [currentSectionIndex, material.id, chapterId, chapter]);
 
-    const savedPosition = getPlayerPosition(material.id.toString(), chapterId);
+  // 트리거 등록/해제
+  useEffect(() => {
+    setMode("playpause");
+    registerPlayPause(ttsActions.togglePlayPause);
 
-    let startIndex = 0;
-    let initialPlayMode: PlayMode = "single";
+    return () => {
+      console.log("[PlayerScreen] useEffect cleanup 시작");
+      registerPlayPause(null);
+      setMode("voice");
 
-    if (savedPosition && !fromStart) {
-      startIndex = savedPosition.sectionIndex;
-      initialPlayMode = savedPosition.playMode;
-      setCurrentSectionIndex(startIndex);
-    }
-
-    // 상태 및 TTS 둘 다 동일한 initialPlayMode 사용
-    setPlayMode(initialPlayMode);
-
-    ttsService.initialize(chapter.sections, startIndex, {
-      rate: appSettings.ttsRate,
-      pitch: appSettings.ttsPitch,
-      volume: appSettings.ttsVolume,
-      voice: appSettings.ttsVoiceId || undefined,
-      playMode: initialPlayMode,
-      onStart: () => {
-        console.log("[PlayerScreen] TTS onStart 콜백");
-        setIsPlaying(true);
-      },
-      onDone: () => {
-        console.log("[PlayerScreen] TTS onDone 콜백");
-        setIsPlaying(false);
-        if (
-          ttsService.getCurrentSectionIndex() ===
-          chapter.sections.length - 1
-        ) {
-          setIsChapterCompleted(true);
-          saveProgressData(true);
-          AccessibilityInfo.announceForAccessibility(
-            "챕터 학습을 완료했습니다."
-          );
-        }
-      },
-      onSectionChange: (newIndex) => {
-        console.log(`[PlayerScreen] 섹션 변경: ${newIndex}`);
-        setCurrentSectionIndex(newIndex);
-        setTimeout(
-          () => scrollViewRef.current?.scrollTo({ y: 0, animated: true }),
-          50
-        );
-        // 섹션 변경 시 명시적으로 인덱스 전달
-        saveProgressData(false, newIndex);
-      },
-    });
-
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-
-      if (screenReaderEnabled) {
-        // TalkBack 켜진 경우: 어떤 모드든 자동재생 없음
-        console.log(
-          "[PlayerScreen] TalkBack 켜짐 - 모든 모드에서 자동재생 없음 (수동 재생)"
-        );
-      } else if (initialPlayMode === "continuous") {
-        // TalkBack OFF + 연속재생 모드일 때만 자동재생
-        console.log(
-          "[PlayerScreen] TalkBack 꺼짐 + 연속재생 모드 - 1초 후 자동재생"
-        );
-        ensureAutoPlay(1000);
-      } else {
-        // single / repeat 모드는 자동재생 없음
-        console.log(
-          `[PlayerScreen] 자동재생 없음 (초기 재생 모드: ${initialPlayMode})`
-        );
+      if (progressSaveTimerRef.current) {
+        clearTimeout(progressSaveTimerRef.current);
       }
-    }
-  }, [
-    chapter,
-    material.id,
-    chapterId,
-    fromStart,
-    appSettings,
-    ensureAutoPlay,
-    screenReaderEnabled,
-    saveProgressData,
-  ]);
 
-  // TTS 설정 변경 시 동기화
-  useEffect(() => {
-    ttsService.setRate(appSettings.ttsRate);
-    ttsService.setPitch(appSettings.ttsPitch);
-    ttsService.setVolume(appSettings.ttsVolume);
-    if (appSettings.ttsVoiceId) {
-      ttsService.setVoice(appSettings.ttsVoiceId);
-    }
-  }, [
-    appSettings.ttsRate,
-    appSettings.ttsPitch,
-    appSettings.ttsVolume,
-    appSettings.ttsVoiceId,
-  ]);
-
-  // playMode 변경 시 TTS에 반영
-  useEffect(() => {
-    ttsService.setPlayMode(playMode);
-  }, [playMode]);
+      console.log("[PlayerScreen] useEffect cleanup 완료");
+    };
+  }, [setMode, registerPlayPause, ttsActions.togglePlayPause]);
 
   // 화면 이탈 시 TTS 완전 정지
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", async () => {
       console.log("[PlayerScreen] 화면 이탈 감지 - TTS 정지");
 
-      await ttsService.cleanup();
-      setIsPlaying(false);
-
       saveProgressData(false);
     });
 
     return unsubscribe;
-  }, [navigation, saveProgressData]);
-
-  // 이전 버튼
-  const handlePrevious = useCallback(async () => {
-    if (currentSectionIndex > 0) {
-      Haptics.selectionAsync();
-      const wasPaused = !isPlayingRef.current;
-      if (!wasPaused) {
-        await ttsService.pause();
-        setIsPlaying(false);
-      }
-      await new Promise((r) => setTimeout(r, 100));
-      await ttsService.previous();
-      const newIndex = currentSectionIndex - 1;
-      setCurrentSectionIndex(newIndex);
-      if (!wasPaused) {
-        await new Promise((r) => setTimeout(r, 200));
-        await ttsService.play();
-        setIsPlaying(true);
-      }
-      saveProgressData(false, newIndex);
-    }
-  }, [currentSectionIndex, saveProgressData]);
-
-  // 다음 버튼
-  const handleNext = useCallback(async () => {
-    if (!chapter || currentSectionIndex >= chapter.sections.length - 1) return;
-    Haptics.selectionAsync();
-    const wasPaused = !isPlayingRef.current;
-    if (!wasPaused) {
-      await ttsService.pause();
-      setIsPlaying(false);
-    }
-    await new Promise((r) => setTimeout(r, 100));
-    await ttsService.next();
-    const newIndex = currentSectionIndex + 1;
-    setCurrentSectionIndex(newIndex);
-    if (!wasPaused) {
-      await new Promise((r) => setTimeout(r, 200));
-      await ttsService.play();
-      setIsPlaying(true);
-    }
-    saveProgressData(false, newIndex);
-  }, [chapter, currentSectionIndex, saveProgressData]);
+  }, [navigation, saveProgressDataRef]);
 
   // 질문하기
   const handleQuestionPress = useCallback(async () => {
-    Haptics.selectionAsync();
-    const wasPaused = !isPlayingRef.current;
-    if (!wasPaused) {
-      await ttsService.pause();
-      setIsPlaying(false);
-    }
+    await ttsActions.pause();
 
     AccessibilityInfo.announceForAccessibility(
       "질문하기 화면으로 이동합니다. 음성 인식 버튼을 누른 후 질문해주세요."
     );
-
     setTimeout(() => {
       navigation.navigate("Question", {
         material,
@@ -542,21 +248,14 @@ export default function PlayerScreen() {
         sectionIndex: currentSectionIndex,
       });
     }, 300);
-  }, [navigation, material, chapterId, currentSectionIndex]);
+  }, [navigation, material, chapterId, currentSectionIndex, ttsActions]);
 
-  // 더보기 버튼
+  // 설정 변경 버튼
   const handleOpenSettings = useCallback(async () => {
-    Haptics.selectionAsync();
-
-    wasPlayingBeforeModal.current = isPlayingRef.current;
-
-    if (isPlayingRef.current) {
-      await ttsService.pause();
-      setIsPlaying(false);
-    }
-
+    wasPlayingBeforeModal.current = isPlaying;
+    await ttsActions.pause();
     setModalVisible(true);
-  }, []);
+  }, [isPlaying, ttsActions]);
 
   // 모달 닫기
   const handleCloseModal = useCallback(async () => {
@@ -564,34 +263,17 @@ export default function PlayerScreen() {
 
     if (wasPlayingBeforeModal.current) {
       console.log("[PlayerScreen] 모달 닫힘 - 재생 재개");
-
-      setTimeout(async () => {
-        try {
-          await ttsService.play();
-
-          await new Promise((r) => setTimeout(r, 600));
-          const nowPlaying = await ttsService.isSpeaking();
-
-          if (nowPlaying) {
-            setIsPlaying(true);
-            console.log("[PlayerScreen] ✓ 모달 후 재생 재개 성공");
-          } else {
-            console.warn("[PlayerScreen] ✗ 모달 후 재생 재개 실패");
-          }
-        } catch (error) {
-          console.error("[PlayerScreen] 모달 후 재생 재개 오류:", error);
-        }
+      setTimeout(() => {
+        ttsActions.play();
       }, 300);
-
       wasPlayingBeforeModal.current = false;
     }
-  }, []);
+  }, [ttsActions]);
 
   // 재생 모드 변경
   const handlePlayModeChange = useCallback(
     (newMode: PlayMode) => {
-      setPlayMode(newMode);
-      ttsService.setPlayMode(newMode);
+      ttsActions.changePlayMode(newMode);
       savePlayerPosition({
         materialId: material.id.toString(),
         chapterId: chapterId,
@@ -600,7 +282,7 @@ export default function PlayerScreen() {
         lastAccessedAt: new Date().toISOString(),
       });
     },
-    [material.id, chapterId, currentSectionIndex]
+    [material.id, chapterId, currentSectionIndex, ttsActions]
   );
 
   // 북마크 토글 (이제 헤더 버튼에서만 사용)
@@ -642,8 +324,6 @@ export default function PlayerScreen() {
 
   // 뒤로가기
   const handleBackPress = useCallback(() => {
-    Haptics.selectionAsync();
-
     Alert.alert(
       "학습 종료",
       "학습을 종료하시겠습니까? 진행 상황은 자동으로 저장됩니다.",
@@ -652,20 +332,17 @@ export default function PlayerScreen() {
         {
           text: "종료",
           onPress: () => {
-            ttsService.stop();
             saveProgressData(false);
             navigation.goBack();
           },
         },
       ]
     );
-  }, [navigation, saveProgressData]);
+  }, [navigation, saveProgressDataRef]);
 
   // 챕터 완료 후 퀴즈 이동
   const handleQuizNavigation = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    ttsService.stop();
-    navigation.navigate("QuizList", { material, chapterId });
+    navigation.replace("QuizList", { material, chapterId });
   }, [navigation, material, chapterId]);
 
   // 초기 포커스: TalkBack 켜져 있으면 "재생 버튼"에 포커스
@@ -697,6 +374,9 @@ export default function PlayerScreen() {
       </SafeAreaView>
     );
   }
+
+  const isLastSection =
+    chapter && currentSectionIndex === chapter.sections.length - 1;
 
   return (
     <>
@@ -791,7 +471,7 @@ export default function PlayerScreen() {
               styles.controlButtonPrevNext,
               currentSectionIndex === 0 && styles.disabledButton,
             ]}
-            onPress={handlePrevious}
+            onPress={ttsActions.playPrevious}
             disabled={currentSectionIndex === 0}
             accessible
             accessibilityLabel={
@@ -806,7 +486,7 @@ export default function PlayerScreen() {
           <TouchableOpacity
             ref={playButtonRef}
             style={[styles.controlButtonPlay]}
-            onPress={handlePlayPause}
+            onPress={ttsActions.togglePlayPause}
             accessible
             accessibilityLabel={isPlaying ? "일시정지" : "재생"}
             accessibilityRole="button"
@@ -822,31 +502,32 @@ export default function PlayerScreen() {
           <TouchableOpacity
             ref={nextButtonRef}
             style={[
-              styles.controlButtonPrevNext,
-              chapter && currentSectionIndex === chapter.sections.length - 1
-                ? styles.disabledButton
-                : null,
+              isLastSection
+                ? styles.controlButtonComplete
+                : styles.controlButtonPrevNext,
             ]}
-            onPress={handleNext}
-            disabled={
-              chapter
-                ? currentSectionIndex === chapter.sections.length - 1
-                : false
-            }
+            onPress={() => {
+              if (isLastSection) {
+                // 마지막 섹션에서 '다음'을 누르면 완료 처리
+                setIsChapterCompleted(true);
+                saveProgressData(true);
+                AccessibilityInfo.announceForAccessibility("학습 완료");
+              } else {
+                ttsActions.playNext();
+              }
+            }}
             accessible
             accessibilityLabel={
-              chapter && currentSectionIndex === chapter.sections.length - 1
-                ? "다음 섹션 없음, 마지막 섹션입니다"
-                : "다음 섹션"
+              isLastSection ? "학습 완료" : "다음 섹션"
             }
             accessibilityRole="button"
-            accessibilityState={{
-              disabled: chapter
-                ? currentSectionIndex === chapter.sections.length - 1
-                : false,
-            }}
+            accessibilityHint={
+              isLastSection ? "챕터 학습을 완료하고 퀴즈 화면으로 이동합니다" : ""
+            }
           >
-            <Text style={styles.controlButtonText}>다음 →</Text>
+            <Text style={styles.controlButtonText}>
+              {isLastSection ? "완료" : "다음 →"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -867,46 +548,14 @@ export default function PlayerScreen() {
             style={styles.moreButton}
             onPress={handleOpenSettings}
             accessible
-            accessibilityLabel="더보기"
+            accessibilityLabel="설정 변경"
             accessibilityHint="재생 모드, 속도 설정을 변경할 수 있습니다"
             accessibilityRole="button"
           >
-            <Text style={styles.moreButtonText}>더보기</Text>
+            <Text style={styles.moreButtonText}>설정 변경</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 챕터 완료 시 퀴즈 안내 */}
-        {isChapterCompleted && hasQuiz && (
-          <View style={styles.completionOverlay}>
-            <View style={styles.completionCard}>
-              <Text style={styles.completionTitle}>챕터 학습 완료!</Text>
-              <Text style={styles.completionMessage}>
-                퀴즈로 학습 내용을 확인해보세요.
-              </Text>
-              <TouchableOpacity
-                style={styles.quizButton}
-                onPress={handleQuizNavigation}
-                accessible
-                accessibilityLabel="퀴즈 풀기"
-                accessibilityRole="button"
-              >
-                <Text style={styles.quizButtonText}>퀴즈 풀기</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={() => {
-                  setIsChapterCompleted(false);
-                  navigation.goBack();
-                }}
-                accessible
-                accessibilityLabel="나중에 하기"
-                accessibilityRole="button"
-              >
-                <Text style={styles.skipButtonText}>나중에 하기</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
       </SafeAreaView>
 
       <PlayerSettingsModal
@@ -914,6 +563,14 @@ export default function PlayerScreen() {
         currentPlayMode={playMode}
         onPlayModeChange={handlePlayModeChange}
         onClose={handleCloseModal}
+      />
+      <ChapterCompletionModal
+        visible={isChapterCompleted && hasQuiz}
+        onQuiz={handleQuizNavigation}
+        onSkip={() => {
+          setIsChapterCompleted(false);
+          navigation.goBack();
+        }}
       />
     </>
   );
@@ -955,6 +612,7 @@ const styles = StyleSheet.create({
     borderColor: "#BDBDBD",
     backgroundColor: "#F6F6F6",
     minHeight: HEADER_BTN_MIN_HEIGHT,
+    width: 120,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -963,9 +621,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8F5E9",
   },
   bookmarkHeaderButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
-    color: "#E68A00",
+    color: "#000000",
   },
   bookmarkHeaderButtonTextActive: {
     color: "#1B5E20",
@@ -1037,6 +695,18 @@ const styles = StyleSheet.create({
   },
   controlButtonText: { fontSize: 20, fontWeight: "800", color: "#ffffff" },
 
+  controlButtonComplete: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: "#FF9800", // 완료 버튼 색상 변경
+    minWidth: 100,
+    minHeight: CONTROL_BTN_MIN_HEIGHT,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#F57C00",
+  },
   controlButtonPlay: {
     paddingVertical: 16,
     paddingHorizontal: 24,
@@ -1092,74 +762,5 @@ const styles = StyleSheet.create({
     color: "#999",
     textAlign: "center",
     marginTop: 40,
-  },
-
-  completionOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  completionCard: {
-    backgroundColor: "#ffffff",
-    borderRadius: 24,
-    padding: 32,
-    width: "100%",
-    maxWidth: 400,
-    alignItems: "center",
-  },
-  completionTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  completionMessage: {
-    fontSize: 20,
-    color: "#333",
-    marginBottom: 32,
-    textAlign: "center",
-    lineHeight: 28,
-  },
-  quizButton: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 16,
-    paddingVertical: 20,
-    paddingHorizontal: 40,
-    minHeight: 72,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    borderWidth: 3,
-    borderColor: "#388E3C",
-  },
-  quizButtonText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-  },
-  skipButton: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    minHeight: 64,
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#E0E0E0",
-  },
-  skipButtonText: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#666",
   },
 });
