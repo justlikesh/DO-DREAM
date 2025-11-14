@@ -1,10 +1,10 @@
 /* ================================
-   AdvancedEditor.css (v2)
+   AdvancedEditor.css (v2 Final)
    ================================ */
 
 :root {
   --ae-primary: #192b55;
-  --ae-primary-dark: #192b55;
+  --ae-primary-dark: #111d3a;
   --ae-danger: #ef4444;
   --ae-success: #10b981;
   --ae-warning: #f59e0b;
@@ -35,7 +35,6 @@
   box-sizing: border-box;
 }
 
-/* ===== Root ===== */
 .ae-root {
   min-height: 100vh;
   background: var(--ae-bg);
@@ -85,7 +84,8 @@
 }
 
 .ae-back-btn:hover {
-  background: var(--ae-card-soft);
+  background: #e5e7eb !important;
+  color: var(--ae-primary) !important;
 }
 
 .ae-title-section {
@@ -111,7 +111,7 @@
 }
 
 .ae-title:hover {
-  background: var(--ae-card-soft);
+  background: #192b5533 !important;
 }
 
 .ae-title-input {
@@ -151,7 +151,9 @@
 }
 
 .ae-icon-btn:hover {
-  background: var(--ae-border);
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+  color: var(--ae-primary) !important;
 }
 
 .ae-btn-publish {
@@ -171,19 +173,19 @@
 }
 
 .ae-btn-publish:hover {
-  background: #FEC73D;
-  color: #000;
-  transform: translateY(-1px);
+  background: var(--ae-primary-dark) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(25, 43, 85, 0.3) !important;
 }
 
-/* ===== 🆕 Layout with Sidebar ===== */
+/* ===== Layout with Sidebar ===== */
 .ae-layout {
   display: flex;
   margin-top: 60px;
   height: calc(100vh - 60px);
 }
 
-/* ===== 🆕 Chapter Sidebar (Right) ===== */
+/* ===== Chapter Sidebar (Right) ===== */
 .ae-chapter-sidebar {
   width: 280px;
   background: var(--ae-card);
@@ -203,11 +205,24 @@
   gap: 12px;
 }
 
+.ae-sidebar-title-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .ae-sidebar-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   color: var(--ae-text);
+}
+
+.ae-sidebar-hint {
+  font-size: 11px;
+  color: var(--ae-text-muted);
+  font-weight: 400;
 }
 
 .ae-sidebar-add-btn {
@@ -225,6 +240,7 @@
 }
 
 .ae-sidebar-add-btn:hover {
+  background: var(--ae-primary-dark);
   transform: scale(1.1);
   box-shadow: 0 4px 8px rgba(25, 43, 85, 0.3);
 }
@@ -259,6 +275,26 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
+}
+
+.ae-chapter-item[draggable='true'] {
+  cursor: grab;
+}
+
+.ae-chapter-item[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.ae-chapter-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.ae-chapter-item.drag-over {
+  border-color: var(--ae-primary);
+  background: rgba(25, 43, 85, 0.1);
+  transform: scale(1.02);
 }
 
 .ae-chapter-item:hover {
@@ -274,18 +310,19 @@
 }
 
 .ae-chapter-item.quiz-item {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
-  border-color: var(--ae-quiz);
+  background: #f3e8ff;
+  border-color: #d8b4fe;
 }
 
 .ae-chapter-item.quiz-item.active {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  background: var(--ae-quiz);
   color: #fff;
+  border-color: var(--ae-quiz);
 }
 
 .ae-chapter-item.selected {
   background: #dbeafe !important;
-  border: 1px solid var(--ae-info) !important;
+  border-color: var(--ae-info) !important;
   color: #000 !important;
   box-shadow: 0 0 0 2px var(--ae-info);
 }
@@ -377,7 +414,7 @@
   border-radius: 4px;
 }
 
-/* ===== 🔥 Enhanced Toolbar ===== */
+/* ===== Enhanced Toolbar ===== */
 .ae-toolbar-enhanced {
   display: flex;
   flex-wrap: wrap;
@@ -399,10 +436,11 @@
 .ae-toolbar-divider {
   width: 1px;
   height: 32px;
-  background: var(--ae-border);
+  background: #e5e7eb;
+  opacity: 0.6;
 }
 
-/* 🔥 개선된 버튼 스타일 */
+/* 개선된 버튼 스타일 */
 .ae-tool-btn-new {
   display: flex;
   align-items: center;
@@ -418,11 +456,13 @@
   white-space: nowrap;
 }
 
+/* 공통 hover: 살짝 떠오르는 효과만 */
 .ae-tool-btn-new:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
+/* 비활성화 */
 .ae-tool-btn-new:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -430,58 +470,67 @@
 
 /* 분할 버튼 - 주황색 */
 .ae-tool-btn-new.split {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
+/* 🔥 hover 시 더 진한 주황 계열 */
 .ae-tool-btn-new.split:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: #f59e0b;
+  background: #d97706;
+  border-color: #b45309;
+  color: #fff;
 }
 
+/* active 시 완전 주황 */
 .ae-tool-btn-new.split.active {
   background: #f59e0b;
   color: #fff;
-  border-color: #f59e0b;
+  border-color: #d97706;
   font-weight: 700;
 }
 
 /* 병합 버튼 - 파랑색 */
 .ae-tool-btn-new.merge {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  border-color: rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
+/* 🔥 hover 시 더 진한 파랑 계열 */
 .ae-tool-btn-new.merge:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #3b82f6;
+  background: #2563eb;
+  border-color: #1d4ed8;
+  color: #fff;
 }
 
+/* active 시 진한 파랑 */
 .ae-tool-btn-new.merge.active {
   background: #3b82f6;
   color: #fff;
-  border-color: #3b82f6;
+  border-color: #2563eb;
   font-weight: 700;
 }
 
 /* 퀴즈 버튼 - 보라색 */
 .ae-tool-btn-new.quiz {
-  background: rgba(139, 92, 246, 0.1);
-  color: #8b5cf6;
-  border-color: rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.12);
+  color: #6d28d9;
+  border-color: rgba(139, 92, 246, 0.35);
 }
 
+/* 🔥 hover 시 더 진한 보라 계열 */
 .ae-tool-btn-new.quiz:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: #8b5cf6;
+  background: #7c3aed;
+  border-color: #6d28d9;
+  color: #fff;
 }
 
+/* active 시 진한 보라 */
 .ae-tool-btn-new.quiz.active {
   background: #8b5cf6;
   color: #fff;
-  border-color: #8b5cf6;
+  border-color: #7c3aed;
   font-weight: 700;
 }
 
@@ -538,7 +587,7 @@
 
 .ae-editor-wrapper.quiz-editor {
   border: 2px solid var(--ae-quiz);
-  background: linear-gradient(to bottom, rgba(139, 92, 246, 0.05), transparent);
+  background: #faf5ff;
 }
 
 .quiz-badge {
@@ -705,7 +754,7 @@
 }
 
 .ae-editor .quiz-content {
-  background: rgba(139, 92, 246, 0.08);
+  background: #faf5ff;
   padding: 16px;
   border-radius: 8px;
   border-left: 4px solid var(--ae-quiz);
@@ -770,6 +819,109 @@
 .ae-label-option.active {
   border: 3px solid #000;
   transform: scale(1.08);
+}
+
+/* ===== Quiz Modal Styles ===== */
+.ae-quiz-modal {
+  border-radius: 16px !important;
+  padding: 0 !important;
+}
+
+.ae-quiz-modal .swal2-html-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ae-quiz-form {
+  padding: 24px 24px 8px;
+}
+
+.ae-quiz-field {
+  margin-bottom: 20px;
+}
+
+.ae-quiz-label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.ae-quiz-input,
+.ae-quiz-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.ae-quiz-input:focus,
+.ae-quiz-textarea:focus {
+  border-color: var(--ae-quiz);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.ae-quiz-textarea {
+  resize: none;
+  min-height: 140px;
+  line-height: 1.6;
+}
+
+.ae-quiz-input::placeholder,
+.ae-quiz-textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* SweetAlert 버튼 영역 – 아래/좌우 여백 추가 */
+.swal2-actions {
+  gap: 12px !important;
+}
+
+/* 퀴즈 모달용 버튼 커스텀 */
+.ae-quiz-btn {
+  border-radius: 8px !important;
+  padding: 12px 28px !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  margin-bottom: 24px;
+}
+
+.ae-quiz-btn-confirm {
+  background: var(--ae-quiz) !important;
+  color: #fff !important;
+}
+
+.ae-quiz-btn-confirm:hover {
+  background: #7c3aed !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4) !important;
+}
+
+.ae-quiz-btn-cancel {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+
+.ae-quiz-btn-cancel:hover {
+  background: #e5e7eb !important;
+  color: #374151 !important;
+}
+
+.swal2-validation-message {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border: 1px solid #fecaca !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
+  margin-top: 12px !important;
 }
 
 /* ===== Responsive ===== */
@@ -881,7 +1033,6 @@
 
 /* ===== Swal2 Custom Styles ===== */
 .swal2-textarea {
-  min-height: 120px !important;
   font-family: inherit;
   font-size: 14px;
 }

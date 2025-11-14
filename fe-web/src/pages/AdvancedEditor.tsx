@@ -112,6 +112,8 @@ export default function AdvancedEditor({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [mergeMode, setMergeMode] = useState(false);
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
+  const [draggedChapterId, setDraggedChapterId] = useState<string | null>(null);
+  const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null);
 
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeChapterId, setActiveChapterId] = useState<string>('');
@@ -269,6 +271,55 @@ export default function AdvancedEditor({
       prev.map((ch) => (ch.id === id ? { ...ch, title: editingTitle } : ch)),
     );
     setEditingChapterId(null);
+  };
+
+  // 🆕 드래그 앤 드롭 핸들러
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, chapterId: string) => {
+    setDraggedChapterId(chapterId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', chapterId);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, chapterId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverChapterId(chapterId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverChapterId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetChapterId: string) => {
+    e.preventDefault();
+    setDragOverChapterId(null);
+
+    if (!draggedChapterId || draggedChapterId === targetChapterId) {
+      return;
+    }
+
+    setChapters((prev) => {
+      const draggedIndex = prev.findIndex((ch) => ch.id === draggedChapterId);
+      const targetIndex = prev.findIndex((ch) => ch.id === targetChapterId);
+
+      if (draggedIndex === -1 || targetIndex === -1) {
+        return prev;
+      }
+
+      const newChapters = [...prev];
+      const [draggedChapter] = newChapters.splice(draggedIndex, 1);
+      newChapters.splice(targetIndex, 0, draggedChapter);
+
+      return newChapters;
+    });
+
+    setDraggedChapterId(null);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedChapterId(null);
+    setDragOverChapterId(null);
   };
 
   const insertChapterBreak = () => {
@@ -530,17 +581,43 @@ export default function AdvancedEditor({
 
   const addManualQuiz = () => {
     Swal.fire({
-      title: '문제 추가',
+      title: '퀴즈 생성',
       html: `
-        <input id="quizTitle" class="swal2-input" placeholder="문제 제목 (예: 개념 Check)" />
-        <textarea id="quizContent" class="swal2-textarea" placeholder="문제 내용을 입력하세요..." rows="6"></textarea>
+        <div class="ae-quiz-form">
+          <div class="ae-quiz-field">
+            <label class="ae-quiz-label">퀴즈 제목</label>
+            <input 
+              id="quizTitle" 
+              class="ae-quiz-input" 
+              placeholder="예: 개념 Check, 심화 문제"
+            />
+          </div>
+          
+          <div class="ae-quiz-field">
+            <label class="ae-quiz-label">퀴즈 내용</label>
+            <textarea 
+              id="quizContent" 
+              class="ae-quiz-textarea" 
+              placeholder="퀴즈 내용을 입력하세요...
+
+예시:
+1. 사회·문화 현상의 특징 3가지를 서술하시오.
+2. 자연현상과 사회·문화 현상의 차이점을 설명하시오."
+            ></textarea>
+          </div>
+        </div>
       `,
       showCancelButton: true,
-      confirmButtonColor: '#192b55',
-      cancelButtonColor: '#d1d5db',
       confirmButtonText: '추가',
       cancelButtonText: '취소',
       reverseButtons: true,
+      width: '560px',
+      customClass: {
+        popup: 'ae-quiz-modal',
+        confirmButton: 'ae-quiz-btn ae-quiz-btn-confirm',
+        cancelButton: 'ae-quiz-btn ae-quiz-btn-cancel',
+      },
+      buttonsStyling: false,
       preConfirm: () => {
         const titleInput = document.getElementById('quizTitle') as HTMLInputElement;
         const contentInput = document.getElementById('quizContent') as HTMLTextAreaElement;
@@ -564,7 +641,7 @@ export default function AdvancedEditor({
 
         const newQuiz: Chapter = {
           id: String(maxId + 1),
-          title: `📝 ${result.value.title}`,
+          title: `${result.value.title}`,
           content: `<h2>${result.value.title}</h2>\n<p>${result.value.content.replace(/\n/g, '<br/>')}</p>`,
           type: 'quiz',
         };
@@ -574,8 +651,9 @@ export default function AdvancedEditor({
 
         Swal.fire({
           icon: 'success',
-          title: '문제가 추가되었습니다',
-          confirmButtonColor: '#192b55',
+          title: '문제가 추가되었습니다!',
+          timer: 1500,
+          showConfirmButton: false,
         });
       }
     });
@@ -775,7 +853,10 @@ export default function AdvancedEditor({
         {/* 🆕 오른쪽 챕터 사이드바 */}
         <aside className="ae-chapter-sidebar">
           <div className="ae-sidebar-header">
-            <h3>챕터 목록</h3>
+            <div className="ae-sidebar-title-wrapper">
+              <h3>챕터 목록</h3>
+              {!mergeMode && <span className="ae-sidebar-hint">드래그하여 순서 변경</span>}
+            </div>
             <button
               className="ae-sidebar-add-btn"
               onClick={handleAddChapter}
@@ -790,7 +871,15 @@ export default function AdvancedEditor({
                 key={ch.id}
                 className={`ae-chapter-item ${activeChapterId === ch.id ? 'active' : ''} ${
                   ch.type === 'quiz' ? 'quiz-item' : ''
-                } ${mergeMode && selectedChapters.has(ch.id) ? 'selected' : ''}`}
+                } ${mergeMode && selectedChapters.has(ch.id) ? 'selected' : ''} ${
+                  draggedChapterId === ch.id ? 'dragging' : ''
+                } ${dragOverChapterId === ch.id ? 'drag-over' : ''}`}
+                draggable={!mergeMode && !editingChapterId}
+                onDragStart={(e) => handleDragStart(e, ch.id)}
+                onDragOver={(e) => handleDragOver(e, ch.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, ch.id)}
+                onDragEnd={handleDragEnd}
                 onClick={() => {
                   if (mergeMode) {
                     toggleChapterSelection(ch.id);
@@ -864,14 +953,16 @@ export default function AdvancedEditor({
                 <Scissors size={18} />
                 <span>분할선</span>
               </button>
-              <button
-                onClick={splitByChapterBreaks}
-                disabled={!editor || !isSplitMode}
-                className="ae-tool-btn-new split"
-                title="챕터 분할"
-              >
-                분할 실행
-              </button>
+              {isSplitMode && (
+                <button
+                  onClick={splitByChapterBreaks}
+                  disabled={!editor}
+                  className="ae-tool-btn-new split active"
+                  title="챕터 분할"
+                >
+                  분할하기
+                </button>
+              )}
             </div>
 
             <div className="ae-toolbar-divider" />
@@ -923,7 +1014,7 @@ export default function AdvancedEditor({
 
           {isSplitMode && !mergeMode && (
             <div className="ae-split-hint">
-              <strong>✂️ 분할 모드</strong>
+              <strong>✂️ 분할 모드 : </strong>
               <span>
                 분할선을 추가한 후 "분할 실행" 버튼을 클릭하면 챕터를 나눌 수 있습니다
               </span>
@@ -932,7 +1023,7 @@ export default function AdvancedEditor({
 
           {mergeMode && (
             <div className="ae-merge-hint">
-              <strong>🔗 병합 모드</strong>
+              <strong>🔗 병합 모드 : </strong>
               <span>
                 병합할 챕터를 2개 이상 선택한 후 "병합하기" 버튼을 클릭하세요
               </span>
