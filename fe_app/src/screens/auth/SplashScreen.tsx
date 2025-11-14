@@ -65,17 +65,29 @@ export default function SplashScreen() {
     }
   }, [navigation, accessToken]);
 
-  // 스크린리더 상태 확인 (대기 시간 계산용)
+  // 스크린리더 상태 확인 + TalkBack용 멘트 안내
   useEffect(() => {
-    // 첫 실행 여부와 상관없이, 현재는 "대기 시간" 계산에만 사용
-    AccessibilityInfo.isScreenReaderEnabled().then((enabled) => {
+    const announceIfNeeded = (enabled: boolean) => {
       setIsScreenReaderEnabled(enabled);
-    });
 
+      if (enabled) {
+        const isFirstRun = !hasSeenSplashOnceRef.current;
+        const message = isFirstRun
+          ? "두드림을 시작합니다. 잠시 후 학습 준비 화면으로 이동합니다."
+          : "두드림을 실행합니다.";
+
+        AccessibilityInfo.announceForAccessibility(message);
+      }
+    };
+
+    // 초기 상태 조회
+    AccessibilityInfo.isScreenReaderEnabled().then(announceIfNeeded);
+
+    // 설정이 바뀌었을 때(중간에 TalkBack 켜졌을 때)도 멘트 한 번 안내
     const subscription = AccessibilityInfo.addEventListener(
       "screenReaderChanged",
       (enabled) => {
-        setIsScreenReaderEnabled(enabled);
+        announceIfNeeded(enabled);
       }
     );
 
