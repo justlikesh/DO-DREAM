@@ -42,9 +42,8 @@ import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import PlayerSettingsModal from "../../components/PlayerSettingsModal";
 import ChapterCompletionModal from "../../components/ChapterCompletionModal";
 import { useTTSPlayer } from "../../hooks/useTTSPlayer";
-import VoiceCommandButton from "../../components/VoiceCommandButton";
-import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import PlayerHeader from "../../components/PlayerHeader";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -533,54 +532,15 @@ export default function PlayerScreen() {
           accessibilityElementsHidden={isPlaying}
           importantForAccessibility={isPlaying ? "no-hide-descendants" : "yes"}
         >
-          <View style={styles.headerTop}>
-            <BackButton onPress={handleBackPress} style={commonStyles.headerBackButton} />
-
-            {/* 오른쪽: 음성 명령 버튼 + 저장 버튼 묶음 (항상 상단 오른쪽) */}
-            <View style={styles.headerRight}>
-              <VoiceCommandButton
-                style={commonStyles.headerVoiceButton}
-                accessibilityHint="두 번 탭한 후 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기와 같은 명령을 말씀하세요"
-                onBeforeListen={() => ttsActions.pause()}
-              />
-
-              {/* 저장 버튼 */}
-              <TouchableOpacity
-                style={[
-                  styles.bookmarkHeaderButton,
-                  bookmarked && styles.bookmarkHeaderButtonActive,
-                ]}
-                onPress={handleToggleBookmark}
-                accessible
-                accessibilityLabel={
-                  bookmarked ? "저장 해제하기" : "이 위치 저장하기"
-                }
-                accessibilityHint={
-                  bookmarked
-                    ? "현재 위치의 저장을 해제합니다"
-                    : "현재 학습 위치를 북마크에 저장합니다"
-                }
-                accessibilityRole="button"
-              >
-                <Text
-                  style={[
-                    styles.bookmarkHeaderButtonText,
-                    bookmarked && styles.bookmarkHeaderButtonTextActive,
-                  ]}
-                >
-                  {bookmarked ? "저장 해제" : "저장하기"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.headerInfo}>
-            <Text style={styles.subjectText}>{material.subject}</Text>
-            <Text style={styles.chapterTitle}>{chapter.title}</Text>
-            <Text style={styles.modeIndicator}>
-              모드: {UI_MODE_LABELS[playMode as PlayModeKey]}
-            </Text>
-          </View>
+          <PlayerHeader
+            material={material}
+            chapter={chapter}
+            playMode={playMode as PlayModeKey}
+            isBookmarked={bookmarked}
+            onBackPress={handleBackPress}
+            onToggleBookmark={handleToggleBookmark}
+            onBeforeListen={() => ttsActions.pause()}
+          />
         </View>
 
         {/* 학습 콘텐츠 */}
@@ -720,7 +680,6 @@ export default function PlayerScreen() {
   );
 }
 
-const HEADER_BTN_MIN_HEIGHT = 48;
 const CONTROL_BTN_MIN_HEIGHT = 80;
 
 const styles = StyleSheet.create({
@@ -732,71 +691,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 2,
     borderBottomColor: "#e0e0e0",
-  },
-  headerTop: {
-    ...commonStyles.headerContainer,
-    paddingHorizontal: 0, // 부모 패딩 사용
-    paddingVertical: 0, // 부모 패딩 사용
-    borderBottomWidth: 0, // 부모 보더 사용
-  },
-
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  // (VoiceCommandButton은 자체 스타일을 사용하지만, headerRight 위치만 관리)
-  voiceCommandButton: {
-    marginRight: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF5722",
-    backgroundColor: "#FFF3E0",
-    minHeight: HEADER_BTN_MIN_HEIGHT,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  bookmarkHeaderButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#BDBDBD",
-    backgroundColor: "#F6F6F6",
-    minHeight: HEADER_BTN_MIN_HEIGHT,
-    width: 120,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  bookmarkHeaderButtonActive: {
-    borderColor: "#43A047",
-    backgroundColor: "#E8F5E9",
-  },
-  bookmarkHeaderButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000000",
-  },
-  bookmarkHeaderButtonTextActive: {
-    color: "#1B5E20",
-  },
-
-  headerInfo: { marginTop: 4 },
-  subjectText: { fontSize: 18, color: "#666666", marginBottom: 4 },
-  chapterTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
-    marginBottom: 6,
-  },
-  modeIndicator: {
-    fontSize: 15,
-    color: "#2196F3",
-    fontWeight: "600",
   },
 
   scrollView: { flex: 1 },
