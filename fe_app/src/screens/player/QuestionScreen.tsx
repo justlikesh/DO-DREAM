@@ -26,6 +26,8 @@ import * as Haptics from "expo-haptics";
 import { asrService } from "../../services/asrService";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -472,17 +474,8 @@ export default function QuestionScreen() {
         keyboardVerticalOffset={0}
       >
         {/* 헤더 */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={handleBack}
-            accessibilityRole="button"
-            accessibilityLabel="뒤로 가기"
-            accessibilityHint="이전 화면으로 돌아갑니다"
-            style={styles.backBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.backTxt}>←</Text>
-          </TouchableOpacity>
+        <View style={commonStyles.headerContainer}>
+          <BackButton onPress={handleBack} style={commonStyles.headerBackButton} />
 
           <Text style={styles.title} accessibilityRole="header">
             두드림 AI
@@ -506,7 +499,10 @@ export default function QuestionScreen() {
               <Text style={styles.clearTxt}>지우기</Text>
             </TouchableOpacity>
 
-            <VoiceCommandButton accessibilityHint="두 번 탭한 후 질문이나 음성 명령을 말씀하세요." />
+            <VoiceCommandButton
+              style={commonStyles.headerVoiceButton}
+              accessibilityHint="두 번 탭한 후 질문이나 음성 명령을 말씀하세요."
+            />
           </View>
         </View>
 
@@ -631,21 +627,7 @@ const BTN_HEIGHT = 56; // 버튼/입력 최소 높이 기준
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#E8EAF6" },
-
-  // 헤더
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: "#ffffff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#BDBDBD",
-  },
-  backBtn: { padding: 8, minWidth: 48 },
-  backTxt: { fontSize: 28, color: "#424242" },
-  title: { fontSize: 22, fontWeight: "600", color: "#424242" },
+  title: { fontSize: 22, fontWeight: "600", color: "#424242", flex: 1, textAlign: "center" },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",

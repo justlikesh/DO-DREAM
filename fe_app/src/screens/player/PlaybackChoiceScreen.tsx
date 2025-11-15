@@ -17,6 +17,8 @@ import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
@@ -219,19 +221,13 @@ export default function PlaybackChoiceScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* 상단: 뒤로가기 + 음성 명령 버튼 */}
-      <View style={styles.topRow}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleGoBack}
-          accessible={true}
-          accessibilityLabel="뒤로가기"
-          accessibilityRole="button"
-          accessibilityHint="이전 화면으로 돌아갑니다"
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
+      <View style={[commonStyles.headerContainer, styles.header]}>
+        <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
 
-        <VoiceCommandButton accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요" />
+        <VoiceCommandButton
+          style={commonStyles.headerVoiceButton}
+          accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
+        />
       </View>
 
       {/* 교재 정보 */}
@@ -326,23 +322,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
     paddingHorizontal: 24,
+    paddingTop: 0, // SafeAreaView의 기본 패딩을 사용하지 않도록
   },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 12,
-    marginBottom: 12,
-  },
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignSelf: "flex-start",
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: "#2196F3",
-    fontWeight: "600",
+  header: {
+    marginHorizontal: -24, // 부모의 paddingHorizontal 상쇄
   },
   infoSection: {
     marginBottom: 40,

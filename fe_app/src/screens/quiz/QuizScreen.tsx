@@ -18,6 +18,8 @@ import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 interface Answer {
   questionId: number;
@@ -439,20 +441,12 @@ export default function QuizScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <TouchableOpacity
-            onPress={handleGoBack}
-            accessible={true}
-            accessibilityLabel="뒤로가기"
-            accessibilityRole="button"
-            accessibilityHint="이전 화면으로 돌아갑니다"
-            style={styles.backButton}
-          >
-            <Text style={styles.backButtonText}>← 뒤로</Text>
-          </TouchableOpacity>
+      <View style={[styles.header, { paddingHorizontal: 24 }]}>
+        <View style={commonStyles.headerContainer}>
+          <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
 
           <VoiceCommandButton
+            style={commonStyles.headerVoiceButton}
             accessibilityHint="두 번 탭한 후, 1번, 2번처럼 보기 번호를 말하거나, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
             onBeforeListen={() => Speech.stop()}
           />
@@ -598,25 +592,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   header: {
-    paddingHorizontal: 24,
+    flexDirection: "column",
+    alignItems: "stretch",
     paddingTop: 12,
     paddingBottom: 20,
     borderBottomWidth: 2,
     borderBottomColor: "#e0e0e0",
-  },
-  headerTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  backButton: {
-    paddingVertical: 8,
-    alignSelf: "flex-start",
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: "#2196F3",
-    fontWeight: "600",
   },
   headerInfo: {
     marginTop: 16,

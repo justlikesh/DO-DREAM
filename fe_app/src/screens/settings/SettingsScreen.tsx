@@ -18,6 +18,8 @@ import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -782,25 +784,17 @@ export default function SettingsScreen() {
       edges={["top"]}
     >
       {/* 상단 헤더: 뒤로가기 + 타이틀 + 음성 명령 버튼 */}
-      <View style={[styles.header, HC && styles.headerHC]}>
-        <TouchableOpacity
+      <View style={[commonStyles.headerContainer, styles.header, HC && styles.headerHC]}>
+        <BackButton
           onPress={handleGoBack}
-          style={styles.backBtn}
-          accessible={true}
-          accessibilityLabel="뒤로"
-          accessibilityRole="button"
-          accessibilityHint="설정을 종료하고 이전 화면으로 돌아갑니다"
-        >
-          <Text
-            style={[
-              styles.backTxt,
-              { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC,
-            ]}
-          >
-            ← 뒤로
-          </Text>
-        </TouchableOpacity>
+          style={commonStyles.headerBackButton}
+          textStyle={[
+            // BackButton의 기본 텍스트 스타일을 가져와서 확장
+            { fontSize: 20, color: "#2196F3", fontWeight: "600" },
+            { fontSize: (baseSize + 4) * scale },
+            HC && styles.textHC,
+          ]}
+        />
 
         <Text
           style={[
@@ -814,7 +808,10 @@ export default function SettingsScreen() {
           설정
         </Text>
 
-        <VoiceCommandButton accessibilityHint="두 번 탭한 후 재생 속도, 높낮이, 볼륨, 고대비 모드, 글자 크기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다." />
+        <VoiceCommandButton
+          style={commonStyles.headerVoiceButton}
+          accessibilityHint="두 번 탭한 후 재생 속도, 높낮이, 볼륨, 고대비 모드, 글자 크기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
+        />
       </View>
 
       <ScrollView
@@ -1039,22 +1036,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FFFFFF" },
   containerHC: { backgroundColor: "#000000" },
 
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 3,
-    borderBottomColor: "#E0E0E0",
-  },
+  header: { borderBottomWidth: 3 },
   headerHC: { borderBottomColor: "#FFFFFF" },
-  backBtn: {
-    padding: 8,
-    minWidth: 80,
-    minHeight: 48,
-    justifyContent: "center",
-  },
-  backTxt: { fontSize: 28, color: "#2196F3", fontWeight: "700" },
   headerTitle: {
     flex: 1,
     textAlign: "center",

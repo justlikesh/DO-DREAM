@@ -43,6 +43,8 @@ import PlayerSettingsModal from "../../components/PlayerSettingsModal";
 import ChapterCompletionModal from "../../components/ChapterCompletionModal";
 import { useTTSPlayer } from "../../hooks/useTTSPlayer";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -532,20 +534,12 @@ export default function PlayerScreen() {
           importantForAccessibility={isPlaying ? "no-hide-descendants" : "yes"}
         >
           <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBackPress}
-              accessible
-              accessibilityLabel="뒤로가기"
-              accessibilityHint="학습을 종료하고 이전 화면으로 돌아갑니다"
-              accessibilityRole="button"
-            >
-              <Text style={styles.backButtonText}>← 뒤로</Text>
-            </TouchableOpacity>
+            <BackButton onPress={handleBackPress} style={commonStyles.headerBackButton} />
 
             {/* 오른쪽: 음성 명령 버튼 + 저장 버튼 묶음 (항상 상단 오른쪽) */}
             <View style={styles.headerRight}>
               <VoiceCommandButton
+                style={commonStyles.headerVoiceButton}
                 accessibilityHint="두 번 탭한 후 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기와 같은 명령을 말씀하세요"
                 onBeforeListen={() => ttsActions.pause()}
               />
@@ -740,19 +734,11 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e0e0e0",
   },
   headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
+    ...commonStyles.headerContainer,
+    paddingHorizontal: 0, // 부모 패딩 사용
+    paddingVertical: 0, // 부모 패딩 사용
+    borderBottomWidth: 0, // 부모 보더 사용
   },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    minWidth: 72,
-    minHeight: HEADER_BTN_MIN_HEIGHT,
-    justifyContent: "center",
-  },
-  backButtonText: { fontSize: 18, color: "#2196F3", fontWeight: "700" },
 
   headerRight: {
     flexDirection: "row",

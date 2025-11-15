@@ -30,6 +30,8 @@ import { getChapterById } from "../../data/dummyChapters";
 import ttsService from "../../services/ttsService";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
+import BackButton from "../../components/BackButton";
+import { commonStyles } from "../../styles/commonStyles";
 
 export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
@@ -353,17 +355,8 @@ export default function BookmarkListScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleGoBack}
-          accessible={true}
-          accessibilityLabel="뒤로 가기"
-          accessibilityRole="button"
-          accessibilityHint="이전 화면으로 돌아갑니다"
-        >
-          <Text style={styles.backButtonText}>← 뒤로</Text>
-        </TouchableOpacity>
+      <View style={commonStyles.headerContainer}>
+        <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
 
         <View style={styles.headerTitle}>
           <Text
@@ -380,6 +373,7 @@ export default function BookmarkListScreen() {
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={[
+              commonStyles.headerVoiceButton,
               styles.voiceCommandButton,
               isVoiceCommandListening && styles.voiceCommandButtonActive,
             ]}
@@ -545,26 +539,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#ffffff",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: "#e0e0e0",
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    minWidth: 70,
-    minHeight: 44,
-  },
-  backButtonText: {
-    fontSize: 20,
-    color: "#2196F3",
-    fontWeight: "600",
-  },
   headerTitle: {
     alignItems: "center",
   },
@@ -584,6 +558,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   voiceCommandButton: {
+    // 공통 스타일에서 가져오므로 일부만 남김
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
