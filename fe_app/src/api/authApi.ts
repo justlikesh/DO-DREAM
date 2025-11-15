@@ -1,18 +1,18 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 import type {
   StudentVerifyRequest,
   StudentRegisterRequest,
   StudentLoginRequest,
   AuthResponse,
   VerifyResponse,
-} from '../types/authApiTypes';
+} from "../types/api/authApiTypes";
 
 const AUTH_ENDPOINTS = {
-  VERIFY: '/api/auth/student/verify',       // 사전 인증 (학번/이름 확인)
-  REGISTER: '/api/auth/student/register',   // 회원가입 (기기 등록)
-  LOGIN: '/api/auth/student/login',         // 로그인
-  REFRESH: '/api/auth/student/refresh',     // 토큰 재발급
-  LOGOUT: '/api/auth/student/logout',       // 로그아웃 [향후]
+  VERIFY: "/api/auth/student/verify", // 사전 인증 (학번/이름 확인)
+  REGISTER: "/api/auth/student/register", // 회원가입 (기기 등록)
+  LOGIN: "/api/auth/student/login", // 로그인
+  REFRESH: "/api/auth/student/refresh", // 토큰 재발급
+  LOGOUT: "/api/auth/student/logout", // 로그아웃 [향후]
 };
 
 export const authApi = {
