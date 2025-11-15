@@ -54,10 +54,23 @@ export default function VoiceCommandButton({
   textStyle,
   onBeforeListen,
 }: VoiceCommandButtonProps) {
-  const { startVoiceCommandListening, isVoiceCommandListening } =
-    useContext(TriggerContext);
+  const {
+    startVoiceCommandListening,
+    stopVoiceCommandListening,
+    isVoiceCommandListening,
+  } = useContext(TriggerContext);
 
   const handlePress = useCallback(async () => {
+    // 이미 듣는 중이면 → 종료(토글)
+    if (isVoiceCommandListening) {
+      AccessibilityInfo.announceForAccessibility(
+        "음성 명령 듣기를 종료합니다."
+      );
+      await stopVoiceCommandListening();
+      return;
+    }
+
+    // 아직 안 듣는 중이면 → 시작
     try {
       if (onBeforeListen) {
         await onBeforeListen();
@@ -66,9 +79,16 @@ export default function VoiceCommandButton({
       console.warn("[VoiceCommandButton] onBeforeListen 실행 중 오류:", e);
     }
 
-    AccessibilityInfo.announceForAccessibility("음성 명령을 말씀해 주세요.");
-    startVoiceCommandListening();
-  }, [onBeforeListen, startVoiceCommandListening]);
+    AccessibilityInfo.announceForAccessibility(
+      "음성 명령을 말씀해 주세요."
+    );
+    await startVoiceCommandListening();
+  }, [
+    isVoiceCommandListening,
+    onBeforeListen,
+    startVoiceCommandListening,
+    stopVoiceCommandListening,
+  ]);
 
   return (
     <TouchableOpacity
