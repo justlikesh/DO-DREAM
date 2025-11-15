@@ -17,6 +17,7 @@ import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import { getChapterById } from "../../data/dummyChapters";
 import { Quiz } from "../../types/quiz";
 import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 export default function QuizListScreen() {
   const navigation = useNavigation<QuizListScreenNavigationProp>();
@@ -26,13 +27,8 @@ export default function QuizListScreen() {
   const quizzes = getQuizzesByChapterId(chapterId.toString());
   const chapter = getChapterById(chapterId);
 
-  // 전역 음성 명령
-  const {
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    startVoiceCommandListening,
-    isVoiceCommandListening,
-  } = useContext(TriggerContext);
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
 
   useEffect(() => {
     const announcement = `${material.title}, ${chapter?.title} 퀴즈 목록. ${quizzes.length}개의 퀴즈가 있습니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같이 말할 수 있습니다.`;
@@ -51,7 +47,7 @@ export default function QuizListScreen() {
     [navigation]
   );
 
-  // 퀴즈 목록 전용 음성 명령(rawText) 처리
+  // 🎙 퀴즈 목록 전용 음성 명령(rawText) 처리
   const handleQuizListVoiceRaw = useCallback(
     (spoken: string) => {
       const raw = spoken.trim().toLowerCase();
@@ -59,7 +55,6 @@ export default function QuizListScreen() {
 
       const normalized = raw.replace(/\s+/g, "");
 
-      // 0개일 때는 뒤로 안내
       if (quizzes.length === 0) {
         if (
           normalized.includes("뒤로") ||
@@ -75,14 +70,15 @@ export default function QuizListScreen() {
         return;
       }
 
-      // 1) "마지막 퀴즈"
-      if (normalized.includes("마지막퀴즈") || normalized.includes("마지막문제")) {
+      if (
+        normalized.includes("마지막퀴즈") ||
+        normalized.includes("마지막문제")
+      ) {
         const lastIndex = quizzes.length - 1;
         handleQuizPress(quizzes[lastIndex]);
         return;
       }
 
-      // 2) "첫 번째 퀴즈" / "첫 퀴즈" / "처음 퀴즈"
       if (
         normalized.includes("첫번째퀴즈") ||
         normalized.includes("첫퀴즈") ||
@@ -95,10 +91,9 @@ export default function QuizListScreen() {
         return;
       }
 
-      // 3) 숫자 기반 ("1번 퀴즈", "2번 문제", "세 번째 퀴즈" 등)
       const hanToNum: Record<string, number> = {
         일: 1,
-        한: 1, // "한 번", "한 문제" 같은 경우
+        한: 1,
         이: 2,
         삼: 3,
         사: 4,
@@ -111,7 +106,6 @@ export default function QuizListScreen() {
 
       let targetIndex: number | null = null;
 
-      // 3-1) 아라비아 숫자 우선
       const numMatch = normalized.match(/([0-9]+)/);
       if (numMatch) {
         const n = parseInt(numMatch[1], 10);
@@ -120,7 +114,6 @@ export default function QuizListScreen() {
         }
       }
 
-      // 3-2) 한글 숫자 ("첫 번째" 말고 "두 번째", "세 번째" 등)
       if (targetIndex === null) {
         (Object.keys(hanToNum) as (keyof typeof hanToNum)[]).forEach((ch) => {
           if (targetIndex !== null) return;
@@ -145,7 +138,6 @@ export default function QuizListScreen() {
         return;
       }
 
-      // 4) "뒤로 가기"류 (전역 파서가 못 잡는 경우 대비)
       if (
         normalized.includes("뒤로가기") ||
         normalized.includes("뒤로가") ||
@@ -156,10 +148,7 @@ export default function QuizListScreen() {
         return;
       }
 
-      console.log(
-        "[VoiceCommands][QuizList] 처리할 수 없는 rawText:",
-        spoken
-      );
+      console.log("[VoiceCommands][QuizList] 처리할 수 없는 rawText:", spoken);
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서 사용할 수 없는 음성 명령입니다. 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기처럼 말해 주세요."
       );
@@ -167,14 +156,11 @@ export default function QuizListScreen() {
     [quizzes, handleGoBack, handleQuizPress]
   );
 
-  // 🔧 TriggerContext와 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("QuizList");
 
     registerVoiceHandlers("QuizList", {
-      // 전역 명령: "뒤로 가" → 이전 화면
       goBack: handleGoBack,
-      // 이 화면 전용 rawText 명령
       rawText: handleQuizListVoiceRaw,
     });
 
@@ -188,16 +174,12 @@ export default function QuizListScreen() {
     handleQuizListVoiceRaw,
   ]);
 
-  const renderQuizItem = ({
-    item,
-    index,
-  }: {
-    item: Quiz;
-    index: number;
-  }) => {
+  const renderQuizItem = ({ item, index }: { item: Quiz; index: number }) => {
     const quizTypeLabel =
       item.quizType === "AI_GENERATED" ? "AI 생성" : "선생님 제작";
-    const accessibilityLabel = `${index + 1}번. ${item.title}. ${quizTypeLabel}. 문제 ${item.questions.length}개.`;
+    const accessibilityLabel = `${index + 1}번. ${
+      item.title
+    }. ${quizTypeLabel}. 문제 ${item.questions.length}개.`;
 
     return (
       <TouchableOpacity
@@ -230,7 +212,6 @@ export default function QuizListScreen() {
     );
   };
 
-  // 공통 헤더 (빈 상태 / 목록 모두에서 사용)
   const Header = (
     <View style={styles.header}>
       <View style={styles.headerTopRow}>
@@ -245,21 +226,7 @@ export default function QuizListScreen() {
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.voiceCommandButton,
-            isVoiceCommandListening && styles.voiceCommandButtonActive,
-          ]}
-          onPress={startVoiceCommandListening}
-          accessible={true}
-          accessibilityLabel="음성 명령"
-          accessibilityRole="button"
-          accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요"
-        >
-          <Text style={styles.voiceCommandButtonText}>
-            {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
-          </Text>
-        </TouchableOpacity>
+        <VoiceCommandButton accessibilityHint="두 번 탭한 후, 첫 번째 퀴즈, 두 번째 퀴즈, 1번 퀴즈, 2번 퀴즈, 마지막 퀴즈, 뒤로 가기와 같은 명령을 말씀하세요" />
       </View>
 
       {quizzes.length > 0 && (
@@ -335,26 +302,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#2196F3",
     fontWeight: "600",
-  },
-  voiceCommandButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF5722",
-    backgroundColor: "#FFF3E0",
-    minHeight: 44,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  voiceCommandButtonActive: {
-    borderColor: "#C62828",
-    backgroundColor: "#FFCDD2",
-  },
-  voiceCommandButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#E64A19",
   },
   headerInfo: {
     marginTop: 16,

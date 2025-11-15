@@ -42,6 +42,7 @@ import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import PlayerSettingsModal from "../../components/PlayerSettingsModal";
 import ChapterCompletionModal from "../../components/ChapterCompletionModal";
 import { useTTSPlayer } from "../../hooks/useTTSPlayer";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -65,8 +66,6 @@ export default function PlayerScreen() {
     registerPlayPause,
     setCurrentScreenId,
     registerVoiceHandlers,
-    startVoiceCommandListening,
-    isVoiceCommandListening,
   } = useContext(TriggerContext);
 
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
@@ -180,29 +179,6 @@ export default function PlayerScreen() {
   useEffect(() => {
     ttsStateRef.current = { currentSectionIndex, playMode };
   }, [currentSectionIndex, playMode]);
-
-  // 자동 재생 (연속 재생 모드일 때)
-  // useEffect(() => {
-  //   if (playMode === "continuous") {
-  //     ttsActions.ensureAutoPlay(1000);
-  //   }
-  // }, [playMode, ttsActions]);
-
-  // 연속 재생 자동재생: "처음 진입"은 건너뛰고, 사용자가 나중에 연속 재생으로 바꿨을 때만 동작
-  // const isFirstPlayModeEffect = useRef(true);
-
-  // useEffect(() => {
-  //   // 첫 진입 때는 아무 것도 하지 않고 한 번만 스킵
-  //   if (isFirstPlayModeEffect.current) {
-  //     isFirstPlayModeEffect.current = false;
-  //     return;
-  //   }
-
-  //   // 사용자가 나중에 연속 재생 모드로 바꿨을 때만 자동재생
-  //   if (playMode === "continuous") {
-  //     ttsActions.ensureAutoPlay(500); // 필요하면 딜레이 조절 가능
-  //   }
-  // }, [playMode, ttsActions]);
 
   // 스크린리더 상태 추적
   useEffect(() => {
@@ -567,23 +543,12 @@ export default function PlayerScreen() {
               <Text style={styles.backButtonText}>← 뒤로</Text>
             </TouchableOpacity>
 
-            {/* 오른쪽: 음성 명령 버튼 + 저장 버튼 묶음 */}
+            {/* 오른쪽: 음성 명령 버튼 + 저장 버튼 묶음 (항상 상단 오른쪽) */}
             <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={[
-                  styles.voiceCommandButton,
-                  isVoiceCommandListening && styles.voiceCommandButtonActive,
-                ]}
-                onPress={startVoiceCommandListening}
-                accessible
-                accessibilityLabel="음성 명령"
+              <VoiceCommandButton
                 accessibilityHint="두 번 탭한 후 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기와 같은 명령을 말씀하세요"
-                accessibilityRole="button"
-              >
-                <Text style={styles.voiceCommandButtonText}>
-                  {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
-                </Text>
-              </TouchableOpacity>
+                onBeforeListen={() => ttsActions.pause()}
+              />
 
               {/* 저장 버튼 */}
               <TouchableOpacity
@@ -792,7 +757,10 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
+
+  // (VoiceCommandButton은 자체 스타일을 사용하지만, headerRight 위치만 관리)
   voiceCommandButton: {
     marginRight: 8,
     paddingVertical: 10,
@@ -805,18 +773,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  voiceCommandButtonActive: {
-    borderColor: "#C62828",
-    backgroundColor: "#FFCDD2",
-  },
-  voiceCommandButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#E64A19",
-  },
 
   bookmarkHeaderButton: {
-    marginLeft: 0,
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,

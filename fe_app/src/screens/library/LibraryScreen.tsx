@@ -15,18 +15,15 @@ import { Material } from "../../types/material";
 import { useAuthStore } from "../../stores/authStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 export default function LibraryScreen() {
   const navigation = useNavigation<LibraryScreenNavigationProp>();
   const student = useAuthStore((state) => state.student);
   const settings = useAppSettingsStore((state) => state.settings);
 
-  const {
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    startVoiceCommandListening,
-    isVoiceCommandListening,
-  } = useContext(TriggerContext);
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
 
   const displayName = student?.name || "학생";
 
@@ -50,93 +47,90 @@ export default function LibraryScreen() {
    * 🔍 음성으로 들어온 문장을 기반으로
    * dummyMaterials 중 가장 잘 맞는 교재를 찾는다.
    */
-  const findMaterialByVoice = useCallback(
-    (spoken: string): Material | null => {
-      const normalizedSpoken = normalize(spoken);
-      if (!normalizedSpoken) return null;
+  const findMaterialByVoice = useCallback((spoken: string): Material | null => {
+    const normalizedSpoken = normalize(spoken);
+    if (!normalizedSpoken) return null;
 
-      console.log(
-        "[VoiceCommands][Library] spoken:",
-        spoken,
-        "normalized:",
-        normalizedSpoken
+    console.log(
+      "[VoiceCommands][Library] spoken:",
+      spoken,
+      "normalized:",
+      normalizedSpoken
+    );
+
+    // 1) 특수 매핑 (ASR 오인 보정용)
+    //  - "합법과 작문" → "화법과 작문"
+    const specialMappings: { keywords: string[]; titleHint: string }[] = [
+      {
+        keywords: ["합법", "화법"],
+        titleHint: "화법과 작문",
+      },
+    ];
+
+    for (const mapping of specialMappings) {
+      const hit = mapping.keywords.some((k) =>
+        normalizedSpoken.includes(normalize(k))
       );
-
-      // 1) 특수 매핑 (ASR 오인 보정용)
-      //  - "합법과 작문" → "화법과 작문"
-      const specialMappings: { keywords: string[]; titleHint: string }[] = [
-        {
-          keywords: ["합법", "화법"],
-          titleHint: "화법과 작문",
-        },
-      ];
-
-      for (const mapping of specialMappings) {
-        const hit = mapping.keywords.some((k) =>
-          normalizedSpoken.includes(normalize(k))
+      if (hit) {
+        const hintNorm = normalize(mapping.titleHint);
+        const found = dummyMaterials.find((m) =>
+          normalize(m.title).includes(hintNorm)
         );
-        if (hit) {
-          const hintNorm = normalize(mapping.titleHint);
-          const found = dummyMaterials.find((m) =>
-            normalize(m.title).includes(hintNorm)
+        if (found) {
+          console.log(
+            "[VoiceCommands][Library] 특수 매핑으로 교재 선택:",
+            found.title
           );
-          if (found) {
-            console.log(
-              "[VoiceCommands][Library] 특수 매핑으로 교재 선택:",
-              found.title
-            );
-            return found;
-          }
+          return found;
         }
       }
+    }
 
-      // 2) 일반 매칭: 제목 기반 스코어 계산
-      let best: { material: Material; score: number } | null = null;
+    // 2) 일반 매칭: 제목 기반 스코어 계산
+    let best: { material: Material; score: number } | null = null;
 
-      for (const material of dummyMaterials) {
-        const normTitle = normalize(material.title);
-        if (!normTitle) continue;
+    for (const material of dummyMaterials) {
+      const normTitle = normalize(material.title);
+      if (!normTitle) continue;
 
-        let score = 0;
+      let score = 0;
 
-        // 제목 전체 혹은 일부가 그대로 포함될 경우 가산점
-        if (
-          normalizedSpoken.includes(normTitle) ||
-          normTitle.includes(normalizedSpoken)
-        ) {
-          score += 50;
-        }
-
-        // 공통 글자 수로 점수 부여 (한글 교과명 구분용)
-        const charSet = new Set(normTitle.split(""));
-        charSet.forEach((ch) => {
-          if (normalizedSpoken.includes(ch)) score += 1;
-        });
-
-        if (!best || score > best.score) {
-          best = { material, score };
-        }
+      // 제목 전체 혹은 일부가 그대로 포함될 경우 가산점
+      if (
+        normalizedSpoken.includes(normTitle) ||
+        normTitle.includes(normalizedSpoken)
+      ) {
+        score += 50;
       }
 
-      // 너무 애매하면 매칭 실패로 처리
-      if (!best || best.score < 3) {
-        console.log(
-          "[VoiceCommands][Library] 매칭 실패. bestScore=",
-          best?.score ?? 0
-        );
-        return null;
-      }
+      // 공통 글자 수로 점수 부여 (한글 교과명 구분용)
+      const charSet = new Set(normTitle.split(""));
+      charSet.forEach((ch) => {
+        if (normalizedSpoken.includes(ch)) score += 1;
+      });
 
+      if (!best || score > best.score) {
+        best = { material, score };
+      }
+    }
+
+    // 너무 애매하면 매칭 실패로 처리
+    if (!best || best.score < 3) {
       console.log(
-        "[VoiceCommands][Library] 교재 매칭 성공:",
-        best.material.title,
-        "score=",
-        best.score
+        "[VoiceCommands][Library] 매칭 실패. bestScore=",
+        best?.score ?? 0
       );
-      return best.material;
-    },
-    []
-  );
+      return null;
+    }
+
+    console.log(
+      "[VoiceCommands][Library] 교재 매칭 성공:",
+      best.material.title,
+      "score=",
+      best.score
+    );
+    return best.material;
+  }, []);
 
   /**
    * Library 화면 전용 음성 명령 처리
@@ -172,7 +166,9 @@ export default function LibraryScreen() {
   };
 
   const renderMaterialButton = ({ item }: { item: Material }) => {
-    const accessibilityLabel = `${item.title}, 현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. ${
+    const accessibilityLabel = `${item.title}, 현재 ${
+      item.currentChapter
+    }챕터, 전체 ${item.totalChapters}챕터 중. ${
       item.hasProgress ? "이어듣기 가능" : "처음부터 시작"
     }`;
 
@@ -264,26 +260,7 @@ export default function LibraryScreen() {
 
         {/* 오른쪽: 음성 명령 + 설정 버튼 */}
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[
-              styles.voiceCommandButton,
-              isVoiceCommandListening && styles.voiceCommandButtonActive,
-            ]}
-            onPress={startVoiceCommandListening}
-            accessible={true}
-            accessibilityLabel="음성 명령"
-            accessibilityRole="button"
-            accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 영어 1, 문학 1, 생물 1"
-          >
-            <Text
-              style={[
-                styles.voiceCommandButtonText,
-                HC && styles.voiceCommandButtonTextHC,
-              ]}
-            >
-              {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
-            </Text>
-          </TouchableOpacity>
+          <VoiceCommandButton accessibilityHint="두 번 탭한 후 교재 이름을 말씀하세요. 예: 영어 1, 문학 1, 생물 1, 화법과 작문" />
 
           <TouchableOpacity
             style={styles.settingsButton}
@@ -344,30 +321,6 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  voiceCommandButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF5722",
-    backgroundColor: "#FFF3E0",
-    minHeight: 40,
-    marginRight: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  voiceCommandButtonActive: {
-    borderColor: "#C62828",
-    backgroundColor: "#FFCDD2",
-  },
-  voiceCommandButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#E64A19",
-  },
-  voiceCommandButtonTextHC: {
-    color: "#FFFDE7",
   },
   settingsButton: {
     padding: 10,

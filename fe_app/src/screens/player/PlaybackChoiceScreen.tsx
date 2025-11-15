@@ -16,6 +16,7 @@ import { getChaptersByMaterialId } from "../../data/dummyChapters";
 import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
@@ -25,23 +26,16 @@ export default function PlaybackChoiceScreen() {
   const chapters = getChaptersByMaterialId(material.id.toString());
   const firstChapter = chapters[0];
 
-  // 학습 진도가 1번 이상 있는지 확인 (hasProgress가 true면 최소 1번은 학습함)
   const hasStudied = material.hasProgress;
 
-  // 첫 번째 챕터의 퀴즈 가져오기
   const quizzes = firstChapter
     ? getQuizzesByChapterId(firstChapter.chapterId.toString())
     : [];
   const hasQuiz = quizzes.length > 0;
   const showQuizButton = hasStudied && hasQuiz;
 
-  // 전역 음성 명령
-  const {
-    setCurrentScreenId,
-    registerVoiceHandlers,
-    startVoiceCommandListening,
-    isVoiceCommandListening,
-  } = useContext(TriggerContext);
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
 
   useEffect(() => {
     const announcement = `${material.title}, ${material.currentChapter}챕터. 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 음성 명령 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;
@@ -76,26 +70,22 @@ export default function PlaybackChoiceScreen() {
     AccessibilityInfo.announceForAccessibility("저장 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     // TODO: 북마크 목록 화면으로 이동
-    // navigation.navigate('BookmarkList', { material });
   }, []);
 
   const handleQuestionPress = useCallback(() => {
     AccessibilityInfo.announceForAccessibility("질문 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     // TODO: 질문 목록 화면으로 이동
-    // navigation.navigate('QuestionList', { material });
   }, []);
 
   const handleQuizPress = useCallback(() => {
     if (!firstChapter) return;
 
     if (quizzes.length === 1) {
-      // 퀴즈가 1개면 바로 퀴즈 화면으로
       AccessibilityInfo.announceForAccessibility("퀴즈를 시작합니다");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate("Quiz", { quiz: quizzes[0] });
     } else {
-      // 퀴즈가 여러 개면 퀴즈 목록으로
       AccessibilityInfo.announceForAccessibility("퀴즈 목록으로 이동합니다");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.navigate("QuizList", {
@@ -109,7 +99,7 @@ export default function PlaybackChoiceScreen() {
     navigation.goBack();
   }, [navigation]);
 
-  // PlaybackChoice 전용 음성 명령(rawText) 처리
+  // 🎙 PlaybackChoice 전용 음성 명령(rawText) 처리
   const handlePlaybackVoiceRaw = useCallback(
     (spoken: string) => {
       const t = spoken.trim().toLowerCase();
@@ -167,7 +157,7 @@ export default function PlaybackChoiceScreen() {
         return;
       }
 
-      // 퀴즈 풀기 (전역 파서가 못 잡는 표현들 보완)
+      // 퀴즈 풀기
       if (
         t.includes("퀴즈 풀") ||
         t.includes("문제 풀") ||
@@ -204,16 +194,13 @@ export default function PlaybackChoiceScreen() {
     ]
   );
 
-  // TriggerContext와 음성 명령 핸들러 등록
+  // 🔧 TriggerContext와 음성 명령 핸들러 등록
   useEffect(() => {
     setCurrentScreenId("PlaybackChoice");
 
     registerVoiceHandlers("PlaybackChoice", {
-      // 전역 명령: "뒤로 가" → 이전 화면
       goBack: handleGoBack,
-      // "퀴즈" 전역 명령
       openQuiz: showQuizButton ? handleQuizPress : undefined,
-      // 이 화면 전용 rawText 명령
       rawText: handlePlaybackVoiceRaw,
     });
 
@@ -244,21 +231,7 @@ export default function PlaybackChoiceScreen() {
           <Text style={styles.backButtonText}>← 뒤로</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.voiceCommandButton,
-            isVoiceCommandListening && styles.voiceCommandButtonActive,
-          ]}
-          onPress={startVoiceCommandListening}
-          accessible={true}
-          accessibilityLabel="음성 명령"
-          accessibilityRole="button"
-          accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요"
-        >
-          <Text style={styles.voiceCommandButtonText}>
-            {isVoiceCommandListening ? "듣는 중…" : "음성 명령"}
-          </Text>
-        </TouchableOpacity>
+        <VoiceCommandButton accessibilityHint="두 번 탭한 후, 이어서 듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 풀기, 뒤로 가기와 같은 명령을 말씀하세요" />
       </View>
 
       {/* 교재 정보 */}
@@ -275,7 +248,6 @@ export default function PlaybackChoiceScreen() {
 
       {/* 선택 버튼들 */}
       <View style={styles.buttonSection}>
-        {/* 이어서 듣기 - 학습 진도가 있을 때만 표시 */}
         {material.hasProgress && (
           <TouchableOpacity
             style={styles.choiceButton}
@@ -291,7 +263,6 @@ export default function PlaybackChoiceScreen() {
           </TouchableOpacity>
         )}
 
-        {/* 처음부터 듣기 */}
         <TouchableOpacity
           style={styles.choiceButton}
           onPress={handleFromStart}
@@ -305,7 +276,6 @@ export default function PlaybackChoiceScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* 저장 목록 */}
         <TouchableOpacity
           style={styles.choiceButton}
           onPress={handleBookmarkPress}
@@ -319,7 +289,6 @@ export default function PlaybackChoiceScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* 질문 목록 */}
         <TouchableOpacity
           style={styles.choiceButton}
           onPress={handleQuestionPress}
@@ -333,7 +302,6 @@ export default function PlaybackChoiceScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* 퀴즈 풀기 - 학습 진도가 있고 퀴즈가 있을 때만 표시 */}
         {showQuizButton && (
           <TouchableOpacity
             style={styles.choiceButton}
@@ -375,26 +343,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: "#2196F3",
     fontWeight: "600",
-  },
-  voiceCommandButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF5722",
-    backgroundColor: "#FFF3E0",
-    minHeight: 44,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  voiceCommandButtonActive: {
-    borderColor: "#C62828",
-    backgroundColor: "#FFCDD2",
-  },
-  voiceCommandButtonText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#E64A19",
   },
   infoSection: {
     marginBottom: 40,
