@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   View,
   Text,
@@ -9,34 +9,45 @@ import {
   Platform,
   AccessibilityInfo,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import ttsService from '../../services/ttsService';
-import { useAuthStore } from '../../stores/authStore';
-import { useAppSettingsStore } from '../../stores/appSettingsStore';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import ttsService from "../../services/ttsService";
+import { useAuthStore } from "../../stores/authStore";
+import { useAppSettingsStore } from "../../stores/appSettingsStore";
+import * as Haptics from "expo-haptics";
+import { TriggerContext } from "../../triggers/TriggerContext";
+import VoiceCommandButton from "../../components/VoiceCommandButton";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const logout = useAuthStore((state) => state.logout);
-  
+
   const settings = useAppSettingsStore((state) => state.settings);
   const setTTSRate = useAppSettingsStore((state) => state.setTTSRate);
   const setTTSPitch = useAppSettingsStore((state) => state.setTTSPitch);
   const setTTSVolume = useAppSettingsStore((state) => state.setTTSVolume);
   const setTTSVoiceId = useAppSettingsStore((state) => state.setTTSVoiceId);
-  const setHighContrastMode = useAppSettingsStore((state) => state.setHighContrastMode);
-  const setFontSizeScale = useAppSettingsStore((state) => state.setFontSizeScale);
+  const setHighContrastMode = useAppSettingsStore(
+    (state) => state.setHighContrastMode
+  );
+  const setFontSizeScale = useAppSettingsStore(
+    (state) => state.setFontSizeScale
+  );
   const resetSettings = useAppSettingsStore((state) => state.resetSettings);
-  
-  const [availableVoices, setAvailableVoices] = useState<{ 
-    id: string; 
-    name: string; 
-    language: string; 
-    quality: number; 
-    default?: boolean 
-  }[]>([]);
+
+  const { setCurrentScreenId, registerVoiceHandlers } =
+    useContext(TriggerContext);
+
+  const [availableVoices, setAvailableVoices] = useState<
+    {
+      id: string;
+      name: string;
+      language: string;
+      quality: number;
+      default?: boolean;
+    }[]
+  >([]);
 
   const [isTestingTts, setIsTestingTts] = useState(false);
 
@@ -44,7 +55,10 @@ export default function SettingsScreen() {
     const loadVoices = async () => {
       const voices = await ttsService.getAvailableVoices();
 
-      console.log('[Settings] Original voices:', voices.map(v => ({ id: v.id, name: v.name })));
+      console.log(
+        "[Settings] Original voices:",
+        voices.map((v) => ({ id: v.id, name: v.name }))
+      );
 
       setAvailableVoices(voices);
 
@@ -57,15 +71,16 @@ export default function SettingsScreen() {
 
     // 화면 unmount 시 TTS 샘플 정지
     return () => {
-      console.log('[SettingsScreen] Cleanup - TTS 샘플 정지');
+      console.log("[SettingsScreen] Cleanup - TTS 샘플 정지");
       ttsService.stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 화면 이탈 시 TTS 샘플 완전 정지 (네비게이션 감지)
   useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', async () => {
-      console.log('[SettingsScreen] 화면 이탈 감지 - TTS 샘플 정지');
+    const unsubscribe = navigation.addListener("beforeRemove", async () => {
+      console.log("[SettingsScreen] 화면 이탈 감지 - TTS 샘플 정지");
       await ttsService.stop();
     });
 
@@ -73,46 +88,75 @@ export default function SettingsScreen() {
   }, [navigation]);
 
   // 각 설정별 핸들러 (Store 액션 호출 + TTS 서비스 적용)
-  const handleRateChange = useCallback(async (rate: number) => {
-    setTTSRate(rate);
-    await ttsService.setRate(rate);
-    AccessibilityInfo.announceForAccessibility(`${rate.toFixed(2)}배`);
-    ttsService.speakSample("현재 속도로 재생됩니다.");
-  }, [setTTSRate]);
+  const handleRateChange = useCallback(
+    async (rate: number) => {
+      setTTSRate(rate);
+      await ttsService.setRate(rate);
+      AccessibilityInfo.announceForAccessibility(`${rate.toFixed(1)}배`);
+      ttsService.speakSample("현재 속도로 재생됩니다.");
+    },
+    [setTTSRate]
+  );
 
-  const handlePitchChange = useCallback(async (pitch: number) => {
-    setTTSPitch(pitch);
-    await ttsService.setPitch(pitch);
-    AccessibilityInfo.announceForAccessibility(`높낮이 ${pitch.toFixed(1)}`);
-    ttsService.speakSample("현재 높낮이로 재생됩니다.");
-  }, [setTTSPitch]);
+  const handlePitchChange = useCallback(
+    async (pitch: number) => {
+      setTTSPitch(pitch);
+      await ttsService.setPitch(pitch);
+      AccessibilityInfo.announceForAccessibility(
+        `높낮이 ${pitch.toFixed(1)}로 설정되었습니다.`
+      );
+      ttsService.speakSample("현재 높낮이로 재생됩니다.");
+    },
+    [setTTSPitch]
+  );
 
-  const handleVolumeChange = useCallback((volume: number) => {
-    setTTSVolume(volume);
-    ttsService.setVolume(volume);
-    AccessibilityInfo.announceForAccessibility(`${Math.round(volume * 100)}퍼센트`);
-    ttsService.speakSample("현재 볼륨으로 재생됩니다.");
-  }, [setTTSVolume]);
+  const handleVolumeChange = useCallback(
+    (volume: number) => {
+      setTTSVolume(volume);
+      ttsService.setVolume(volume);
+      AccessibilityInfo.announceForAccessibility(
+        `${Math.round(volume * 100)}퍼센트`
+      );
+      ttsService.speakSample("현재 볼륨으로 재생됩니다.");
+    },
+    [setTTSVolume]
+  );
 
-  const handleVoiceChange = useCallback(async (voiceId: string) => {
-    setTTSVoiceId(voiceId);
-    await ttsService.setVoice(voiceId);
-    const voiceName = availableVoices.find(v => v.id === voiceId)?.name || '선택됨';
-    AccessibilityInfo.announceForAccessibility(`${voiceName}으로 변경되었습니다.`); 
-    // 샘플 음성 재생
-    ttsService.speakSample("현재 목소리로 재생됩니다.");
-  }, [setTTSVoiceId, availableVoices]);
+  const handleVoiceChange = useCallback(
+    async (voiceId: string) => {
+      setTTSVoiceId(voiceId);
+      await ttsService.setVoice(voiceId);
+      const voiceName =
+        availableVoices.find((v) => v.id === voiceId)?.name || "선택됨";
+      AccessibilityInfo.announceForAccessibility(
+        `${voiceName}으로 변경되었습니다.`
+      );
+      // 샘플 음성 재생
+      ttsService.speakSample("현재 목소리로 재생됩니다.");
+    },
+    [setTTSVoiceId, availableVoices]
+  );
 
-  const handleHighContrastChange = useCallback((enabled: boolean) => {
-    setHighContrastMode(enabled);
-    AccessibilityInfo.announceForAccessibility(enabled ? '켜짐' : '꺼짐');
-  }, [setHighContrastMode]);
-  
-  const handleFontSizeChange = useCallback((scale: number) => {
-    setFontSizeScale(scale);
-    AccessibilityInfo.announceForAccessibility(`${Math.round(scale * 100)}퍼센트`);
-  }, [setFontSizeScale]);
-  
+  const handleHighContrastChange = useCallback(
+    (enabled: boolean) => {
+      setHighContrastMode(enabled);
+      AccessibilityInfo.announceForAccessibility(
+        `고대비 모드 ${enabled ? "켜짐" : "꺼짐"}`
+      );
+    },
+    [setHighContrastMode]
+  );
+
+  const handleFontSizeChange = useCallback(
+    (scale: number) => {
+      setFontSizeScale(scale);
+      AccessibilityInfo.announceForAccessibility(
+        `글자 크기 ${Math.round(scale * 100)}퍼센트`
+      );
+    },
+    [setFontSizeScale]
+  );
+
   const handleTestTTS = async () => {
     if (isTestingTts) return;
 
@@ -126,40 +170,39 @@ export default function SettingsScreen() {
   };
 
   const handleResetSettings = () => {
-    Alert.alert(
-      "설정 초기화",
-      "모든 설정을 기본값으로 되돌리시겠습니까?",
-      [
-        {
-          text: "취소",
-          style: "cancel",
-          onPress: () => AccessibilityInfo.announceForAccessibility("취소되었습니다."),
+    Alert.alert("설정 초기화", "모든 설정을 기본값으로 되돌리시겠습니까?", [
+      {
+        text: "취소",
+        style: "cancel",
+        onPress: () =>
+          AccessibilityInfo.announceForAccessibility("취소되었습니다."),
+      },
+      {
+        text: "확인",
+        style: "destructive",
+        onPress: async () => {
+          resetSettings();
+          const defaultSettings = useAppSettingsStore.getState().settings;
+          await ttsService.syncWithSettings({
+            rate: defaultSettings.ttsRate,
+            pitch: defaultSettings.ttsPitch,
+            volume: defaultSettings.ttsVolume,
+            voiceId: defaultSettings.ttsVoiceId,
+          });
+          AccessibilityInfo.announceForAccessibility(
+            "모든 설정이 기본값으로 초기화되었습니다."
+          );
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
-        {
-          text: "확인",
-          style: "destructive",
-          onPress: async () => {
-            resetSettings();
-            const defaultSettings = useAppSettingsStore.getState().settings;
-            await ttsService.syncWithSettings({
-              rate: defaultSettings.ttsRate,
-              pitch: defaultSettings.ttsPitch,
-              volume: defaultSettings.ttsVolume,
-              voiceId: defaultSettings.ttsVoiceId,
-            });
-            AccessibilityInfo.announceForAccessibility("모든 설정이 기본값으로 초기화되었습니다.");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          },
-        },
-      ]
-    );
+      },
+    ]);
   };
-  
+
   const renderButtonControl = (
-    label: string, 
+    label: string,
     value: number,
-    min: number, 
-    max: number, 
+    min: number,
+    max: number,
     step: number,
     displayFormatter: (v: number) => string,
     unit: string,
@@ -172,38 +215,42 @@ export default function SettingsScreen() {
 
     return (
       <View style={styles.controlGroup}>
-        <Text 
+        <Text
           style={[
-            styles.controlLabel, 
+            styles.controlLabel,
             { fontSize: baseSize * scale },
-            HC && styles.textHC
+            HC && styles.textHC,
           ]}
           accessible={true}
           accessibilityRole="header"
         >
           {label}
         </Text>
-        
+
         <View style={styles.btnRow}>
-          <View 
+          <View
             style={[styles.valueBox, HC && styles.valueBoxHC]}
             accessible={true}
             accessibilityLabel={`현재 ${label}`}
             accessibilityValue={{ text: `${displayFormatter(value)} ${unit}` }}
             accessibilityRole="text"
           >
-            <Text style={[
-              styles.valueNum, 
-              { fontSize: (baseSize + 4) * scale },
-              HC && styles.valueNumHC
-            ]}>
+            <Text
+              style={[
+                styles.valueNum,
+                { fontSize: (baseSize + 4) * scale },
+                HC && styles.valueNumHC,
+              ]}
+            >
               {displayFormatter(value)}
             </Text>
-            <Text style={[
-              styles.valueUnit,
-              { fontSize: (baseSize - 4) * scale },
-              HC && styles.valueNumHC
-            ]}>
+            <Text
+              style={[
+                styles.valueUnit,
+                { fontSize: (baseSize - 4) * scale },
+                HC && styles.valueNumHC,
+              ]}
+            >
               {unit}
             </Text>
           </View>
@@ -212,7 +259,7 @@ export default function SettingsScreen() {
             style={[
               styles.ctrlBtn,
               value <= min && styles.ctrlBtnDisabled,
-              HC && styles.ctrlBtnHC
+              HC && styles.ctrlBtnHC,
             ]}
             onPress={onDecrease}
             disabled={value <= min}
@@ -222,12 +269,14 @@ export default function SettingsScreen() {
             accessibilityHint={`${label} 감소`}
             accessibilityState={{ disabled: value <= min }}
           >
-            <Text style={[
-              styles.ctrlBtnTxt,
-              { fontSize: (baseSize + 16) * scale },
-              value <= min && styles.ctrlBtnTxtDisabled,
-              HC && styles.ctrlBtnTxtHC
-            ]}>
+            <Text
+              style={[
+                styles.ctrlBtnTxt,
+                { fontSize: (baseSize + 16) * scale },
+                value <= min && styles.ctrlBtnTxtDisabled,
+                HC && styles.ctrlBtnTxtHC,
+              ]}
+            >
               −
             </Text>
           </TouchableOpacity>
@@ -236,7 +285,7 @@ export default function SettingsScreen() {
             style={[
               styles.ctrlBtn,
               value >= max && styles.ctrlBtnDisabled,
-              HC && styles.ctrlBtnHC
+              HC && styles.ctrlBtnHC,
             ]}
             onPress={onIncrease}
             disabled={value >= max}
@@ -246,12 +295,14 @@ export default function SettingsScreen() {
             accessibilityHint={`${label} 증가`}
             accessibilityState={{ disabled: value >= max }}
           >
-            <Text style={[
-              styles.ctrlBtnTxt,
-              { fontSize: (baseSize + 16) * scale },
-              value >= max && styles.ctrlBtnTxtDisabled,
-              HC && styles.ctrlBtnTxtHC
-            ]}>
+            <Text
+              style={[
+                styles.ctrlBtnTxt,
+                { fontSize: (baseSize + 16) * scale },
+                value >= max && styles.ctrlBtnTxtDisabled,
+                HC && styles.ctrlBtnTxtHC,
+              ]}
+            >
               +
             </Text>
           </TouchableOpacity>
@@ -260,18 +311,22 @@ export default function SettingsScreen() {
     );
   };
 
-  const renderSwitch = (label: string, value: boolean, onChange: (v: boolean) => void) => {
+  const renderSwitch = (
+    label: string,
+    value: boolean,
+    onChange: (v: boolean) => void
+  ) => {
     const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
 
     return (
       <View style={styles.switchRow}>
-        <Text 
+        <Text
           style={[
             styles.controlLabel,
             { fontSize: baseSize * scale },
-            HC && styles.textHC
+            HC && styles.textHC,
           ]}
         >
           {label}
@@ -279,20 +334,25 @@ export default function SettingsScreen() {
         <Switch
           onValueChange={onChange}
           value={value}
-          trackColor={{ false: '#9E9E9E', true: '#4CAF50' }}
-          thumbColor={value ? '#FFFFFF' : '#F5F5F5'}
+          trackColor={{ false: "#9E9E9E", true: "#4CAF50" }}
+          thumbColor={value ? "#FFFFFF" : "#F5F5F5"}
           style={{ transform: [{ scaleX: 1.5 }, { scaleY: 1.5 }] }}
           accessible={true}
           accessibilityLabel={label}
           accessibilityRole="switch"
           accessibilityState={{ checked: value }}
-          accessibilityValue={{ text: value ? '켜짐' : '꺼짐' }}
+          accessibilityValue={{ text: value ? "켜짐" : "꺼짐" }}
         />
       </View>
     );
   };
 
-  const renderAction = (label: string, onPress: () => void, bg: string, border: string) => {
+  const renderAction = (
+    label: string,
+    onPress: () => void,
+    bg: string,
+    border: string
+  ) => {
     const HC = settings.highContrastMode;
     const baseSize = 24;
     const scale = settings.fontSizeScale;
@@ -302,38 +362,300 @@ export default function SettingsScreen() {
         style={[
           styles.actionBtn,
           { backgroundColor: bg, borderColor: border },
-          HC && styles.actionBtnHC
+          HC && styles.actionBtnHC,
         ]}
         onPress={onPress}
         accessible={true}
         accessibilityLabel={label}
         accessibilityRole="button"
       >
-        <Text style={[
-          styles.actionTxt,
-          { fontSize: baseSize * scale },
-          HC && styles.actionTxtHC
-        ]}>
+        <Text
+          style={[
+            styles.actionTxt,
+            { fontSize: baseSize * scale },
+            HC && styles.actionTxtHC,
+          ]}
+        >
           {label}
         </Text>
       </TouchableOpacity>
     );
   };
 
-  const handleGoBack = () => {
-    AccessibilityInfo.announceForAccessibility("뒤로");
+  const handleGoBack = useCallback(() => {
+    AccessibilityInfo.announceForAccessibility(
+      "설정 화면을 닫고 이전 화면으로 돌아갑니다."
+    );
     navigation.goBack();
-  };
+  }, [navigation]);
+
+  // SettingsScreen 전용 음성 명령 처리
+  const handleSettingsVoiceCommand = useCallback(
+    (spoken: string) => {
+      const raw = spoken.trim();
+      if (!raw) return;
+      const t = raw.toLowerCase();
+      const nospace = t.replace(/\s+/g, "");
+
+      console.log("[VoiceCommands][Settings] spoken:", raw);
+
+      // 1) 뒤로 가기
+      if (nospace.includes("뒤로") || nospace.includes("이전화면")) {
+        handleGoBack();
+        return;
+      }
+
+      // 2) 재생 속도 (빠르게 / 느리게 / 기본)
+      if (nospace.includes("속도")) {
+        if (
+          nospace.includes("빠르") ||
+          nospace.includes("빨리") ||
+          nospace.includes("올려") ||
+          nospace.includes("증가")
+        ) {
+          const next = Math.min(
+            2.0,
+            Number((settings.ttsRate + 0.1).toFixed(2))
+          );
+          handleRateChange(next);
+        } else if (
+          nospace.includes("느리") ||
+          nospace.includes("천천히") ||
+          nospace.includes("내려") ||
+          nospace.includes("감소")
+        ) {
+          const next = Math.max(
+            0.5,
+            Number((settings.ttsRate - 0.1).toFixed(2))
+          );
+          handleRateChange(next);
+        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+          handleRateChange(1.0);
+        } else {
+          AccessibilityInfo.announceForAccessibility(
+            "재생 속도는 빠르게, 느리게, 기본 속도로 말해 주세요."
+          );
+        }
+        return;
+      }
+
+      // 3) 높낮이 / 톤
+      if (
+        nospace.includes("높낮이") ||
+        nospace.includes("톤") ||
+        nospace.includes("음높이")
+      ) {
+        if (
+          nospace.includes("높게") ||
+          nospace.includes("올려") ||
+          nospace.includes("증가")
+        ) {
+          const next = Math.min(
+            2.0,
+            Number((settings.ttsPitch + 0.1).toFixed(2))
+          );
+          handlePitchChange(next);
+        } else if (
+          nospace.includes("낮게") ||
+          nospace.includes("내려") ||
+          nospace.includes("감소")
+        ) {
+          const next = Math.max(
+            0.5,
+            Number((settings.ttsPitch - 0.1).toFixed(2))
+          );
+          handlePitchChange(next);
+        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+          handlePitchChange(1.0);
+        } else {
+          AccessibilityInfo.announceForAccessibility(
+            "높낮이는 높게, 낮게, 기본으로 말해 주세요."
+          );
+        }
+        return;
+      }
+
+      // 4) 볼륨 / 소리 크기
+      if (
+        nospace.includes("볼륨") ||
+        nospace.includes("소리") ||
+        nospace.includes("음량")
+      ) {
+        if (
+          nospace.includes("크게") ||
+          nospace.includes("올려") ||
+          nospace.includes("증가")
+        ) {
+          const next = Math.min(
+            1.0,
+            Number((settings.ttsVolume + 0.1).toFixed(2))
+          );
+          handleVolumeChange(next);
+        } else if (
+          nospace.includes("작게") ||
+          nospace.includes("내려") ||
+          nospace.includes("감소") ||
+          nospace.includes("줄여")
+        ) {
+          const next = Math.max(
+            0.0,
+            Number((settings.ttsVolume - 0.1).toFixed(2))
+          );
+          handleVolumeChange(next);
+        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+          handleVolumeChange(1.0);
+        } else {
+          AccessibilityInfo.announceForAccessibility(
+            "볼륨은 크게, 작게, 기본으로 말해 주세요."
+          );
+        }
+        return;
+      }
+
+      // 5) 고대비 모드
+      if (nospace.includes("고대비") || nospace.includes("반전")) {
+        if (
+          nospace.includes("켜") ||
+          nospace.includes("온") ||
+          nospace.includes("on")
+        ) {
+          if (settings.highContrastMode) {
+            AccessibilityInfo.announceForAccessibility(
+              "이미 고대비 모드가 켜져 있습니다."
+            );
+          } else {
+            handleHighContrastChange(true);
+          }
+        } else if (
+          nospace.includes("꺼") ||
+          nospace.includes("오프") ||
+          nospace.includes("off")
+        ) {
+          if (!settings.highContrastMode) {
+            AccessibilityInfo.announceForAccessibility(
+              "이미 고대비 모드가 꺼져 있습니다."
+            );
+          } else {
+            handleHighContrastChange(false);
+          }
+        } else {
+          // 토글
+          handleHighContrastChange(!settings.highContrastMode);
+        }
+        return;
+      }
+
+      // 6) 글자 크기
+      if (
+        nospace.includes("글자") ||
+        nospace.includes("글씨") ||
+        nospace.includes("폰트")
+      ) {
+        if (nospace.includes("크게") || nospace.includes("키워")) {
+          const next = Math.min(
+            2.0,
+            Number((settings.fontSizeScale + 0.1).toFixed(2))
+          );
+          handleFontSizeChange(next);
+        } else if (
+          nospace.includes("작게") ||
+          nospace.includes("줄여") ||
+          nospace.includes("작아")
+        ) {
+          const next = Math.max(
+            0.8,
+            Number((settings.fontSizeScale - 0.1).toFixed(2))
+          );
+          handleFontSizeChange(next);
+        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+          handleFontSizeChange(1.0);
+        } else {
+          AccessibilityInfo.announceForAccessibility(
+            "글자 크기는 크게, 작게, 기본처럼 말해 주세요."
+          );
+        }
+        return;
+      }
+
+      // 7) 테스트 재생
+      if (
+        nospace.includes("테스트") ||
+        nospace.includes("샘플") ||
+        nospace.includes("들려줘") ||
+        nospace.includes("틀어줘") ||
+        nospace.includes("재생해")
+      ) {
+        handleTestTTS();
+        return;
+      }
+
+      // 8) 초기화 / 기본값
+      if (
+        nospace.includes("초기화") ||
+        nospace.includes("기본값") ||
+        nospace.includes("처음상태")
+      ) {
+        handleResetSettings();
+        return;
+      }
+
+      AccessibilityInfo.announceForAccessibility(
+        "이 화면에서는 뒤로 가기, 재생 속도 빠르게 또는 느리게, 높낮이 높게 또는 낮게, 볼륨 크게 또는 작게, 고대비 모드 켜기 또는 끄기, 글자 크기 크게 또는 작게, 테스트 재생, 설정 초기화 같은 음성 명령을 사용할 수 있습니다."
+      );
+    },
+    [
+      settings.ttsRate,
+      settings.ttsPitch,
+      settings.ttsVolume,
+      settings.highContrastMode,
+      settings.fontSizeScale,
+      handleGoBack,
+      handleRateChange,
+      handlePitchChange,
+      handleVolumeChange,
+      handleHighContrastChange,
+      handleFontSizeChange,
+      handleTestTTS,
+      handleResetSettings,
+    ]
+  );
+
+  // 전역 음성 명령 핸들러 등록
+  useEffect(() => {
+    setCurrentScreenId("Settings");
+
+    registerVoiceHandlers("Settings", {
+      goBack: handleGoBack,
+      rawText: handleSettingsVoiceCommand,
+    });
+
+    const introTimer = setTimeout(() => {
+      AccessibilityInfo.announceForAccessibility(
+        "설정 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 뒤, 재생 속도 빠르게, 볼륨 작게, 고대비 모드 켜기, 글자 크기 크게, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다."
+      );
+    }, 600);
+
+    return () => {
+      clearTimeout(introTimer);
+      registerVoiceHandlers("Settings", {});
+    };
+  }, [
+    setCurrentScreenId,
+    registerVoiceHandlers,
+    handleGoBack,
+    handleSettingsVoiceCommand,
+  ]);
 
   const HC = settings.highContrastMode;
   const baseSize = 24;
   const scale = settings.fontSizeScale;
 
   return (
-    <SafeAreaView 
-      style={[styles.container, HC && styles.containerHC]} 
-      edges={['top']}
+    <SafeAreaView
+      style={[styles.container, HC && styles.containerHC]}
+      edges={["top"]}
     >
+      {/* 상단 헤더: 뒤로가기 + 타이틀 + 음성 명령 버튼 */}
       <View style={[styles.header, HC && styles.headerHC]}>
         <TouchableOpacity
           onPress={handleGoBack}
@@ -341,41 +663,46 @@ export default function SettingsScreen() {
           accessible={true}
           accessibilityLabel="뒤로"
           accessibilityRole="button"
-          accessibilityHint="설정 종료"
+          accessibilityHint="설정을 종료하고 이전 화면으로 돌아갑니다"
         >
-          <Text style={[
-            styles.backTxt,
-            { fontSize: (baseSize + 4) * scale },
-            HC && styles.textHC
-          ]}>
+          <Text
+            style={[
+              styles.backTxt,
+              { fontSize: (baseSize + 4) * scale },
+              HC && styles.textHC,
+            ]}
+          >
             ← 뒤로
           </Text>
         </TouchableOpacity>
-        <Text 
+
+        <Text
           style={[
             styles.headerTitle,
             { fontSize: (baseSize + 8) * scale },
-            HC && styles.textHC
+            HC && styles.textHC,
           ]}
           accessible={true}
           accessibilityRole="header"
         >
           설정
         </Text>
+
+        <VoiceCommandButton accessibilityHint="두 번 탭한 후 재생 속도, 높낮이, 볼륨, 고대비 모드, 글자 크기, 테스트 재생, 설정 초기화처럼 말하면 해당 기능이 실행됩니다." />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.section, HC && styles.sectionHC]}>
-          <Text 
+          <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC
+              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
@@ -385,103 +712,124 @@ export default function SettingsScreen() {
 
           {/* 재생 속도 */}
           {renderButtonControl(
-            '재생 속도',
+            "재생 속도",
             settings.ttsRate,
             0.5,
             2.0,
             0.1,
             (v) => v.toFixed(1),
-            '배',
-            () => handleRateChange(Math.max(0.5, Number((settings.ttsRate - 0.1).toFixed(2)))),
-            () => handleRateChange(Math.min(2.0, Number((settings.ttsRate + 0.1).toFixed(2))))
+            "배",
+            () =>
+              handleRateChange(
+                Math.max(0.5, Number((settings.ttsRate - 0.1).toFixed(2)))
+              ),
+            () =>
+              handleRateChange(
+                Math.min(2.0, Number((settings.ttsRate + 0.1).toFixed(2)))
+              )
           )}
 
           {/* 높낮이 */}
           {renderButtonControl(
-            '높낮이',
+            "높낮이",
             settings.ttsPitch,
             0.5,
             2.0,
             0.1,
             (v) => v.toFixed(1),
-            '',
-            () => handlePitchChange(Math.max(0.5, Number((settings.ttsPitch - 0.1).toFixed(2)))),
-            () => handlePitchChange(Math.min(2.0, Number((settings.ttsPitch + 0.1).toFixed(2))))
+            "",
+            () =>
+              handlePitchChange(
+                Math.max(0.5, Number((settings.ttsPitch - 0.1).toFixed(2)))
+              ),
+            () =>
+              handlePitchChange(
+                Math.min(2.0, Number((settings.ttsPitch + 0.1).toFixed(2)))
+              )
           )}
 
           {/* 볼륨 */}
           {renderButtonControl(
-            '볼륨',
+            "볼륨",
             settings.ttsVolume,
             0.0,
             1.0,
             0.1,
             (v) => Math.round(v * 100).toString(),
-            '%',
-            () => handleVolumeChange(Math.max(0.0, Number((settings.ttsVolume - 0.1).toFixed(2)))),
-            () => handleVolumeChange(Math.min(1.0, Number((settings.ttsVolume + 0.1).toFixed(2))))
+            "%",
+            () =>
+              handleVolumeChange(
+                Math.max(0.0, Number((settings.ttsVolume - 0.1).toFixed(2)))
+              ),
+            () =>
+              handleVolumeChange(
+                Math.min(1.0, Number((settings.ttsVolume + 0.1).toFixed(2)))
+              )
           )}
 
           {/* 음성 선택 */}
           <View style={styles.voiceSection}>
-            <Text 
+            <Text
               style={[
                 styles.controlLabel,
                 { fontSize: baseSize * scale },
-                HC && styles.textHC
+                HC && styles.textHC,
               ]}
               accessible={true}
               accessibilityRole="header"
             >
               목소리
             </Text>
-            
+
             <View style={styles.voiceList}>
               {availableVoices.map((voice) => {
                 const isSelected = settings.ttsVoiceId === voice.id;
-                const accessibilityLabel = `목소리, ${voice.name}, ${isSelected ? '선택됨' : '선택 안됨'}`;
                 return (
                   <TouchableOpacity
-                  key={voice.id}
-                  style={[
-                    styles.voiceBtn,
-                    isSelected && styles.voiceBtnSel,
-                    HC && isSelected && styles.voiceBtnSelHC,
-                  ]}
-                  onPress={() => handleVoiceChange(voice.id)}
-                  accessible={true}
-                  accessibilityLabel={voice.name}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: settings.ttsVoiceId === voice.id }}
-                >
-                  <Text style={[
-                    styles.voiceTxt,
-                    { fontSize: (baseSize - 2) * scale },
-                    isSelected && styles.voiceTxtSel,
-                    HC && isSelected && styles.voiceTxtSelHC,
-                  ]}>
-                    {voice.name}
-                  </Text>
-                </TouchableOpacity>
+                    key={voice.id}
+                    style={[
+                      styles.voiceBtn,
+                      isSelected && styles.voiceBtnSel,
+                      HC && isSelected && styles.voiceBtnSelHC,
+                    ]}
+                    onPress={() => handleVoiceChange(voice.id)}
+                    accessible={true}
+                    accessibilityLabel={voice.name}
+                    accessibilityRole="radio"
+                    accessibilityState={{
+                      selected: settings.ttsVoiceId === voice.id,
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.voiceTxt,
+                        { fontSize: (baseSize - 2) * scale },
+                        isSelected && styles.voiceTxtSel,
+                        HC && isSelected && styles.voiceTxtSelHC,
+                      ]}
+                    >
+                      {voice.name}
+                    </Text>
+                  </TouchableOpacity>
                 );
               })}
             </View>
           </View>
 
           {renderAction(
-            isTestingTts ? '재생 중...' : '테스트', 
-            handleTestTTS, 
-            isTestingTts ? '#4CAF50' : '#FFC107', // 재생 중일 때 녹색, 평상시 노란색
-            isTestingTts ? '#388E3C' : '#FFA000'
+            isTestingTts ? "재생 중..." : "테스트",
+            handleTestTTS,
+            isTestingTts ? "#4CAF50" : "#FFC107", // 재생 중일 때 녹색, 평상시 노란색
+            isTestingTts ? "#388E3C" : "#FFA000"
           )}
         </View>
 
         <View style={[styles.section, HC && styles.sectionHC]}>
-          <Text 
+          <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC
+              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
@@ -489,53 +837,72 @@ export default function SettingsScreen() {
             화면 설정
           </Text>
 
-          {renderSwitch('고대비 모드', settings.highContrastMode, handleHighContrastChange)}
-          
+          {renderSwitch(
+            "고대비 모드",
+            settings.highContrastMode,
+            handleHighContrastChange
+          )}
+
           {/* 글자 크기 */}
           {renderButtonControl(
-            '글자 크기',
+            "글자 크기",
             settings.fontSizeScale,
             0.8,
             2.0,
             0.1,
             (v) => Math.round(v * 100).toString(),
-            '%',
-            () => handleFontSizeChange(Math.max(0.8, Number((settings.fontSizeScale - 0.1).toFixed(2)))),
-            () => handleFontSizeChange(Math.min(2.0, Number((settings.fontSizeScale + 0.1).toFixed(2))))
+            "%",
+            () =>
+              handleFontSizeChange(
+                Math.max(0.8, Number((settings.fontSizeScale - 0.1).toFixed(2)))
+              ),
+            () =>
+              handleFontSizeChange(
+                Math.min(2.0, Number((settings.fontSizeScale + 0.1).toFixed(2)))
+              )
           )}
         </View>
 
         <View style={[styles.section, HC && styles.sectionHC]}>
-          <Text 
+          <Text
             style={[
               styles.sectionTitle,
               { fontSize: (baseSize + 4) * scale },
-              HC && styles.textHC
+              HC && styles.textHC,
             ]}
             accessible={true}
             accessibilityRole="header"
           >
             앱 정보
           </Text>
-          
+
           <View style={styles.infoRow}>
-            <Text style={[
-              styles.infoLabel,
-              { fontSize: (baseSize - 2) * scale },
-              HC && styles.textHC
-            ]}>
+            <Text
+              style={[
+                styles.infoLabel,
+                { fontSize: (baseSize - 2) * scale },
+                HC && styles.textHC,
+              ]}
+            >
               버전
             </Text>
-            <Text style={[
-              styles.infoValue,
-              { fontSize: (baseSize - 2) * scale },
-              HC && styles.textHC
-            ]}>
+            <Text
+              style={[
+                styles.infoValue,
+                { fontSize: (baseSize - 2) * scale },
+                HC && styles.textHC,
+              ]}
+            >
               1.0.0
             </Text>
           </View>
 
-          {renderAction('기본값으로 되돌리기', handleResetSettings, '#F44336', '#D32F2F')}
+          {renderAction(
+            "기본값으로 되돌리기",
+            handleResetSettings,
+            "#F44336",
+            "#D32F2F"
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -543,133 +910,151 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  containerHC: { backgroundColor: '#000000' },
-  
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  containerHC: { backgroundColor: "#000000" },
+
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 3,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
-  headerHC: { borderBottomColor: '#FFFFFF' },
-  backBtn: { padding: 12, minWidth: 80, minHeight: 60, justifyContent: 'center' },
-  backTxt: { fontSize: 28, color: '#2196F3', fontWeight: '700' },
+  headerHC: { borderBottomColor: "#FFFFFF" },
+  backBtn: {
+    padding: 8,
+    minWidth: 80,
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  backTxt: { fontSize: 28, color: "#2196F3", fontWeight: "700" },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
     flex: 1,
-    textAlign: 'center',
-    marginRight: 80,
+    textAlign: "center",
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#000000",
   },
-  
+
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 60, flexGrow: 1 },
-  
+
   section: {
     marginBottom: 32,
     padding: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
-  sectionHC: { backgroundColor: '#1A1A1A', borderColor: '#FFFFFF' },
+  sectionHC: { backgroundColor: "#1A1A1A", borderColor: "#FFFFFF" },
   sectionTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontWeight: "bold",
+    color: "#000000",
     marginBottom: 24,
     paddingBottom: 12,
     borderBottomWidth: 2,
-    borderBottomColor: '#BDBDBD',
+    borderBottomColor: "#BDBDBD",
   },
-  
+
   controlGroup: { marginBottom: 28 },
-  controlLabel: { fontSize: 24, fontWeight: '700', color: '#000000', marginBottom: 16 },
-  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  
+  controlLabel: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#000000",
+    marginBottom: 16,
+  },
+  btnRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+
   valueBox: {
     flex: 1,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderRadius: 12,
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderWidth: 3,
-    borderColor: '#2196F3',
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
+    borderColor: "#2196F3",
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "center",
     minHeight: 80,
     gap: 6,
   },
-  valueBoxHC: { backgroundColor: '#000000', borderColor: '#FFEB3B' },
-  valueNum: { fontSize: 28, fontWeight: 'bold', color: '#1565C0' },
-  valueNumHC: { color: '#FFEB3B' },
-  valueUnit: { fontSize: 20, fontWeight: '600', color: '#1565C0' },
-  
+  valueBoxHC: { backgroundColor: "#000000", borderColor: "#FFEB3B" },
+  valueNum: { fontSize: 28, fontWeight: "bold", color: "#1565C0" },
+  valueNumHC: { color: "#FFEB3B" },
+  valueUnit: { fontSize: 20, fontWeight: "600", color: "#1565C0" },
+
   ctrlBtn: {
     width: 80,
     height: 80,
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 3,
-    borderColor: '#1565C0',
+    borderColor: "#1565C0",
   },
-  ctrlBtnHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
-  ctrlBtnDisabled: { backgroundColor: '#BDBDBD', borderColor: '#9E9E9E' },
-  ctrlBtnTxt: { fontSize: 40, fontWeight: 'bold', color: '#FFFFFF' },
-  ctrlBtnTxtHC: { color: '#000000' },
-  ctrlBtnTxtDisabled: { color: '#E0E0E0' },
-  
+  ctrlBtnHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
+  ctrlBtnDisabled: { backgroundColor: "#BDBDBD", borderColor: "#9E9E9E" },
+  ctrlBtnTxt: { fontSize: 40, fontWeight: "bold", color: "#FFFFFF" },
+  ctrlBtnTxtHC: { color: "#000000" },
+  ctrlBtnTxtDisabled: { color: "#E0E0E0" },
+
   switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 28,
   },
-  
+
   voiceSection: { marginBottom: 20 },
   voiceList: {},
   voiceBtn: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 20,
     marginTop: 12,
     borderWidth: 3,
-    borderColor: '#90CAF9',
+    borderColor: "#90CAF9",
     minHeight: 70,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-  voiceBtnSel: { backgroundColor: '#2196F3', borderColor: '#1565C0' },
-  voiceBtnSelHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
-  voiceTxt: { fontSize: 22, color: '#1565C0', fontWeight: '600', textAlign: 'center' },
-  voiceTxtSel: { color: '#FFFFFF', fontWeight: 'bold' },
-  voiceTxtSelHC: { color: '#000000' },
-  
+  voiceBtnSel: { backgroundColor: "#2196F3", borderColor: "#1565C0" },
+  voiceBtnSelHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
+  voiceTxt: {
+    fontSize: 22,
+    color: "#1565C0",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  voiceTxtSel: { color: "#FFFFFF", fontWeight: "bold" },
+  voiceTxtSelHC: { color: "#000000" },
+
   actionBtn: {
     paddingVertical: 20,
     paddingHorizontal: 24,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 16,
     borderWidth: 3,
     minHeight: 70,
   },
-  actionBtnHC: { backgroundColor: '#FFEB3B', borderColor: '#FBC02D' },
-  actionTxt: { fontSize: 24, fontWeight: 'bold', color: '#000000' },
-  actionTxtHC: { color: '#000000' },
-  
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  infoLabel: { fontSize: 22, color: '#666666', fontWeight: '600' },
-  infoValue: { fontSize: 22, color: '#333333', fontWeight: '600' },
-  
-  textHC: { color: '#FFFFFF' },
+  actionBtnHC: { backgroundColor: "#FFEB3B", borderColor: "#FBC02D" },
+  actionTxt: { fontSize: 24, fontWeight: "bold", color: "#000000" },
+  actionTxtHC: { color: "#000000" },
+
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  infoLabel: { fontSize: 22, color: "#666666", fontWeight: "600" },
+  infoValue: { fontSize: 22, color: "#333333", fontWeight: "600" },
+
+  textHC: { color: "#FFFFFF" },
 });
