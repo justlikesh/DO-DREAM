@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
 } from "react";
+import { AccessibilityInfo } from "react-native";
 import { asrService } from "../services/asrService";
 
 // 볼륨키 모드
@@ -43,6 +44,7 @@ type Ctx = {
   ) => void;
 
   startVoiceCommandListening: () => Promise<void>;
+  stopVoiceCommandListening: () => Promise<void>;
   isVoiceCommandListening: boolean;
 };
 
@@ -55,6 +57,7 @@ export const TriggerContext = createContext<Ctx>({
   setCurrentScreenId: () => {},
   registerVoiceHandlers: () => {},
   startVoiceCommandListening: async () => {},
+  stopVoiceCommandListening: async () => {},
   isVoiceCommandListening: false,
 });
 
@@ -104,12 +107,22 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
   const voiceHandlersRef = useRef<Record<string, VoiceCommandHandlers>>({});
   const asrOffRef = useRef<null | (() => void)>(null);
 
+  // 일정 시간 동안 아무 것도 인식 안 될 때 자동 종료용 타이머
+  const voiceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const registerVoiceHandlers = useCallback(
     (screenId: string, handlers: VoiceCommandHandlers) => {
       voiceHandlersRef.current[screenId] = handlers;
     },
     []
   );
+
+  const clearVoiceTimeout = useCallback(() => {
+    if (voiceTimeoutRef.current) {
+      clearTimeout(voiceTimeoutRef.current);
+      voiceTimeoutRef.current = null;
+    }
+  }, []);
 
   const cleanupAsr = useCallback(() => {
     if (asrOffRef.current) {
@@ -118,11 +131,23 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const stopVoiceCommandListening = useCallback(async () => {
+    clearVoiceTimeout();
+    setIsVoiceCommandListening(false);
+    cleanupAsr();
+    try {
+      await asrService.stop();
+    } catch (e) {
+      console.warn("[VoiceCommands] stopVoiceCommandListening 실패:", e);
+    }
+  }, [clearVoiceTimeout, cleanupAsr]);
+
   const startVoiceCommandListening = useCallback(async () => {
-    // 이미 인식 중이면 무시
+    // 이미 인식 중이면 무시 (토글은 버튼에서 처리)
     if (isVoiceCommandListening) return;
 
-    // 이전 리스너 정리
+    // 이전 리스너/타이머 정리
+    clearVoiceTimeout();
     cleanupAsr();
 
     // STT 결과 구독
@@ -132,13 +157,17 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       const text = (raw || "").trim();
       if (!text) return;
 
+      // 결과가 들어왔으므로 타임아웃 제거
+      clearVoiceTimeout();
+
       // 한 번 결과 들어오면 바로 종료
       setIsVoiceCommandListening(false);
       asrService.stop().catch(() => {});
       cleanupAsr();
 
       const handlers =
-        voiceHandlersRef.current[currentScreenId] || ({} as VoiceCommandHandlers);
+        voiceHandlersRef.current[currentScreenId] ||
+        ({} as VoiceCommandHandlers);
       const key = parseVoiceCommand(text);
 
       if (!key) {
@@ -182,6 +211,19 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
 
     setIsVoiceCommandListening(true);
 
+    // 일정 시간 동안 아무 것도 안 들리면 자동 종료
+    voiceTimeoutRef.current = setTimeout(() => {
+      console.log(
+        "[VoiceCommands] 타임아웃: 음성 명령 미인식으로 자동 종료"
+      );
+      setIsVoiceCommandListening(false);
+      asrService.stop().catch(() => {});
+      cleanupAsr();
+      AccessibilityInfo.announceForAccessibility(
+        "음성 명령을 인식하지 못해 듣기를 종료했습니다."
+      );
+    }, 6000); // 6초 정도 대기 (필요하면 숫자 조절 가능)
+
     try {
       await asrService.start({
         lang: "ko-KR",
@@ -191,18 +233,25 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (e) {
       console.warn("[VoiceCommands] asrService.start 실패:", e);
+      clearVoiceTimeout();
       setIsVoiceCommandListening(false);
       cleanupAsr();
     }
-  }, [cleanupAsr, currentScreenId, isVoiceCommandListening]);
+  }, [
+    cleanupAsr,
+    clearVoiceTimeout,
+    currentScreenId,
+    isVoiceCommandListening,
+  ]);
 
   // Provider 언마운트 시 ASR 정리
   useEffect(() => {
     return () => {
+      clearVoiceTimeout();
       cleanupAsr();
       asrService.abort();
     };
-  }, [cleanupAsr]);
+  }, [cleanupAsr, clearVoiceTimeout]);
 
   const value = useMemo(
     () => ({
@@ -214,6 +263,7 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       setCurrentScreenId,
       registerVoiceHandlers,
       startVoiceCommandListening,
+      stopVoiceCommandListening,
       isVoiceCommandListening,
     }),
     [
@@ -223,6 +273,7 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       currentScreenId,
       registerVoiceHandlers,
       startVoiceCommandListening,
+      stopVoiceCommandListening,
       isVoiceCommandListening,
     ]
   );
