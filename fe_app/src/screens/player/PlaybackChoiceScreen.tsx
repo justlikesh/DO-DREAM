@@ -19,6 +19,7 @@ import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import ChoiceButton from "../../components/ChoiceButton";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
@@ -222,7 +223,10 @@ export default function PlaybackChoiceScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* 상단: 뒤로가기 + 음성 명령 버튼 */}
       <View style={[commonStyles.headerContainer, styles.header]}>
-        <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
+        <BackButton
+          onPress={handleGoBack}
+          style={commonStyles.headerBackButton}
+        />
 
         <VoiceCommandButton
           style={commonStyles.headerVoiceButton}
@@ -245,72 +249,42 @@ export default function PlaybackChoiceScreen() {
       {/* 선택 버튼들 */}
       <View style={styles.buttonSection}>
         {material.hasProgress && (
-          <TouchableOpacity
-            style={styles.choiceButton}
+          <ChoiceButton
             onPress={handleContinue}
-            accessible={true}
+            label="이어서 듣기"
+            subLabel="마지막 위치부터"
             accessibilityLabel="이어서 듣기, 마지막 위치부터"
-            accessibilityRole="button"
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>이어서 듣기</Text>
-              <Text style={styles.buttonSubtext}>마지막 위치부터</Text>
-            </View>
-          </TouchableOpacity>
+          />
         )}
 
-        <TouchableOpacity
-          style={styles.choiceButton}
+        <ChoiceButton
           onPress={handleFromStart}
-          accessible={true}
+          label="처음부터 듣기"
+          subLabel="챕터 처음부터"
           accessibilityLabel="처음부터 듣기, 챕터 처음부터"
-          accessibilityRole="button"
-        >
-          <View style={styles.buttonContent}>
-            <Text style={styles.buttonText}>처음부터 듣기</Text>
-            <Text style={styles.buttonSubtext}>챕터 처음부터</Text>
-          </View>
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={styles.choiceButton}
+        <ChoiceButton
           onPress={handleBookmarkPress}
-          accessible={true}
+          label="저장 목록"
+          subLabel="북마크 보기"
           accessibilityLabel="저장 목록"
-          accessibilityRole="button"
-        >
-          <View style={styles.buttonContent}>
-            <Text style={styles.buttonText}>저장 목록</Text>
-            <Text style={styles.buttonSubtext}>북마크 보기</Text>
-          </View>
-        </TouchableOpacity>
+        />
 
-        <TouchableOpacity
-          style={styles.choiceButton}
+        <ChoiceButton
           onPress={handleQuestionPress}
-          accessible={true}
+          label="질문 목록"
+          subLabel="이전 질문 보기"
           accessibilityLabel="질문 목록"
-          accessibilityRole="button"
-        >
-          <View style={styles.buttonContent}>
-            <Text style={styles.buttonText}>질문 목록</Text>
-            <Text style={styles.buttonSubtext}>이전 질문 보기</Text>
-          </View>
-        </TouchableOpacity>
+        />
 
         {showQuizButton && (
-          <TouchableOpacity
-            style={styles.choiceButton}
+          <ChoiceButton
             onPress={handleQuizPress}
-            accessible={true}
+            label="퀴즈 풀기"
+            subLabel="학습 내용 확인"
             accessibilityLabel="퀴즈 풀기, 학습 내용 확인"
-            accessibilityRole="button"
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>퀴즈 풀기</Text>
-              <Text style={styles.buttonSubtext}>학습 내용 확인</Text>
-            </View>
-          </TouchableOpacity>
+          />
         )}
       </View>
     </SafeAreaView>
@@ -343,29 +317,5 @@ const styles = StyleSheet.create({
   },
   buttonSection: {
     gap: 16,
-  },
-  choiceButton: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: "#e0e0e0",
-    minHeight: 88,
-  },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  buttonText: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#333333",
-    flex: 1,
-  },
-  buttonSubtext: {
-    fontSize: 18,
-    color: "#666666",
-    marginLeft: 12,
   },
 });
