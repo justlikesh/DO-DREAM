@@ -128,12 +128,6 @@ export const setupInterceptors = (instance: AxiosInstance) => {
           // 대기 중인 요청들 모두 실패 처리
           processQueue(refreshError as AxiosError, null);
 
-          // 사용자에게 안내
-          accessibilityUtil.announceWithVibration(
-            '로그인이 만료되었습니다. 다시 로그인해주세요.',
-            'warning'
-          );
-
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
