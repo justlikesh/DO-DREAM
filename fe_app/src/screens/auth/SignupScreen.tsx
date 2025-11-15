@@ -19,6 +19,7 @@ import type { SignupScreenNavigationProp } from "../../navigation/navigationType
 import { useAuthStore } from "../../stores/authStore";
 import { biometricUtil } from "../../utils/biometric";
 import { accessibilityUtil } from "../../utils/accessibility";
+import BackButton from "../../components/BackButton";
 import { asrService } from "../../services/asrService";
 
 type Step = "input" | "verify" | "biometric" | "complete";
@@ -64,7 +65,10 @@ export default function SignupScreen() {
           } else {
             setStudentNumber(digits);
             stopVoice(false);
-            accessibilityUtil.announceWithVibration("학번 입력이 완료되었습니다", "success");
+            accessibilityUtil.announceWithVibration(
+              "학번 입력이 완료되었습니다",
+              "success"
+            );
           }
         } else if (target === "name") {
           if (!isFinal) {
@@ -72,17 +76,27 @@ export default function SignupScreen() {
           } else {
             setName(text.trim());
             stopVoice(false);
-            accessibilityUtil.announceWithVibration("이름 입력이 완료되었습니다", "success");
+            accessibilityUtil.announceWithVibration(
+              "이름 입력이 완료되었습니다",
+              "success"
+            );
           }
         }
       });
 
-      await asrService.start({ lang: "ko-KR", interimResults: true, continuous: true, autoRestart: true });
+      await asrService.start({
+        lang: "ko-KR",
+        interimResults: true,
+        continuous: true,
+        autoRestart: true,
+      });
       setVoiceTarget(target);
       setVoiceListening(true);
 
       const label = target === "studentNumber" ? "학번" : "이름";
-      AccessibilityInfo.announceForAccessibility(`${label} 음성 입력을 시작합니다. 말씀하세요.`);
+      AccessibilityInfo.announceForAccessibility(
+        `${label} 음성 입력을 시작합니다. 말씀하세요.`
+      );
     } catch {
       AccessibilityInfo.announceForAccessibility("마이크 권한이 필요합니다.");
     }
@@ -90,10 +104,14 @@ export default function SignupScreen() {
 
   const stopVoice = async (announce = true) => {
     await asrService.stop();
-    if (asrOffRef.current) { asrOffRef.current(); asrOffRef.current = null; }
+    if (asrOffRef.current) {
+      asrOffRef.current();
+      asrOffRef.current = null;
+    }
     setVoiceListening(false);
     setVoiceTarget(null);
-    if (announce) AccessibilityInfo.announceForAccessibility("음성 입력을 종료했습니다.");
+    if (announce)
+      AccessibilityInfo.announceForAccessibility("음성 입력을 종료했습니다.");
   };
 
   useEffect(() => {
@@ -261,14 +279,22 @@ export default function SignupScreen() {
                     <TouchableOpacity
                       style={[
                         styles.voiceButton,
-                        voiceListening && voiceTarget === "studentNumber" && { backgroundColor: "#FFCDD2", borderColor: "#E53935" }
+                        voiceListening &&
+                          voiceTarget === "studentNumber" && {
+                            backgroundColor: "#FFCDD2",
+                            borderColor: "#E53935",
+                          },
                       ]}
                       onPress={
                         voiceListening && voiceTarget === "studentNumber"
                           ? () => stopVoice(true)
                           : () => startVoiceFor("studentNumber")
                       }
-                      accessibilityLabel={voiceListening && voiceTarget === "studentNumber" ? "학번 음성 입력 중지" : "학번 음성 입력"}
+                      accessibilityLabel={
+                        voiceListening && voiceTarget === "studentNumber"
+                          ? "학번 음성 입력 중지"
+                          : "학번 음성 입력"
+                      }
                       accessibilityHint="음성으로 학번을 입력합니다"
                       accessibilityRole="button"
                     >
@@ -293,14 +319,22 @@ export default function SignupScreen() {
                     <TouchableOpacity
                       style={[
                         styles.voiceButton,
-                        voiceListening && voiceTarget === "name" && { backgroundColor: "#FFCDD2", borderColor: "#E53935" }
+                        voiceListening &&
+                          voiceTarget === "name" && {
+                            backgroundColor: "#FFCDD2",
+                            borderColor: "#E53935",
+                          },
                       ]}
                       onPress={
                         voiceListening && voiceTarget === "name"
                           ? () => stopVoice(true)
                           : () => startVoiceFor("name")
                       }
-                      accessibilityLabel={voiceListening && voiceTarget === "name" ? "이름 음성 입력 중지" : "이름 음성 입력"}
+                      accessibilityLabel={
+                        voiceListening && voiceTarget === "name"
+                          ? "이름 음성 입력 중지"
+                          : "이름 음성 입력"
+                      }
                       accessibilityHint="음성으로 이름을 입력합니다"
                       accessibilityRole="button"
                     >
@@ -327,7 +361,9 @@ export default function SignupScreen() {
                     <ActivityIndicator color="#FFF" accessible={false} />
                   ) : (
                     // Text 접근성 비활성화
-                    <Text style={styles.primaryButtonText} accessible={false}>다음</Text>
+                    <Text style={styles.primaryButtonText} accessible={false}>
+                      다음
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -340,6 +376,10 @@ export default function SignupScreen() {
         const verifyButtonLabel = isLoading
           ? "정보 확인 중입니다. 잠시 기다려주세요."
           : "확인";
+
+        const handleBack = () => {
+          setCurrentStep("input");
+        };
 
         return (
           <View style={styles.container}>
@@ -377,7 +417,9 @@ export default function SignupScreen() {
                 <ActivityIndicator color="#FFF" accessible={false} />
               ) : (
                 // Text 접근성 비활성화
-                <Text style={styles.primaryButtonText} accessible={false}>확인</Text>
+                <Text style={styles.primaryButtonText} accessible={false}>
+                  확인
+                </Text>
               )}
             </TouchableOpacity>
 
@@ -425,7 +467,18 @@ export default function SignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>{renderStepContent()}</SafeAreaView>
+    <SafeAreaView style={styles.screen}>
+      {/* 생체인증, 완료 단계에서는 뒤로가기 버튼 숨김 */}
+      {currentStep !== "biometric" && currentStep !== "complete" && (
+        <BackButton
+          onPress={
+            currentStep === "verify" ? () => setCurrentStep("input") : undefined
+          }
+          style={styles.backButton}
+        />
+      )}
+      {renderStepContent()}
+    </SafeAreaView>
   );
 }
 
@@ -433,6 +486,10 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: "#FFF",
+  },
+  backButton: {
+    paddingHorizontal: 16,
+    paddingTop: 42,
   },
   keyboardAvoidingView: {
     flex: 1,
