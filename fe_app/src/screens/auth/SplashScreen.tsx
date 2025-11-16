@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +6,8 @@ import {
   TouchableOpacity,
   AccessibilityInfo,
   Dimensions,
+  Platform,
+  PermissionsAndroid,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -20,7 +17,16 @@ import { Video, AVPlaybackStatus, ResizeMode } from "expo-av";
 import {
   getHasSeenSplash,
   saveHasSeenSplash,
+  getHasAskedNotificationPermission,
+  saveHasAskedNotificationPermission,
 } from "../../services/appStorage";
+import { getApp } from "@react-native-firebase/app";
+import {
+  getMessaging,
+  hasPermission,
+  requestPermission,
+  AuthorizationStatus,
+} from "@react-native-firebase/messaging";
 
 // 개발용 Mock 로그인 (테스트 완료 후 false로 변경)
 const ENABLE_MOCK_LOGIN = false;
@@ -32,7 +38,7 @@ const SR_DURATION_MS = 2000;
 // 앱 시작 시 한 번만 읽어두는 플래그
 const hasSeenSplashOnceRefInit = getHasSeenSplash();
 
-// 전체 스크린 너비, 높이 구하기 (현재 스타일에서 높이/너비 세팅에 사용)
+// 전체 스크린 너비, 높이 구하기
 const windowWidth = Dimensions.get("window").width;
 const windowHeight = Dimensions.get("window").height;
 const screenWidth = Dimensions.get("screen").width;
@@ -45,6 +51,10 @@ export default function SplashScreen() {
   const [isScreenReaderEnabled, setIsScreenReaderEnabled] = useState(false);
 
   const hasSeenSplashOnceRef = useRef<boolean>(hasSeenSplashOnceRefInit);
+
+  // 알림 권한 안내 여부 (MMKV에서 즉시 읽음)
+  const [hasAskedNotificationPermission, setHasAskedNotificationPermission] =
+    useState<boolean>(() => getHasAskedNotificationPermission());
 
   const navigateNext = useCallback(() => {
     // 처음 스플래시를 통과할 때만 플래그 저장
@@ -80,10 +90,8 @@ export default function SplashScreen() {
       }
     };
 
-    // 초기 상태 조회
     AccessibilityInfo.isScreenReaderEnabled().then(announceIfNeeded);
 
-    // 설정이 바뀌었을 때(중간에 TalkBack 켜졌을 때)도 멘트 한 번 안내
     const subscription = AccessibilityInfo.addEventListener(
       "screenReaderChanged",
       (enabled) => {
@@ -96,71 +104,163 @@ export default function SplashScreen() {
     };
   }, []);
 
+  /**
+   * 첫 실행 시 알림 권한을 한 번만 요청
+   * - OS 시스템 팝업만 사용
+   * - 시각장애인을 위해 사전 음성 안내 포함
+   */
+  const requestNotificationPermissionWithAnnouncement =
+    useCallback(async () => {
+      try {
+        AccessibilityInfo.announceForAccessibility(
+          "두드림 알림을 보내기 위한 권한을 요청합니다. 잠시 후 뜨는 팝업에서 허용 또는 허용 안함을 선택해 주세요."
+        );
+
+        if (Platform.OS === "android") {
+          if (Platform.Version >= 33) {
+            const result = await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+            );
+
+            const granted = result === PermissionsAndroid.RESULTS.GRANTED;
+
+            if (granted) {
+              AccessibilityInfo.announceForAccessibility(
+                "알림이 허용되었습니다. 앞으로 두드림에서 학습 알림을 보내드릴게요."
+              );
+            } else {
+              AccessibilityInfo.announceForAccessibility(
+                "알림이 허용되지 않았습니다. 나중에 설정에서 변경할 수 있습니다."
+              );
+            }
+          } else {
+            AccessibilityInfo.announceForAccessibility(
+              "이 기기에서는 별도 알림 권한 없이 알림을 보낼 수 있습니다."
+            );
+          }
+        } else {
+          const app = getApp();
+          const msg = getMessaging(app);
+
+          const currentStatus = await hasPermission(msg);
+          const alreadyEnabled =
+            currentStatus === AuthorizationStatus.AUTHORIZED ||
+            currentStatus === AuthorizationStatus.PROVISIONAL;
+
+          if (alreadyEnabled) {
+            AccessibilityInfo.announceForAccessibility(
+              "이미 알림 권한이 허용되어 있습니다. 앞으로 두드림에서 학습 알림을 보내드릴게요."
+            );
+          } else {
+            const authStatus = await requestPermission(msg);
+            const enabled =
+              authStatus === AuthorizationStatus.AUTHORIZED ||
+              authStatus === AuthorizationStatus.PROVISIONAL;
+
+            if (enabled) {
+              AccessibilityInfo.announceForAccessibility(
+                "알림이 허용되었습니다. 앞으로 두드림에서 학습 알림을 보내드릴게요."
+              );
+            } else {
+              AccessibilityInfo.announceForAccessibility(
+                "알림이 허용되지 않았습니다. 나중에 설정에서 변경할 수 있습니다."
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[SplashScreen] Notification permission error:", e);
+        AccessibilityInfo.announceForAccessibility(
+          "알림 설정 중 오류가 발생했습니다. 나중에 다시 시도해 주세요."
+        );
+      } finally {
+        saveHasAskedNotificationPermission(true);
+        setHasAskedNotificationPermission(true);
+      }
+    }, []);
+
   // Mock 로그인 + 타이머 / 첫 실행 여부 처리
   useEffect(() => {
-    console.log("[SplashScreen] Mounted (Video version)");
-    console.log(
-      "[SplashScreen] AccessToken:",
-      accessToken ? "EXISTS" : "NULL"
-    );
-    console.log(
-      "[SplashScreen] hasSeenSplashOnce:",
-      hasSeenSplashOnceRef.current
-    );
-    console.log(
-      "[SplashScreen] isScreenReaderEnabled:",
-      isScreenReaderEnabled
-    );
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    if (ENABLE_MOCK_LOGIN && !accessToken) {
-      console.log("[SplashScreen] Mock login enabled - injecting fake data");
-
-      setAccessToken("mock-access-token-for-development-12345");
-      setStudent({
-        id: 1,
-        studentNumber: "2024001",
-        name: "테스트학생",
-        createdAt: new Date().toISOString(),
-      });
-
-      console.log("[SplashScreen] Mock login complete");
-    }
-
-    const isFirstRun = !hasSeenSplashOnceRef.current;
-
-    // 첫 실행: 스크린리더 OFF → 5초, ON → 2초
-    // 재실행: SR 여부와 상관없이 2초
-    const effectiveDuration = isFirstRun
-      ? isScreenReaderEnabled
-        ? SR_DURATION_MS
-        : VIDEO_DURATION_MS
-      : SR_DURATION_MS;
-
-    console.log(
-      "[SplashScreen] effectiveDuration:",
-      effectiveDuration,
-      "(isFirstRun:",
-      isFirstRun,
-      ", SR:",
-      isScreenReaderEnabled,
-      ")"
-    );
-
-    const timer = setTimeout(() => {
+    const run = async () => {
+      console.log("[SplashScreen] Mounted (Video version)");
       console.log(
-        "[SplashScreen] Timer fired → navigateNext(), effectiveDuration:",
-        effectiveDuration
+        "[SplashScreen] AccessToken:",
+        accessToken ? "EXISTS" : "NULL"
       );
-      navigateNext();
-    }, effectiveDuration);
+      console.log(
+        "[SplashScreen] hasSeenSplashOnce:",
+        hasSeenSplashOnceRef.current
+      );
+      console.log(
+        "[SplashScreen] isScreenReaderEnabled:",
+        isScreenReaderEnabled
+      );
+      console.log(
+        "[SplashScreen] hasAskedNotificationPermission:",
+        hasAskedNotificationPermission
+      );
 
-    return () => clearTimeout(timer);
+      if (ENABLE_MOCK_LOGIN && !accessToken) {
+        console.log("[SplashScreen] Mock login enabled - injecting fake data");
+
+        setAccessToken("mock-access-token-for-development-12345");
+        setStudent({
+          id: 1,
+          studentNumber: "2024001",
+          name: "테스트학생",
+          createdAt: new Date().toISOString(),
+        });
+
+        console.log("[SplashScreen] Mock login complete");
+      }
+
+      const isFirstRun = !hasSeenSplashOnceRef.current;
+
+      // 첫 실행 + 아직 권한 요청/안내를 한 적이 없다면 시스템 팝업 한 번 요청
+      if (isFirstRun && !hasAskedNotificationPermission) {
+        await requestNotificationPermissionWithAnnouncement();
+      }
+
+      const effectiveDuration = isFirstRun
+        ? isScreenReaderEnabled
+          ? SR_DURATION_MS
+          : VIDEO_DURATION_MS
+        : SR_DURATION_MS;
+
+      console.log(
+        "[SplashScreen] effectiveDuration:",
+        effectiveDuration,
+        "(isFirstRun:",
+        isFirstRun,
+        ", SR:",
+        isScreenReaderEnabled,
+        ")"
+      );
+
+      timer = setTimeout(() => {
+        console.log(
+          "[SplashScreen] Timer fired → navigateNext(), effectiveDuration:",
+          effectiveDuration
+        );
+        navigateNext();
+      }, effectiveDuration);
+    };
+
+    run();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [
     accessToken,
     isScreenReaderEnabled,
     navigateNext,
     setAccessToken,
     setStudent,
+    hasAskedNotificationPermission,
+    requestNotificationPermissionWithAnnouncement,
   ]);
 
   const handleSkip = () => {
@@ -172,23 +272,17 @@ export default function SplashScreen() {
     if (!status.isLoaded) return;
 
     if (status.didJustFinish) {
-      // 이제는 영상 종료 시점에 따로 네비게이션하지 않고,
-      // 상단 useEffect의 타이머로만 화면 전환을 제어.
       console.log("[SplashScreen] Video finished");
     }
   };
 
   const isFirstRun = !hasSeenSplashOnceRef.current;
+  const showSkipButton = isFirstRun && !isScreenReaderEnabled;
 
   return (
-    <View
-      style={styles.container}
-      accessible={false} // 스크린리더 포커스 안 줌 (순수 장식 화면)
-      importantForAccessibility="no-hide-descendants"
-    >
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-        {/* 첫 실행 + 스크린리더 OFF일 때만 '건너뛰기' 노출 (정책 유지) */}
-        {isFirstRun && !isScreenReaderEnabled && (
+        {showSkipButton && (
           <TouchableOpacity
             style={styles.skipButton}
             onPress={handleSkip}
@@ -208,7 +302,6 @@ export default function SplashScreen() {
             source={require("../../../assets/splash_9-16.mp4")}
             resizeMode={ResizeMode.COVER}
             isLooping={false}
-            // 재실행이든, 스크린리더 ON이든 항상 영상 재생
             shouldPlay={true}
             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
           />
@@ -251,7 +344,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    objectFit: "cover",
+    objectFit: "cover" as any,
     paddingVertical: 50,
     width: screenWidth,
     height: screenHeight,
