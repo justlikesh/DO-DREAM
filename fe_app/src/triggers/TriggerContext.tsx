@@ -79,7 +79,7 @@ function parseVoiceCommand(raw: string): VoiceCommandKey | null {
   if (t.includes("질문")) return "openQuestion";
   if (t.includes("퀴즈")) return "openQuiz";
 
-  if (t.includes("다음") || t.includes("뒤로")) return "next";
+  if (t.includes("다음")) return "next";
   if (t.includes("이전") || t.includes("앞으로")) return "prev";
 
   if (t.includes("재생") || t.includes("일시정지") || t.includes("멈춰"))
