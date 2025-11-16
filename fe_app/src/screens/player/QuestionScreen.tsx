@@ -21,13 +21,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import type { QuestionScreenNavigationProp } from "../../navigation/navigationTypes";
+import type { QuestionScreenNavigationProp, QuestionScreenRouteProp } from "../../navigation/navigationTypes";
 import * as Haptics from "expo-haptics";
 import { asrService } from "../../services/asrService";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import { ragApi } from "../../api/ragApi";
+import type { RagChatRequest } from "../../types/api/ragApiTypes";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -37,12 +39,10 @@ interface Message {
   timestamp: Date;
 }
 
-type RouteParams = { autoStartASR?: boolean };
-
 export default function QuestionScreen() {
   const navigation = useNavigation<QuestionScreenNavigationProp>();
-  const route = useRoute<any>();
-  const { autoStartASR } = (route?.params as RouteParams) || {};
+  const route = useRoute<QuestionScreenRouteProp>();
+  const { material, chapterId, sectionIndex } = route.params;
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
@@ -50,6 +50,10 @@ export default function QuestionScreen() {
   // 채팅 데이터
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
+
+  // RAG API 관련 상태
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isLoadingResponse, setIsLoadingResponse] = useState(false);
 
   // ASR 상태 (로컬 질문용)
   const [listening, setListening] = useState(false);
@@ -109,15 +113,11 @@ export default function QuestionScreen() {
     };
   }, []);
 
-  // QuestionScreen 진입 시 자동 인식 시작 (로컬 ASR)
+  // QuestionScreen 진입 시 초기화
   useEffect(() => {
-    if (!autoStartASR) return;
-    const delay = screenReaderOnRef.current ? 1200 : 600; // TalkBack 켜져있으면 더 늦게 시작
-    const t = setTimeout(() => {
-      startListening().catch(() => inputRef.current?.focus());
-    }, delay);
-    return () => clearTimeout(t);
-  }, [autoStartASR]);
+    // 세션 초기화 (필요시)
+    // setSessionId(null);
+  }, []);
 
   // 웨이브 애니메이션
   useEffect(() => {
@@ -295,17 +295,64 @@ export default function QuestionScreen() {
       AccessibilityInfo.announceForAccessibility("음성 인식을 종료했습니다.");
   };
 
-  // 입력 전송(임시 - 백엔드 없음)
-  const handleSend = useCallback(() => {
+  // RAG API 호출하여 질문에 대한 답변 받기
+  const sendQuestionToRAG = useCallback(
+    async (question: string) => {
+      try {
+        setIsLoadingResponse(true);
+
+        const payload: RagChatRequest = {
+          document_id: material.id.toString(),
+          question: question,
+          session_id: sessionId,
+        };
+
+        const response = await ragApi.chat(payload);
+
+        // 세션 ID 업데이트 (연속 대화 지원)
+        setSessionId(response.session_id);
+
+        // 봇 응답 추가
+        addBotMessage(response.answer);
+      } catch (error: any) {
+        console.error("RAG API 호출 실패:", error);
+
+        const errorMessage =
+          error?.response?.data?.detail ||
+          error?.message ||
+          "질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+
+        addBotMessage(errorMessage);
+        AccessibilityInfo.announceForAccessibility(
+          "오류가 발생했습니다. " + errorMessage
+        );
+      } finally {
+        setIsLoadingResponse(false);
+      }
+    },
+    [material.id, sessionId]
+  );
+
+  // 입력 전송
+  const handleSend = useCallback(async () => {
     const t = inputText.trim();
     if (!t) {
       AccessibilityInfo.announceForAccessibility("메시지를 입력해주세요.");
       return;
     }
+
+    if (isLoadingResponse) {
+      AccessibilityInfo.announceForAccessibility("이전 질문을 처리 중입니다. 잠시만 기다려주세요.");
+      return;
+    }
+
+    // 사용자 메시지 추가
     pushUserMessage(t);
     setInputText("");
-    setTimeout(() => addBotMessage("인식된 질문을 저장합니다."), 400);
-  }, [inputText]);
+
+    // RAG API 호출
+    await sendQuestionToRAG(t);
+  }, [inputText, isLoadingResponse, material.id, sessionId]);
 
   // 뒤로가기
   const handleBack = useCallback(async () => {
@@ -368,6 +415,7 @@ export default function QuestionScreen() {
       ) {
         setMessages([]);
         setInterim("");
+        setSessionId(null); // 세션 ID 초기화
         lastCommittedRef.current = "";
         AccessibilityInfo.announceForAccessibility(
           "대화 내용을 모두 지웠습니다."
@@ -395,10 +443,14 @@ export default function QuestionScreen() {
       }
 
       // 6) 위 명령어에 해당하지 않으면 → 일반 질문으로 처리
+      if (isLoadingResponse) {
+        AccessibilityInfo.announceForAccessibility("질문을 처리 중입니다. 잠시만 기다려주세요.");
+        return;
+      }
       pushUserMessage(raw);
-      setTimeout(() => addBotMessage("인식된 질문을 저장합니다."), 400);
+      sendQuestionToRAG(raw);
     },
-    [listening, handleSend, handleBack]
+    [listening, handleSend, handleBack, isLoadingResponse, sendQuestionToRAG]
   );
 
   // QuestionScreen용 전역 음성 명령 핸들러 등록
@@ -449,6 +501,27 @@ export default function QuestionScreen() {
       </View>
     );
 
+  // 로딩 말풍선 (RAG 응답 대기 중)
+  const LoadingBubble = () =>
+    !isLoadingResponse ? null : (
+      <View style={[styles.messageRow, styles.botRow]}>
+        <View
+          style={[styles.bubble, styles.botBubble]}
+          accessibilityRole="text"
+          accessibilityLabel="답변을 생성하고 있습니다"
+        >
+          <Text style={[styles.msgText, styles.botText]}>답변을 생성하고 있습니다...</Text>
+          <Text
+            style={[styles.timeText, styles.botTime]}
+            accessible={false}
+            importantForAccessibility="no"
+          >
+            잠시만 기다려주세요
+          </Text>
+        </View>
+      </View>
+    );
+
   const WaveDot = ({ v, i }: { v: Animated.Value; i: number }) => {
     const scale = v.interpolate({
       inputRange: [0, 1],
@@ -486,6 +559,7 @@ export default function QuestionScreen() {
               onPress={() => {
                 setMessages([]);
                 setInterim("");
+                setSessionId(null); // 세션 ID 초기화
                 lastCommittedRef.current = "";
                 AccessibilityInfo.announceForAccessibility(
                   "대화 내용을 모두 지웠습니다."
@@ -574,6 +648,7 @@ export default function QuestionScreen() {
                 );
               })}
               <DraftBubble />
+              <LoadingBubble />
             </View>
           )}
         </ScrollView>
