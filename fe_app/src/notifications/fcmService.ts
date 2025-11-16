@@ -1,52 +1,37 @@
-// fcmService.ts
-import { Alert, Platform } from 'react-native';
-import { getApp } from '@react-native-firebase/app';
+import { Platform } from "react-native";
+import { getApp } from "@react-native-firebase/app";
 import {
   getMessaging,
-  requestPermission,
-  hasPermission,
   getToken as modularGetToken,
   onTokenRefresh as modularOnTokenRefresh,
-  AuthorizationStatus,
-} from '@react-native-firebase/messaging';
-import { fcmApi } from '../api/fcmApi';
+} from "@react-native-firebase/messaging";
+import { fcmApi } from "../api/fcmApi";
+import { useAuthStore } from "../stores/authStore";
+
+type InitOptions = { registerOnInit?: boolean };
+
+let isInitialized = false;
 
 /**
  * FCM 초기화 함수
- * - 첫 실행 시 푸시 알림 권한 요청
- * - 현재 기기의 FCM 토큰을 백엔드에 등록
- * - 토큰이 갱신될 경우 자동으로 재등록
+ * - 내부적으로 onTokenRefresh 리스너를 한 번만 등록
+ * - 옵션에 따라 초기 토큰 등록 여부 결정
+ * - 실제 서버 등록은 accessToken이 있을 때만 수행 (401 방지)
  */
-type InitOptions = { registerOnInit?: boolean };
-
 export async function initFcm(options: InitOptions = { registerOnInit: true }) {
   try {
+    if (isInitialized) {
+      console.log(
+        "[FCM] 이미 초기화되어 있어 initFcm를 다시 실행하지 않습니다."
+      );
+      return;
+    }
+    isInitialized = true;
+
     const app = getApp();
     const msg = getMessaging(app);
 
-    // 현재 권한 상태 확인
-    const currentStatus = await hasPermission(msg);
-    const enabled =
-      currentStatus === AuthorizationStatus.AUTHORIZED ||
-      currentStatus === AuthorizationStatus.PROVISIONAL;
-
-    if (!enabled) {
-      // 시스템 권한창을 띄우기 전 사용자에게 안내
-      Alert.alert(
-        '알림 권한 요청',
-        '두드림 앱의 중요한 소식을 받기 위해 푸시 알림 권한을 허용해 주세요.',
-      );
-
-      try {
-        // 실제 권한 요청 (사용자가 거부할 수도 있음)
-        await requestPermission(msg);
-      } catch (e) {
-        // 거부하더라도 앱이 종료되지 않도록 예외 처리
-        console.warn('[FCM] 알림 권한 요청이 거부됨:', e);
-      }
-    }
-
-    // 초기화 시 토큰 등록 (Mock 모드일 때는 생략)
+    // 앱 시작 시 한 번 토큰 등록 (옵션)
     if (options.registerOnInit) {
       await registerFcmToken();
     }
@@ -55,13 +40,14 @@ export async function initFcm(options: InitOptions = { registerOnInit: true }) {
     modularOnTokenRefresh(msg, async (newToken) => {
       try {
         await postToken(newToken);
-        console.log('[FCM] 새 토큰이 발급되어 서버에 재등록 완료');
+        console.log("[FCM] 새 토큰이 발급되어 서버에 재등록 완료");
       } catch (e) {
-        console.error('[FCM] 새 토큰 등록 중 오류 발생:', e);
+        console.error("[FCM] 새 토큰 등록 중 오류 발생:", e);
       }
     });
   } catch (error) {
-    console.error('[FCM] initFcm 실행 중 오류:', error);
+    console.error("[FCM] initFcm 실행 중 오류:", error);
+    isInitialized = false; // 실패 시 다시 시도할 수 있게 롤백
   }
 }
 
@@ -76,22 +62,32 @@ export async function registerFcmToken() {
     const token = await modularGetToken(msg);
 
     if (!token) {
-      console.warn('[FCM] 등록 가능한 토큰이 없습니다.');
+      console.warn("[FCM] 등록 가능한 토큰이 없습니다.");
       return;
     }
 
     await postToken(token);
-    console.log('[FCM] FCM 토큰 서버 등록 완료');
+    console.log("[FCM] FCM 토큰 서버 등록 완료");
   } catch (error) {
-    console.error('[FCM] registerFcmToken 실행 중 오류:', error);
+    console.error("[FCM] registerFcmToken 실행 중 오류:", error);
   }
 }
 
 /**
  * 서버에 토큰 등록 요청
  * - OS 종류(ANDROID/IOS)를 함께 전송
+ * - accessToken이 없으면 서버 호출을 아예 하지 않음 (401 방지)
  */
 async function postToken(token: string) {
-  const deviceType = Platform.OS === 'ios' ? 'IOS' : 'ANDROID';
+  const { accessToken } = useAuthStore.getState();
+
+  if (!accessToken) {
+    console.log(
+      "[FCM] accessToken이 없어 FCM 토큰 서버 등록을 건너뜁니다. 로그인 후 다시 시도됩니다."
+    );
+    return;
+  }
+
+  const deviceType = Platform.OS === "ios" ? "IOS" : "ANDROID";
   await fcmApi.registerToken({ token, deviceType });
 }

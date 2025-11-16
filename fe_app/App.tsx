@@ -1,10 +1,11 @@
+// App.tsx
 import React, { useEffect } from "react";
 import { Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { navigationRef } from "./src/navigation/RootNavigation";
 import GlobalVoiceTriggers from "./src/components/GlobalVoiceTriggers";
-import { TriggerProvider } from "./src/triggers/TriggerContext"; 
+import { TriggerProvider } from "./src/triggers/TriggerContext";
 import { useAppSettingsStore } from "./src/stores/appSettingsStore";
 import { useAuthStore } from "./src/stores/authStore";
 import ttsService from "./src/services/ttsService";
@@ -12,15 +13,15 @@ import { initFcm } from "./src/notifications/fcmService";
 
 export default function App() {
   const hydrateAuth = useAuthStore((state) => state.hydrate);
-  const hydrateSettings = useAppSettingsStore((state) => state.hydrate); 
+  const hydrateSettings = useAppSettingsStore((state) => state.hydrate);
 
   useEffect(() => {
     const initializeApp = async () => {
-      // 스토리지에서 인증 정보와 설정 정보를 불러옵니다.
+      // 1) 스토리지에서 인증 정보와 설정 정보 불러오기
       hydrateAuth();
       await hydrateSettings();
 
-      // 불러온 설정값으로 TTS 서비스를 동기화합니다.
+      // 2) 불러온 설정값으로 TTS 서비스 동기화
       const currentSettings = useAppSettingsStore.getState().settings;
       await ttsService.syncWithSettings({
         rate: currentSettings.ttsRate,
@@ -29,8 +30,15 @@ export default function App() {
         voiceId: currentSettings.ttsVoiceId,
       });
 
-      // FCM 초기화 (앱 시작 시 토큰 등록 생략 - Mock 모드에서)
-      await initFcm({ registerOnInit: false });
+      // 3) FCM 초기화
+      //   - onTokenRefresh 리스너만 세팅
+      //   - accessToken 체크는 fcmService 내부에서 처리
+      const currentAccessToken = useAuthStore.getState().accessToken;
+
+      await initFcm({
+        // 이미 로그인된 상태로 앱을 켰다면, 이때 바로 토큰 한 번 등록
+        registerOnInit: !!currentAccessToken,
+      });
     };
 
     initializeApp();
