@@ -5,16 +5,16 @@
  * - Student Info (로그인 사용자 정보)
  * - Biometric Enabled (생체인증 사용 여부)
  */
-import { storage } from './appStorage';
+import { storage } from "./appStorage";
 
 /**
  * 인증 관련 Storage Keys
  */
 const AUTH_KEYS = {
-  ACCESS_TOKEN: 'access_token',
-  REFRESH_TOKEN: 'refresh_token',
-  BIOMETRIC_ENABLED: 'biometric_enabled',
-  STUDENT_INFO: 'student_info',
+  ACCESS_TOKEN: "access_token",
+  REFRESH_TOKEN: "refresh_token",
+  BIOMETRIC_ENABLED: "biometric_enabled",
+  STUDENT_INFO: "student_info",
 };
 
 /**
@@ -22,15 +22,15 @@ const AUTH_KEYS = {
  */
 export const saveAccessToken = (token: string): void => {
   try {
-    if (!token || token === 'undefined' || typeof token !== 'string') {
-      console.error('[AuthStorage] Invalid access token:', token);
-      throw new Error('Invalid access token');
+    if (!token || token === "undefined" || typeof token !== "string") {
+      console.error("[AuthStorage] Invalid access token:", token);
+      throw new Error("Invalid access token");
     }
-    
+
     storage.set(AUTH_KEYS.ACCESS_TOKEN, token);
-    console.log('[AuthStorage] Access token saved successfully');
+    console.log("[AuthStorage] Access token saved successfully");
   } catch (error) {
-    console.error('[AuthStorage] Failed to save access token:', error);
+    console.error("[AuthStorage] Failed to save access token:", error);
     throw error;
   }
 };
@@ -43,7 +43,7 @@ export const getAccessToken = (): string | null => {
     const token = storage.getString(AUTH_KEYS.ACCESS_TOKEN);
     return token ?? null;
   } catch (error) {
-    console.error('[AuthStorage] Failed to get access token:', error);
+    console.error("[AuthStorage] Failed to get access token:", error);
     return null;
   }
 };
@@ -54,51 +54,9 @@ export const getAccessToken = (): string | null => {
 export const removeAccessToken = (): void => {
   try {
     storage.delete(AUTH_KEYS.ACCESS_TOKEN);
-    console.log('[AuthStorage] Access token removed');
+    console.log("[AuthStorage] Access token removed");
   } catch (error) {
-    console.error('[AuthStorage] Failed to remove access token:', error);
-  }
-};
-
-/**
- * Refresh Token 저장
- */
-export const saveRefreshToken = (token: string): void => {
-  try {
-    if (!token || token === 'undefined' || typeof token !== 'string') {
-      console.error('[AuthStorage] Invalid refresh token:', token);
-      throw new Error('Invalid refresh token');
-    }
-    
-    storage.set(AUTH_KEYS.REFRESH_TOKEN, token);
-    console.log('[AuthStorage] Refresh token saved');
-  } catch (error) {
-    console.error('[AuthStorage] Failed to save refresh token:', error);
-    throw error;
-  }
-};
-
-/**
- * Refresh Token 조회
- */
-export const getRefreshToken = (): string | null => {
-  try {
-    return storage.getString(AUTH_KEYS.REFRESH_TOKEN) ?? null;
-  } catch (error) {
-    console.error('[AuthStorage] Failed to get refresh token:', error);
-    return null;
-  }
-};
-
-/**
- * Refresh Token 삭제
- */
-export const removeRefreshToken = (): void => {
-  try {
-    storage.delete(AUTH_KEYS.REFRESH_TOKEN);
-    console.log('[AuthStorage] Refresh token removed');
-  } catch (error) {
-    console.error('[AuthStorage] Failed to remove refresh token:', error);
+    console.error("[AuthStorage] Failed to remove access token:", error);
   }
 };
 
@@ -108,9 +66,9 @@ export const removeRefreshToken = (): void => {
 export const saveBiometricEnabled = (enabled: boolean): void => {
   try {
     storage.set(AUTH_KEYS.BIOMETRIC_ENABLED, enabled);
-    console.log('[AuthStorage] Biometric enabled:', enabled);
+    console.log("[AuthStorage] Biometric enabled:", enabled);
   } catch (error) {
-    console.error('[AuthStorage] Failed to save biometric enabled:', error);
+    console.error("[AuthStorage] Failed to save biometric enabled:", error);
   }
 };
 
@@ -121,7 +79,7 @@ export const isBiometricEnabled = (): boolean => {
   try {
     return storage.getBoolean(AUTH_KEYS.BIOMETRIC_ENABLED) ?? false;
   } catch (error) {
-    console.error('[AuthStorage] Failed to get biometric enabled:', error);
+    console.error("[AuthStorage] Failed to get biometric enabled:", error);
     return false;
   }
 };
@@ -132,14 +90,14 @@ export const isBiometricEnabled = (): boolean => {
 export const saveStudentInfo = (studentInfo: object): void => {
   try {
     if (!studentInfo) {
-      console.error('[AuthStorage] Invalid student info:', studentInfo);
-      throw new Error('Invalid student info');
+      console.error("[AuthStorage] Invalid student info:", studentInfo);
+      throw new Error("Invalid student info");
     }
-    
+
     storage.set(AUTH_KEYS.STUDENT_INFO, JSON.stringify(studentInfo));
-    console.log('[AuthStorage] Student info saved');
+    console.log("[AuthStorage] Student info saved");
   } catch (error) {
-    console.error('[AuthStorage] Failed to save student info:', error);
+    console.error("[AuthStorage] Failed to save student info:", error);
     throw error;
   }
 };
@@ -152,7 +110,7 @@ export const getStudentInfo = <T = any>(): T | null => {
     const data = storage.getString(AUTH_KEYS.STUDENT_INFO);
     return data ? JSON.parse(data) : null;
   } catch (error) {
-    console.error('[AuthStorage] Failed to get student info:', error);
+    console.error("[AuthStorage] Failed to get student info:", error);
     return null;
   }
 };
@@ -163,9 +121,9 @@ export const getStudentInfo = <T = any>(): T | null => {
 export const removeStudentInfo = (): void => {
   try {
     storage.delete(AUTH_KEYS.STUDENT_INFO);
-    console.log('[AuthStorage] Student info removed');
+    console.log("[AuthStorage] Student info removed");
   } catch (error) {
-    console.error('[AuthStorage] Failed to remove student info:', error);
+    console.error("[AuthStorage] Failed to remove student info:", error);
   }
 };
 
@@ -176,11 +134,10 @@ export const removeStudentInfo = (): void => {
 export const clearAuthData = (): void => {
   try {
     removeAccessToken();
-    removeRefreshToken();
     removeStudentInfo();
-    console.log('[AuthStorage] Auth data cleared');
+    console.log("[AuthStorage] Auth data cleared");
   } catch (error) {
-    console.error('[AuthStorage] Failed to clear auth data:', error);
+    console.error("[AuthStorage] Failed to clear auth data:", error);
   }
 };
 

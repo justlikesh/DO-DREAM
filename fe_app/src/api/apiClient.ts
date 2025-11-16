@@ -9,6 +9,7 @@ class ApiClient {
   constructor() {
     this.instance = axios.create({
       baseURL: API_BASE_URL,
+      withCredentials: true, // 쿠키를 주고받기 위해 추가
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',

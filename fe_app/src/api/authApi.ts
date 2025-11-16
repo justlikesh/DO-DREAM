@@ -47,8 +47,8 @@ export const authApi = {
    * 학생 토큰 재발급
    * 쿠키에 담긴 Refresh Token으로 Access Token을 재발급하고, Refresh Token을 회전
    */
-  refresh: async (data: StudentLoginRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post(AUTH_ENDPOINTS.REFRESH, data);
+  refresh: async (): Promise<AuthResponse> => {
+    const response = await apiClient.post(AUTH_ENDPOINTS.REFRESH);
     return response.data;
   },
 

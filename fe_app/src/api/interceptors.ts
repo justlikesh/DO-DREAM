@@ -85,20 +85,8 @@ export const setupInterceptors = (instance: AxiosInstance) => {
         try {
           console.log('[Interceptor] Starting token refresh...');
 
-          const deviceId = getDeviceId();
-          const deviceSecret = getDeviceSecret();
-
-          if (!deviceId || !deviceSecret) {
-            console.error('[Interceptor] No device info found');
-            throw new Error('저장된 기기 정보가 없습니다');
-          }
-
-          console.log('[Interceptor] Device info loaded, calling refresh API...');
-
-          const response = await instance.post('/api/auth/student/refresh', {
-            deviceId,
-            deviceSecret,
-          });
+          // 쿠키의 Refresh Token을 사용하도록 body 없이 요청
+          const response = await instance.post('/api/auth/student/refresh');
 
           const newAccessToken = response.data?.accessToken;
 
