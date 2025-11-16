@@ -83,7 +83,7 @@ export default function LibraryScreen() {
           );
         } else {
           AccessibilityInfo.announceForAccessibility(
-            `${displayName} 학생에게 공유된 학습 자료 ${mapped.length}개가 있습니다. 화면을 아래로 쓸어 내려 교재를 탐색하세요.`
+            `${displayName} 학생에게 공유된 학습 자료 ${mapped.length}개가 있습니다.`
           );
         }
       } catch (e: any) {
