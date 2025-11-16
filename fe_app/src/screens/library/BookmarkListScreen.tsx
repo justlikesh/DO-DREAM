@@ -4,6 +4,7 @@ import React, {
   useRef,
   useContext,
   useCallback,
+  useMemo,
 } from "react";
 import {
   View,
@@ -26,12 +27,13 @@ import {
   incrementBookmarkRepeatCount,
 } from "../../services/bookmarkStorage";
 import { Bookmark } from "../../types/bookmark";
-import { getChapterById } from "../../data/dummyChapters";
 import ttsService from "../../services/ttsService";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
+import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
+import type { Chapter } from "../../types/chapter";
 
 export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
@@ -44,7 +46,20 @@ export default function BookmarkListScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const chapter = chapterId !== undefined ? getChapterById(chapterId) : null;
+  // JSON → Chapter[] 변환
+  const chaptersFromJson: Chapter[] = useMemo(() => {
+    const anyMaterial: any = material;
+    const json = anyMaterial?.json;
+    if (json && Array.isArray(json.chapters)) {
+      return buildChaptersFromMaterialJson(material.id, json);
+    }
+    return [];
+  }, [material]);
+
+  const chapter: Chapter | null =
+    chapterId !== undefined
+      ? chaptersFromJson.find((c) => c.chapterId === chapterId) ?? null
+      : null;
 
   // 전역 음성 명령 컨텍스트
   const {
@@ -356,7 +371,10 @@ export default function BookmarkListScreen() {
     <SafeAreaView style={styles.container}>
       {/* 헤더 */}
       <View style={commonStyles.headerContainer}>
-        <BackButton onPress={handleGoBack} style={commonStyles.headerBackButton} />
+        <BackButton
+          onPress={handleGoBack}
+          style={commonStyles.headerBackButton}
+        />
 
         <View style={styles.headerTitle}>
           <Text

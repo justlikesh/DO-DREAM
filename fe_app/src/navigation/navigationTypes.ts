@@ -41,8 +41,8 @@ export type RootStackParamList = {
     }[];
   };
   BookmarkList: {
-    material?: Material;
-    chapterId?: number;
+    material: Material;
+    chapterId: number;
   };
   Settings: undefined;
 };

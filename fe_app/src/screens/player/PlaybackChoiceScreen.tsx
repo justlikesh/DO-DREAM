@@ -1,4 +1,9 @@
-import React, { useEffect, useContext, useCallback } from "react";
+import React, {
+  useEffect,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -12,29 +17,35 @@ import {
   PlaybackChoiceScreenNavigationProp,
   PlaybackChoiceScreenRouteProp,
 } from "../../navigation/navigationTypes";
-import { getChaptersByMaterialId } from "../../data/dummyChapters";
-import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
 import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
 import ChoiceButton from "../../components/ChoiceButton";
+import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
+import type { Chapter } from "../../types/chapter";
 
 export default function PlaybackChoiceScreen() {
   const navigation = useNavigation<PlaybackChoiceScreenNavigationProp>();
   const route = useRoute<PlaybackChoiceScreenRouteProp>();
   const { material } = route.params;
 
-  const chapters = getChaptersByMaterialId(material.id.toString());
-  const firstChapter = chapters[0];
+  // JSON → Chapter[] 변환
+  const chapters: Chapter[] = useMemo(() => {
+    const anyMaterial: any = material;
+    const json = anyMaterial?.json;
+    if (json && Array.isArray(json.chapters)) {
+      return buildChaptersFromMaterialJson(material.id, json);
+    }
+    return [];
+  }, [material]);
 
+  const firstChapter = chapters[0] ?? null;
   const hasStudied = material.hasProgress;
 
-  const quizzes = firstChapter
-    ? getQuizzesByChapterId(firstChapter.chapterId.toString())
-    : [];
-  const hasQuiz = quizzes.length > 0;
+  // 퀴즈는 나중에: 지금은 항상 false
+  const hasQuiz = false;
   const showQuizButton = hasStudied && hasQuiz;
 
   const { setCurrentScreenId, registerVoiceHandlers } =
@@ -46,34 +57,55 @@ export default function PlaybackChoiceScreen() {
   }, [material.title, material.currentChapter]);
 
   const handleFromStart = useCallback(() => {
+    if (!firstChapter) {
+      AccessibilityInfo.announceForAccessibility(
+        "이 교재의 내용을 불러오지 못했습니다."
+      );
+      return;
+    }
+
     AccessibilityInfo.announceForAccessibility("처음부터 시작합니다.");
 
-    if (firstChapter) {
-      navigation.navigate("Player", {
-        material,
-        chapterId: firstChapter.chapterId,
-        fromStart: true,
-      });
-    }
+    navigation.navigate("Player", {
+      material,
+      chapterId: firstChapter.chapterId,
+      fromStart: true,
+    });
   }, [firstChapter, material, navigation]);
 
   const handleContinue = useCallback(() => {
+    if (!firstChapter) {
+      AccessibilityInfo.announceForAccessibility(
+        "이 교재의 내용을 불러오지 못했습니다."
+      );
+      return;
+    }
+
     AccessibilityInfo.announceForAccessibility("이어서 듣기 시작합니다.");
 
-    if (firstChapter) {
-      navigation.navigate("Player", {
-        material,
-        chapterId: firstChapter.chapterId,
-        fromStart: false,
-      });
-    }
+    navigation.navigate("Player", {
+      material,
+      chapterId: firstChapter.chapterId,
+      fromStart: false,
+    });
   }, [firstChapter, material, navigation]);
 
   const handleBookmarkPress = useCallback(() => {
+    if (!firstChapter) {
+      AccessibilityInfo.announceForAccessibility(
+        "이 교재의 북마크를 불러오지 못했습니다."
+      );
+      return;
+    }
+
     AccessibilityInfo.announceForAccessibility("저장 목록으로 이동합니다");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // TODO: 북마크 목록 화면으로 이동
-  }, []);
+
+    navigation.navigate("BookmarkList", {
+      material,
+      chapterId: firstChapter.chapterId,
+    });
+  }, [firstChapter, material, navigation]);
 
   const handleQuestionPress = useCallback(() => {
     AccessibilityInfo.announceForAccessibility("질문 목록으로 이동합니다");
@@ -82,21 +114,10 @@ export default function PlaybackChoiceScreen() {
   }, []);
 
   const handleQuizPress = useCallback(() => {
-    if (!firstChapter) return;
-
-    if (quizzes.length === 1) {
-      AccessibilityInfo.announceForAccessibility("퀴즈를 시작합니다");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("Quiz", { quiz: quizzes[0] });
-    } else {
-      AccessibilityInfo.announceForAccessibility("퀴즈 목록으로 이동합니다");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.navigate("QuizList", {
-        material,
-        chapterId: firstChapter.chapterId,
-      });
-    }
-  }, [firstChapter, quizzes, navigation, material]);
+    AccessibilityInfo.announceForAccessibility(
+      "이 교재에서는 퀴즈 기능이 아직 준비 중입니다."
+    );
+  }, []);
 
   const handleGoBack = useCallback(() => {
     navigation.goBack();

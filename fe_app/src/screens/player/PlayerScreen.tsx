@@ -4,6 +4,7 @@ import React, {
   useContext,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import {
   View,
@@ -22,8 +23,6 @@ import {
   PlayerScreenNavigationProp,
   PlayerScreenRouteProp,
 } from "../../navigation/navigationTypes";
-import { getChapterById } from "../../data/dummyChapters";
-import { getQuizzesByChapterId } from "../../data/dummyQuizzes";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import {
   saveProgress,
@@ -44,6 +43,8 @@ import ChapterCompletionModal from "../../components/ChapterCompletionModal";
 import { useTTSPlayer } from "../../hooks/useTTSPlayer";
 import { commonStyles } from "../../styles/commonStyles";
 import PlayerHeader from "../../components/PlayerHeader";
+import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
+import type { Chapter } from "../../types/chapter";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -55,8 +56,14 @@ const UI_MODE_LABELS: Record<PlayModeKey, string> = {
 
 export default function PlayerScreen() {
   const navigation = useNavigation<PlayerScreenNavigationProp>();
-  const route = useRoute<PlayerScreenRouteProp>();
-  const { material, chapterId, fromStart } = route.params;
+  const route = useRoute<PlayerScreenRouteProp>() as any;
+
+  const {
+    material,
+    chapterId,
+    fromStart,
+    initialSectionIndex: initialSectionIndexFromRoute,
+  } = route.params;
 
   const appSettings = useAppSettingsStore((state) => state.settings);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
@@ -73,9 +80,12 @@ export default function PlayerScreen() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
-  const playButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
-  const prevButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
-  const nextButtonRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const playButtonRef =
+    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const prevButtonRef =
+    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+  const nextButtonRef =
+    useRef<React.ElementRef<typeof TouchableOpacity>>(null);
 
   // Modal 상태
   const [modalVisible, setModalVisible] = useState(false);
@@ -85,11 +95,32 @@ export default function PlayerScreen() {
   const onControlsLayout = (e: LayoutChangeEvent) =>
     setControlsHeight(e.nativeEvent.layout.height);
 
-  const chapter = getChapterById(chapterId) || null;
-  const quizzes = getQuizzesByChapterId(chapterId.toString());
-  const hasQuiz = quizzes.length > 0;
+  // JSON → Chapter[] 변환
+  const chaptersFromJson: Chapter[] = useMemo(() => {
+    const anyMaterial: any = material;
+    const json = anyMaterial?.json;
+    if (json && Array.isArray(json.chapters)) {
+      return buildChaptersFromMaterialJson(material.id, json);
+    }
+    return [];
+  }, [material]);
+
+  // 현재 챕터 찾기 (없으면 첫 챕터라도 사용)
+  const chapter: Chapter | null = useMemo(() => {
+    if (chaptersFromJson.length === 0) return null;
+    const found = chaptersFromJson.find((c) => c.chapterId === chapterId);
+    return found ?? chaptersFromJson[0];
+  }, [chaptersFromJson, chapterId]);
+
+  // 퀴즈는 일단 미사용
+  const hasQuiz = false;
 
   const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // --- TTS 상태 ref (saveProgressData에서 참조) ---
+  const ttsStateRef = useRef<{ currentSectionIndex: number; playMode: PlayMode }>(
+    { currentSectionIndex: 0, playMode: "single" }
+  );
 
   // 진행률 저장 (명시적 섹션 인덱스 전달)
   const saveProgressData = useCallback(
@@ -144,11 +175,29 @@ export default function PlayerScreen() {
     saveProgressDataRef.current = saveProgressData;
   }, [saveProgressData]);
 
+  // 저장된 위치 + BookmarkList에서 오는 initialSectionIndex 처리
   const savedPosition = getPlayerPosition(material.id.toString(), chapterId);
-  const initialSectionIndex =
-    savedPosition && !fromStart ? savedPosition.sectionIndex : 0;
-  const initialPlayMode: PlayMode =
-    savedPosition && !fromStart ? savedPosition.playMode : "single";
+
+  const initialSectionIndex: number = useMemo(() => {
+    if (
+      initialSectionIndexFromRoute != null &&
+      typeof initialSectionIndexFromRoute === "number" &&
+      !fromStart
+    ) {
+      return initialSectionIndexFromRoute;
+    }
+    if (savedPosition && !fromStart) {
+      return savedPosition.sectionIndex;
+    }
+    return 0;
+  }, [initialSectionIndexFromRoute, fromStart, savedPosition]);
+
+  const initialPlayMode: PlayMode = useMemo(() => {
+    if (savedPosition && !fromStart) {
+      return savedPosition.playMode;
+    }
+    return "single";
+  }, [savedPosition, fromStart]);
 
   const {
     isPlaying,
@@ -176,7 +225,6 @@ export default function PlayerScreen() {
   // --- 훅 사용 끝 ---
 
   // saveProgressData에서 최신 상태를 참조하기 위한 ref
-  const ttsStateRef = useRef({ currentSectionIndex, playMode });
   useEffect(() => {
     ttsStateRef.current = { currentSectionIndex, playMode };
   }, [currentSectionIndex, playMode]);
@@ -327,10 +375,13 @@ export default function PlayerScreen() {
     );
   }, [navigation, saveProgressData]);
 
-  // 챕터 완료 후 퀴즈 이동
+  // 챕터 완료 후 퀴즈 이동 (지금은 사용 X)
   const handleQuizNavigation = useCallback(() => {
-    navigation.replace("QuizList", { material, chapterId });
-  }, [navigation, material, chapterId]);
+    // 퀴즈 화면 연결은 추후 구현
+    AccessibilityInfo.announceForAccessibility(
+      "퀴즈 기능이 아직 준비 중입니다."
+    );
+  }, []);
 
   // 재생 모드 음성 명령 파싱
   const parseModeVoice = (spoken: string): PlayMode | null => {
@@ -406,22 +457,18 @@ export default function PlayerScreen() {
         return;
       }
 
-      // 5) 퀴즈 (전역 파서가 놓친 경우 대비)
+      // 5) 퀴즈 (전역 파서가 놓친 경우 대비) - 지금은 안내만
       if (t.includes("퀴즈") || t.includes("문제 풀")) {
-        if (hasQuiz) {
-          handleQuizNavigation();
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "이 챕터에는 퀴즈가 없습니다."
-          );
-        }
+        AccessibilityInfo.announceForAccessibility(
+          "퀴즈 기능이 아직 준비 중입니다."
+        );
         return;
       }
 
       // 그 외: 안내
       console.log("[VoiceCommands][Player] 처리할 수 없는 rawText:", spoken);
       AccessibilityInfo.announceForAccessibility(
-        "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드처럼 말해 주세요."
+        "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드처럼 말해 주세요."
       );
     },
     [
@@ -429,8 +476,6 @@ export default function PlayerScreen() {
       handleToggleBookmark,
       handleOpenSettings,
       handleQuestionPress,
-      handleQuizNavigation,
-      hasQuiz,
     ]
   );
 
@@ -483,7 +528,7 @@ export default function PlayerScreen() {
   // 화면 진입 시 음성 안내 (처음 쓰는 사용자용)
   useEffect(() => {
     const msg =
-      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
+      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
     const timer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(msg);
     }, 600);
@@ -515,7 +560,7 @@ export default function PlayerScreen() {
   if (!currentSection) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>섹션을 불러올 수 없습니다.</Text>
+        <Text style={styles.errorText}>섹션를 불러올 수 없습니다.</Text>
       </SafeAreaView>
     );
   }
@@ -626,7 +671,7 @@ export default function PlayerScreen() {
             accessibilityRole="button"
             accessibilityHint={
               isLastSection
-                ? "챕터 학습을 완료하고 퀴즈 화면으로 이동합니다"
+                ? "챕터 학습을 완료합니다"
                 : ""
             }
           >

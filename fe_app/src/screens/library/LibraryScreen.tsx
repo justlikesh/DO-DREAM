@@ -1,4 +1,9 @@
-import React, { useEffect, useContext, useCallback, useState } from "react";
+import React, {
+  useEffect,
+  useContext,
+  useCallback,
+  useState,
+} from "react";
 import {
   Text,
   StyleSheet,
@@ -16,7 +21,10 @@ import { useAuthStore } from "../../stores/authStore";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import { TriggerContext } from "../../triggers/TriggerContext";
 import VoiceCommandButton from "../../components/VoiceCommandButton";
-import { fetchSharedMaterials } from "../../api/materialApi";
+import {
+  fetchSharedMaterials,
+  fetchMaterialJson,
+} from "../../api/materialApi";
 import { SharedMaterialSummary } from "../../types/api/materialApiTypes";
 
 export default function LibraryScreen() {
@@ -30,23 +38,24 @@ export default function LibraryScreen() {
   const displayName = student?.name || "학생";
 
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingList, setLoadingList] = useState<boolean>(true);
+  const [loadingMaterialId, setLoadingMaterialId] = useState<number | null>(
+    null
+  );
   const [error, setError] = useState<string | null>(null);
 
-  // 헬퍼: 백엔드 공유 자료 요약 → 앱 Material 도메인으로 매핑
-  const mapSharedToMaterial = (shared: SharedMaterialSummary): Material => {
+  // 공유 목록 → Material 도메인으로 매핑
+  const mapSharedToMaterial = (
+    shared: SharedMaterialSummary
+  ): Material => {
     return {
       id: shared.materialId,
       teacherId: String(shared.teacherId),
       title: shared.materialTitle,
-      // 백엔드에서 과목 정보는 아직 없으므로 일단 빈 문자열
-      subject: "",
-      // createdAt / updatedAt이 Swagger에 없어서 sharedAt 기준으로 세팅
+      subject: "", // 백엔드에서 과목 정보는 아직 없으므로 빈 문자열
       createdAt: new Date(shared.sharedAt),
       updatedAt: new Date(shared.sharedAt),
-      // accessed: 학습을 한 번이라도 열어본 적이 있는지 여부
       hasProgress: shared.accessed,
-      // 아직 챕터/재생 위치 정보는 없으므로 undefined
       currentChapter: undefined,
       totalChapters: undefined,
       lastPosition: undefined,
@@ -58,7 +67,7 @@ export default function LibraryScreen() {
     let isMounted = true;
 
     const loadMaterials = async () => {
-      setLoading(true);
+      setLoadingList(true);
       setError(null);
 
       try {
@@ -80,20 +89,17 @@ export default function LibraryScreen() {
       } catch (e: any) {
         console.error("[LibraryScreen] 자료 로딩 실패:", e);
 
-        // 401이면: 자동 로그인도 실패한 상태 → AuthStart로 보내서 다시 로그인
         if (axios.isAxiosError(e) && e.response?.status === 401) {
           AccessibilityInfo.announceForAccessibility(
             "로그인이 만료되었습니다. 생체 인증 로그인 화면으로 이동합니다."
           );
 
-          // 스택 초기화 후 AuthStart로 이동
-          // (네비게이션 타입 충돌을 피하려고 name을 as never 캐스팅)
           navigation.reset({
             index: 0,
             routes: [{ name: "AuthStart" as never }],
           });
 
-          setLoading(false);
+          setLoadingList(false);
           return;
         }
 
@@ -103,7 +109,7 @@ export default function LibraryScreen() {
         );
       } finally {
         if (isMounted) {
-          setLoading(false);
+          setLoadingList(false);
         }
       }
     };
@@ -132,7 +138,7 @@ export default function LibraryScreen() {
       .replace(/구/g, "9");
 
   /**
-   * 음성으로 들어온 문장을 기반으로
+   * 🔍 음성으로 들어온 문장을 기반으로
    * 서버에서 가져온 materials 중 가장 잘 맞는 교재를 찾는다.
    */
   const findMaterialByVoice = useCallback(
@@ -228,7 +234,7 @@ export default function LibraryScreen() {
    */
   const handleLibraryVoiceCommand = useCallback(
     (spoken: string) => {
-      if (loading) {
+      if (loadingList) {
         AccessibilityInfo.announceForAccessibility(
           "학습 자료를 불러오는 중입니다. 잠시 후 다시 말씀해 주세요."
         );
@@ -254,14 +260,62 @@ export default function LibraryScreen() {
       AccessibilityInfo.announceForAccessibility(
         `${material.title} 교재로 이동합니다`
       );
-      navigation.navigate("PlaybackChoice", { material });
+      handleMaterialPress(material);
     },
-    [findMaterialByVoice, navigation, loading, materials.length]
+    [findMaterialByVoice, loadingList, materials]
   );
 
-  const handleMaterialPress = (material: Material) => {
-    console.log("선택한 교재:", material.title);
-    navigation.navigate("PlaybackChoice", { material });
+  /**
+   * 교재 버튼을 눌렀을 때:
+   * - materialId로 JSON(본문 + 퀴즈)을 먼저 가져온 뒤
+   * - material.json에 담아서 PlaybackChoice로 전달
+   */
+  const handleMaterialPress = async (material: Material) => {
+    // 이미 해당 교재를 열기 위한 요청이 진행 중이면 중복 요청 방지
+    if (loadingMaterialId === material.id) {
+      return;
+    }
+
+    try {
+      setLoadingMaterialId(material.id);
+      AccessibilityInfo.announceForAccessibility(
+        `${material.title} 교재 내용을 불러오는 중입니다. 잠시만 기다려 주세요.`
+      );
+
+      const json = await fetchMaterialJson(material.id);
+
+      const enrichedMaterial: Material = {
+        ...material,
+        json,
+      };
+
+      AccessibilityInfo.announceForAccessibility(
+        `${material.title} 교재 내용을 불러왔습니다. 재생 방법을 선택하는 화면으로 이동합니다.`
+      );
+
+      navigation.navigate("PlaybackChoice", { material: enrichedMaterial });
+    } catch (e: any) {
+      console.error("[LibraryScreen] 교재 JSON 로딩 실패:", e);
+
+      if (axios.isAxiosError(e) && e.response?.status === 401) {
+        AccessibilityInfo.announceForAccessibility(
+          "로그인이 만료되었습니다. 생체 인증 로그인 화면으로 이동합니다."
+        );
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "AuthStart" as never }],
+        });
+
+        return;
+      }
+
+      AccessibilityInfo.announceForAccessibility(
+        `${material.title} 교재 내용을 불러오는 데 실패했습니다. 네트워크 상태를 확인한 후 다시 시도해 주세요.`
+      );
+    } finally {
+      setLoadingMaterialId(null);
+    }
   };
 
   const handleSettingsPress = () => {
@@ -270,7 +324,6 @@ export default function LibraryScreen() {
   };
 
   const renderMaterialButton = ({ item }: { item: Material }) => {
-    // 챕터 정보가 없는 경우도 자연스럽게 읽히도록 처리
     const hasChapterInfo =
       typeof item.currentChapter === "number" &&
       typeof item.totalChapters === "number";
@@ -287,14 +340,23 @@ export default function LibraryScreen() {
     const scaledFontSize = baseFontSize * settings.fontSizeScale;
     const scaledChapterFontSize = 18 * settings.fontSizeScale;
 
+    const isThisLoading = loadingMaterialId === item.id;
+
     return (
       <TouchableOpacity
-        style={styles.materialButton}
+        style={[
+          styles.materialButton,
+          isThisLoading && styles.materialButtonLoading,
+        ]}
         onPress={() => handleMaterialPress(item)}
         accessible={true}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
-        accessibilityHint="두 번 탭하여 교재를 선택하세요"
+        accessibilityHint={
+          isThisLoading
+            ? "이 교재의 내용을 불러오는 중입니다."
+            : "두 번 탭하여 교재 내용을 불러온 후 재생 방식을 선택하세요."
+        }
       >
         <View style={styles.materialContent}>
           <Text style={[styles.subjectText, { fontSize: scaledFontSize }]}>
@@ -317,6 +379,10 @@ export default function LibraryScreen() {
             </View>
           )}
         </View>
+
+        {isThisLoading && (
+          <Text style={styles.loadingText}>불러오는 중...</Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -401,7 +467,7 @@ export default function LibraryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, HC && styles.textHC]}>
-              {loading
+              {loadingList
                 ? "학습 자료를 불러오는 중입니다..."
                 : error
                 ? error
@@ -478,6 +544,9 @@ const styles = StyleSheet.create({
     borderColor: "#e0e0e0",
     minHeight: 88,
   },
+  materialButtonLoading: {
+    opacity: 0.7,
+  },
   materialContent: {
     flexDirection: "row",
     alignItems: "center",
@@ -505,6 +574,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#ffffff",
     fontWeight: "600",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#888888",
   },
   emptyContainer: {
     paddingTop: 40,
