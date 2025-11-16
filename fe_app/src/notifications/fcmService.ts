@@ -6,7 +6,6 @@ import {
   onTokenRefresh as modularOnTokenRefresh,
 } from "@react-native-firebase/messaging";
 import { fcmApi } from "../api/fcmApi";
-import { useAuthStore } from "../stores/authStore";
 
 type InitOptions = { registerOnInit?: boolean };
 
@@ -18,7 +17,10 @@ let isInitialized = false;
  * - 옵션에 따라 초기 토큰 등록 여부 결정
  * - 실제 서버 등록은 accessToken이 있을 때만 수행 (401 방지)
  */
-export async function initFcm(options: InitOptions = { registerOnInit: true }) {
+export async function initFcm(
+  getAccessToken: () => string | null,
+  options: InitOptions = { registerOnInit: true }
+) {
   try {
     if (isInitialized) {
       console.log(
@@ -33,13 +35,13 @@ export async function initFcm(options: InitOptions = { registerOnInit: true }) {
 
     // 앱 시작 시 한 번 토큰 등록 (옵션)
     if (options.registerOnInit) {
-      await registerFcmToken();
+      await registerFcmToken(getAccessToken);
     }
 
     // 토큰이 새로 발급될 때마다 재등록
     modularOnTokenRefresh(msg, async (newToken) => {
       try {
-        await postToken(newToken);
+        await postToken(newToken, getAccessToken());
         console.log("[FCM] 새 토큰이 발급되어 서버에 재등록 완료");
       } catch (e) {
         console.error("[FCM] 새 토큰 등록 중 오류 발생:", e);
@@ -55,7 +57,7 @@ export async function initFcm(options: InitOptions = { registerOnInit: true }) {
  * 현재 기기의 FCM 토큰을 가져와 서버에 등록
  * - 여러 번 호출해도 서버에서 중복 처리됨
  */
-export async function registerFcmToken() {
+export async function registerFcmToken(getAccessToken: () => string | null) {
   try {
     const app = getApp();
     const msg = getMessaging(app);
@@ -66,7 +68,7 @@ export async function registerFcmToken() {
       return;
     }
 
-    await postToken(token);
+    await postToken(token, getAccessToken());
     console.log("[FCM] FCM 토큰 서버 등록 완료");
   } catch (error) {
     console.error("[FCM] registerFcmToken 실행 중 오류:", error);
@@ -78,8 +80,8 @@ export async function registerFcmToken() {
  * - OS 종류(ANDROID/IOS)를 함께 전송
  * - accessToken이 없으면 서버 호출을 아예 하지 않음 (401 방지)
  */
-async function postToken(token: string) {
-  const { accessToken } = useAuthStore.getState();
+async function postToken(token: string, accessToken: string | null) {
+  // const { accessToken } = useAuthStore.getState(); // 순환 참조의 원인
 
   if (!accessToken) {
     console.log(
