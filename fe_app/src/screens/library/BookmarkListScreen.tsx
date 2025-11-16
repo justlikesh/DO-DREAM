@@ -21,12 +21,6 @@ import {
   BookmarkListScreenNavigationProp,
   BookmarkListScreenRouteProp,
 } from "../../navigation/navigationTypes";
-import {
-  getBookmarksByChapter,
-  deleteBookmark,
-  incrementBookmarkRepeatCount,
-} from "../../services/bookmarkStorage";
-import { Bookmark } from "../../types/bookmark";
 import ttsService from "../../services/ttsService";
 import * as Haptics from "expo-haptics";
 import { TriggerContext } from "../../triggers/TriggerContext";
@@ -34,19 +28,29 @@ import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
+import {
+  fetchAllBookmarks,
+  toggleBookmark,
+} from "../../api/bookmarkApi";
+import type { BookmarkListItem } from "../../types/api/bookmarkApiTypes";
 
 export default function BookmarkListScreen() {
   const navigation = useNavigation<BookmarkListScreenNavigationProp>();
   const route = useRoute<BookmarkListScreenRouteProp>();
   const { material, chapterId } = route.params;
 
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  // 이 화면에서 사용할 뷰 모델 타입
+  type BookmarkViewItem = BookmarkListItem & {
+    sectionType: "paragraph" | "heading" | "formula" | "image_description";
+  };
+
+  const [bookmarks, setBookmarks] = useState<BookmarkViewItem[]>([]);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // JSON → Chapter[] 변환
+  // JSON → Chapter[] 변환 (챕터 제목 표시용)
   const chaptersFromJson: Chapter[] = useMemo(() => {
     const anyMaterial: any = material;
     const json = anyMaterial?.json;
@@ -69,12 +73,30 @@ export default function BookmarkListScreen() {
     isVoiceCommandListening,
   } = useContext(TriggerContext);
 
-  // 북마크 목록 로드
-  const loadBookmarks = useCallback(() => {
-    if (!material || chapterId === undefined) return;
-    const loaded = getBookmarksByChapter(material.id.toString(), chapterId);
-    setBookmarks(loaded);
-  }, [material, chapterId]);
+  // 서버에서 북마크 목록 로드 (이 교재 + 이 챕터)
+  const loadBookmarks = useCallback(async () => {
+    try {
+      const all = await fetchAllBookmarks();
+
+      const chapterIdStr = String(chapterId);
+      const filtered: BookmarkViewItem[] = all
+        .filter(
+          (b) =>
+            b.materialId === material.id && b.titleId === chapterIdStr
+        )
+        .map((b) => ({
+          ...b,
+          sectionType: "paragraph", // 타이틀 단위 북마크라 일단 본문으로 통일
+        }));
+
+      setBookmarks(filtered);
+    } catch (error) {
+      console.error("[BookmarkListScreen] 북마크 로드 실패:", error);
+      AccessibilityInfo.announceForAccessibility(
+        "서버에서 북마크 목록을 불러오는 데 실패했습니다."
+      );
+    }
+  }, [material.id, chapterId]);
 
   useEffect(() => {
     loadBookmarks();
@@ -85,7 +107,7 @@ export default function BookmarkListScreen() {
     const count = bookmarks.length;
     const announcement =
       count > 0
-        ? `북마크 목록 화면입니다. 저장된 북마크가 ${count}개 있습니다. 각 북마크를 탭하면 해당 섹션으로 이동합니다. 화면 상단의 음성 명령 버튼을 두 번 탭한 후 '복습 시작', '복습 중지', '뒤로 가기' 같은 명령을 말씀할 수 있습니다.`
+        ? `북마크 목록 화면입니다. 저장된 북마크가 ${count}개 있습니다. 각 북마크를 탭하면 해당 챕터로 이동합니다. 화면 상단의 음성 명령 버튼을 두 번 탭한 후 '복습 시작', '복습 중지', '뒤로 가기' 같은 명령을 말씀할 수 있습니다.`
         : "북마크 목록 화면입니다. 저장된 북마크가 없습니다. 저장된 북마크가 있을 때 복습 모드를 사용할 수 있습니다.";
 
     const timer = setTimeout(() => {
@@ -112,18 +134,19 @@ export default function BookmarkListScreen() {
     navigation.goBack();
   }, [navigation, isReviewMode]);
 
-  // 단일 북마크 재생
-  const handlePlayBookmark = async (bookmark: Bookmark) => {
-    if (!chapter) return;
-
+  // 단일 북마크 재생 (서버 contents 사용)
+  const handlePlayBookmark = async (bookmark: BookmarkViewItem) => {
     try {
-      // 재생 횟수 증가
-      incrementBookmarkRepeatCount(bookmark.id);
-
-      // TTS 초기화 및 재생
-      const section = chapter.sections[bookmark.sectionIndex];
-      if (section) {
-        await ttsService.initialize([section], 0, {
+      await ttsService.initialize(
+        [
+          {
+            id: 0,
+            text: bookmark.contents,
+            type: "paragraph",
+          },
+        ],
+        0,
+        {
           rate: 1.0,
           playMode: "single",
           onStart: () => {
@@ -140,51 +163,43 @@ export default function BookmarkListScreen() {
               "음성 재생 오류가 발생했습니다"
             );
           },
-        });
+        }
+      );
 
-        await ttsService.play();
-        AccessibilityInfo.announceForAccessibility(
-          `북마크 재생 시작. ${bookmark.sectionIndex + 1}번째 섹션`
-        );
-        Haptics.selectionAsync();
-      }
+      await ttsService.play();
+      AccessibilityInfo.announceForAccessibility(
+        `북마크 재생 시작. ${bookmark.title}`
+      );
+      Haptics.selectionAsync();
     } catch (error) {
       console.error("[Bookmark] Play error:", error);
       AccessibilityInfo.announceForAccessibility("북마크 재생에 실패했습니다");
     }
   };
 
-  // 복습 모드 시작
+  // 복습 모드 시작 (서버 contents를 순서대로 재생)
   const handleStartReviewMode = useCallback(async () => {
     if (bookmarks.length === 0) {
       AccessibilityInfo.announceForAccessibility("북마크가 없습니다");
       return;
     }
 
-    if (!chapter) return;
-
     setIsReviewMode(true);
     setCurrentReviewIndex(0);
 
     try {
-      // 북마크된 섹션들만 추출
-      const bookmarkedSections = bookmarks
-        .map((b) => chapter.sections[b.sectionIndex])
-        .filter((s) => s !== undefined);
+      const sections = bookmarks.map((b, idx) => ({
+        id: idx,
+        text: b.contents,
+        type: "paragraph" as const,
+      }));
 
-      if (bookmarkedSections.length === 0) {
-        AccessibilityInfo.announceForAccessibility("재생할 북마크가 없습니다");
-        setIsReviewMode(false);
-        return;
-      }
-
-      // TTS 초기화 - 북마크 복습 모드
-      await ttsService.initialize(bookmarkedSections, 0, {
+      await ttsService.initialize(sections, 0, {
         rate: 1.0,
-        playMode: "repeat", // 각 북마크를 2회씩 반복
+        playMode: "repeat",
         repeatCount: 2,
         pauseSettings: {
-          heading: 3000, // 북마크 간 3초 간격
+          heading: 3000,
           paragraph: 3000,
           formula: 3000,
           imageDescription: 3000,
@@ -195,14 +210,9 @@ export default function BookmarkListScreen() {
         },
         onSectionChange: (index) => {
           setCurrentReviewIndex(index);
-          const bookmark = bookmarks[index];
-          if (bookmark) {
-            // 재생 횟수 증가
-            incrementBookmarkRepeatCount(bookmark.id);
-            AccessibilityInfo.announceForAccessibility(
-              `${index + 1}번째 북마크. ${bookmarks.length}개 중`
-            );
-          }
+          AccessibilityInfo.announceForAccessibility(
+            `${index + 1}번째 북마크. 총 ${bookmarks.length}개 중`
+          );
         },
         onDone: () => {
           setIsPlaying(false);
@@ -233,7 +243,7 @@ export default function BookmarkListScreen() {
         "복습 모드 시작에 실패했습니다"
       );
     }
-  }, [bookmarks, chapter]);
+  }, [bookmarks]);
 
   // 복습 모드 중지
   const handleStopReviewMode = useCallback(async () => {
@@ -245,11 +255,11 @@ export default function BookmarkListScreen() {
     Haptics.selectionAsync();
   }, []);
 
-  // 북마크 삭제 확인
-  const handleDeleteBookmark = (bookmark: Bookmark) => {
+  // 🗑 북마크 삭제 (서버 토글 사용)
+  const handleDeleteBookmark = (bookmark: BookmarkViewItem) => {
     Alert.alert(
       "북마크 삭제",
-      `${bookmark.sectionIndex + 1}번째 섹션의 북마크를 삭제하시겠습니까?`,
+      `${bookmark.title} 북마크를 삭제하시겠습니까?`,
       [
         {
           text: "취소",
@@ -260,17 +270,25 @@ export default function BookmarkListScreen() {
         {
           text: "삭제",
           style: "destructive",
-          onPress: () => {
-            const success = deleteBookmark(bookmark.id);
-            if (success) {
-              loadBookmarks();
+          onPress: async () => {
+            try {
+              await toggleBookmark({
+                materialId: bookmark.materialId,
+                titleId: bookmark.titleId,
+              });
+
+              setBookmarks((prev) =>
+                prev.filter((b) => b.bookmarkId !== bookmark.bookmarkId)
+              );
+
               AccessibilityInfo.announceForAccessibility(
                 "북마크가 삭제되었습니다"
               );
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success
               );
-            } else {
+            } catch (error) {
+              console.error("[Bookmark] 삭제 실패:", error);
               AccessibilityInfo.announceForAccessibility(
                 "북마크 삭제에 실패했습니다"
               );
@@ -281,8 +299,8 @@ export default function BookmarkListScreen() {
     );
   };
 
-  // 북마크를 눌러 해당 섹션으로 이동
-  const handleGoToSection = (bookmark: Bookmark) => {
+  // 북마크를 눌러 해당 챕터로 이동 (챕터 맨 앞 섹션으로 이동)
+  const handleGoToSection = (bookmark: BookmarkViewItem) => {
     if (isReviewMode) {
       AccessibilityInfo.announceForAccessibility(
         "복습 모드를 먼저 중지해주세요"
@@ -290,14 +308,11 @@ export default function BookmarkListScreen() {
       return;
     }
 
-    if (!material || chapterId === undefined) return;
-
-    // PlayerScreen으로 돌아가면서 해당 섹션으로 이동
     navigation.navigate("Player", {
       material,
       chapterId,
       fromStart: false,
-      initialSectionIndex: bookmark.sectionIndex,
+      initialSectionIndex: 0,
     });
   };
 
@@ -325,18 +340,15 @@ export default function BookmarkListScreen() {
     }
   };
 
-  // BookmarkListScreen용 음성 명령 핸들러 등록
+  // 음성 명령 등록
   useEffect(() => {
     setCurrentScreenId("BookmarkList");
 
-    // 여기서는 playPause = 복습 모드 토글, goBack = 뒤로 가기
     registerVoiceHandlers("BookmarkList", {
       playPause: () => {
         if (isReviewMode) {
-          // 복습 중이면 중지
           handleStopReviewMode();
         } else {
-          // 복습 중이 아니면 시작
           handleStartReviewMode();
         }
       },
@@ -354,18 +366,6 @@ export default function BookmarkListScreen() {
     handleStopReviewMode,
     isReviewMode,
   ]);
-
-  if (!chapter) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text style={styles.errorText}>챕터를 불러올 수 없습니다.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -410,8 +410,10 @@ export default function BookmarkListScreen() {
 
       {/* 챕터 정보 */}
       <View style={styles.chapterInfo}>
-        <Text style={styles.subjectText}>{material?.title || ""}</Text>
-        <Text style={styles.chapterTitle}>{chapter?.title || ""}</Text>
+        <Text style={styles.subjectText}>{material.title}</Text>
+        <Text style={styles.chapterTitle}>
+          {chapter ? chapter.title : `${chapterId}챕터`}
+        </Text>
       </View>
 
       {/* 북마크 목록 */}
@@ -442,7 +444,7 @@ export default function BookmarkListScreen() {
         ) : (
           bookmarks.map((bookmark, index) => (
             <View
-              key={bookmark.id}
+              key={bookmark.bookmarkId}
               style={[
                 styles.bookmarkCard,
                 isReviewMode &&
@@ -450,41 +452,34 @@ export default function BookmarkListScreen() {
                   styles.activeBookmarkCard,
               ]}
             >
-              {/* 북마크 내용 (탭하면 해당 섹션으로 이동) */}
+              {/* 북마크 내용 (탭: 챕터로 이동, 길게: 재생) */}
               <TouchableOpacity
                 style={styles.bookmarkContent}
                 onPress={() => handleGoToSection(bookmark)}
+                onLongPress={() => handlePlayBookmark(bookmark)}
                 accessible={true}
-                accessibilityLabel={`${
-                  bookmark.sectionIndex + 1
-                }번째 섹션. ${getSectionTypeLabel(bookmark.sectionType)}. ${
-                  bookmark.sectionText
-                }. ${formatDate(bookmark.createdAt)}에 저장. ${
-                  bookmark.repeatCount
-                }회 복습함`}
+                accessibilityLabel={`${index + 1}번째 북마크. ${
+                  getSectionTypeLabel(bookmark.sectionType)
+                }. ${bookmark.title}. ${
+                  bookmark.contents
+                }. ${formatDate(bookmark.createdAt)}에 저장.`}
                 accessibilityRole="button"
-                accessibilityHint="탭하면 해당 섹션으로 이동합니다"
+                accessibilityHint="탭하면 해당 챕터로 이동하고, 길게 누르면 북마크 내용을 재생합니다"
               >
                 <View style={styles.bookmarkHeader}>
-                  <Text style={styles.sectionNumber}>
-                    #{bookmark.sectionIndex + 1}
-                  </Text>
+                  <Text style={styles.sectionNumber}>#{index + 1}</Text>
                   <Text style={styles.sectionType}>
                     {getSectionTypeLabel(bookmark.sectionType)}
                   </Text>
                 </View>
 
-                <Text style={styles.bookmarkText}>{bookmark.sectionText}</Text>
+                <Text style={styles.bookmarkTitle}>{bookmark.title}</Text>
+                <Text style={styles.bookmarkText}>{bookmark.contents}</Text>
 
                 <View style={styles.bookmarkFooter}>
                   <Text style={styles.dateText}>
                     {formatDate(bookmark.createdAt)}
                   </Text>
-                  {bookmark.repeatCount != null && bookmark.repeatCount > 0 && (
-                    <Text style={styles.repeatText}>
-                      🔁 {bookmark.repeatCount}회 복습
-                    </Text>
-                  )}
                 </View>
               </TouchableOpacity>
 
@@ -576,7 +571,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   voiceCommandButton: {
-    // 공통 스타일에서 가져오므로 일부만 남김
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -665,7 +659,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionNumber: {
     fontSize: 22,
@@ -681,11 +675,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontWeight: "600",
   },
-  bookmarkText: {
+  bookmarkTitle: {
     fontSize: 22,
-    lineHeight: 34,
+    fontWeight: "700",
     color: "#333333",
-    marginBottom: 16,
+    marginBottom: 6,
+  },
+  bookmarkText: {
+    fontSize: 20,
+    lineHeight: 32,
+    color: "#555555",
+    marginBottom: 12,
     fontWeight: "500",
   },
   bookmarkFooter: {
@@ -696,11 +696,6 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: "#999999",
-  },
-  repeatText: {
-    fontSize: 16,
-    color: "#2196F3",
-    fontWeight: "700",
   },
   deleteButton: {
     width: 80,

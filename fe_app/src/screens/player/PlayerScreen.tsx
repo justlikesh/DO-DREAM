@@ -31,20 +31,17 @@ import {
 } from "../../services/appStorage";
 import { LocalProgress } from "../../types/progress";
 import { PlayMode } from "../../types/playMode";
-import {
-  createBookmark,
-  isBookmarked,
-  getBookmarkIdBySection,
-  deleteBookmark,
-} from "../../services/bookmarkStorage";
 import { useAppSettingsStore } from "../../stores/appSettingsStore";
 import PlayerSettingsModal from "../../components/PlayerSettingsModal";
 import ChapterCompletionModal from "../../components/ChapterCompletionModal";
 import { useTTSPlayer } from "../../hooks/useTTSPlayer";
-import { commonStyles } from "../../styles/commonStyles";
 import PlayerHeader from "../../components/PlayerHeader";
 import { buildChaptersFromMaterialJson } from "../../utils/materialJsonMapper";
 import type { Chapter } from "../../types/chapter";
+import {
+  toggleBookmark,
+  fetchBookmarksByMaterial,
+} from "../../api/bookmarkApi";
 
 type PlayModeKey = "single" | "continuous" | "repeat";
 
@@ -67,6 +64,8 @@ export default function PlayerScreen() {
 
   const appSettings = useAppSettingsStore((state) => state.settings);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
+
+  // ⭐ 서버 북마크 상태 (이 챕터가 서버 북마크 되어 있는지)
   const [bookmarked, setBookmarked] = useState(false);
 
   const {
@@ -112,15 +111,57 @@ export default function PlayerScreen() {
     return found ?? chaptersFromJson[0];
   }, [chaptersFromJson, chapterId]);
 
+  // 현재 챕터 인덱스 & 이전/다음 챕터 존재 여부
+  const currentChapterIndex = useMemo(() => {
+    if (!chapter) return -1;
+    return chaptersFromJson.findIndex(
+      (c) => c.chapterId === chapter.chapterId
+    );
+  }, [chaptersFromJson, chapter]);
+
+  const hasPrevChapter =
+    currentChapterIndex > 0 && currentChapterIndex !== -1;
+  const hasNextChapter =
+    currentChapterIndex !== -1 &&
+    currentChapterIndex < chaptersFromJson.length - 1;
+
+  // 서버에서 현재 챕터 북마크 상태 초기 로드
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadBookmarkState = async () => {
+      try {
+        const res = await fetchBookmarksByMaterial(material.id);
+        const isBookmarkedOnServer = res.bookmarkedTitleIds.includes(
+          String(chapterId)
+        );
+
+        if (!cancelled) {
+          setBookmarked(isBookmarkedOnServer);
+        }
+      } catch (e) {
+        console.error("[PlayerScreen] 서버 북마크 상태 조회 실패:", e);
+        // 실패해도 UI는 기본값(미저장)으로 두고 넘어간다
+      }
+    };
+
+    loadBookmarkState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [material.id, chapterId]);
+
   // 퀴즈는 일단 미사용
   const hasQuiz = false;
 
   const progressSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // --- TTS 상태 ref (saveProgressData에서 참조) ---
-  const ttsStateRef = useRef<{ currentSectionIndex: number; playMode: PlayMode }>(
-    { currentSectionIndex: 0, playMode: "single" }
-  );
+  // TTS 상태 ref (saveProgressData에서 참조)
+  const ttsStateRef = useRef<{
+    currentSectionIndex: number;
+    playMode: PlayMode;
+  }>({ currentSectionIndex: 0, playMode: "single" });
 
   // 진행률 저장 (명시적 섹션 인덱스 전달)
   const saveProgressData = useCallback(
@@ -222,7 +263,6 @@ export default function PlayerScreen() {
       saveProgressDataRef.current(false, newIndex);
     }, []),
   });
-  // --- 훅 사용 끝 ---
 
   // saveProgressData에서 최신 상태를 참조하기 위한 ref
   useEffect(() => {
@@ -244,17 +284,6 @@ export default function PlayerScreen() {
       sub?.remove?.();
     };
   }, []);
-
-  // 저장(북마크) 상태 동기화
-  useEffect(() => {
-    if (!chapter) return;
-    const isCurrentBookmarked = isBookmarked(
-      material.id.toString(),
-      chapterId,
-      currentSectionIndex
-    );
-    setBookmarked(isCurrentBookmarked);
-  }, [currentSectionIndex, material.id, chapterId, chapter]);
 
   // 화면 이탈 시 진행 상황 저장
   useEffect(() => {
@@ -320,42 +349,99 @@ export default function PlayerScreen() {
     [material.id, chapterId, currentSectionIndex, ttsActions]
   );
 
-  // 북마크 토글
+  // 북마크 토글 (서버 API 사용)
   const handleToggleBookmark = useCallback(async () => {
     if (!chapter) return;
 
-    const currentlyBookmarked = isBookmarked(
-      material.id.toString(),
-      chapterId,
-      currentSectionIndex
-    );
+    const currentlyBookmarked = bookmarked;
+    const titleId = String(chapterId);
 
-    if (currentlyBookmarked) {
-      const bookmarkId = getBookmarkIdBySection(
-        material.id.toString(),
-        chapterId,
-        currentSectionIndex
+    try {
+      await toggleBookmark({
+        materialId: material.id,
+        titleId,
+      });
+
+      const next = !currentlyBookmarked;
+      setBookmarked(next);
+
+      AccessibilityInfo.announceForAccessibility(
+        next ? "현재 챕터를 저장했습니다" : "저장을 해제했습니다"
       );
-      if (bookmarkId) {
-        deleteBookmark(bookmarkId);
-        setBookmarked(false);
-        AccessibilityInfo.announceForAccessibility("저장을 해제했습니다");
-      }
-    } else {
-      const currentSection = chapter.sections[currentSectionIndex];
-      const newBookmark = {
-        materialId: material.id.toString(),
-        chapterId: chapterId,
-        sectionId: currentSection.id,
-        sectionIndex: currentSectionIndex,
-        sectionText: currentSection.text.substring(0, 100),
-        sectionType: currentSection.type,
-      };
-      createBookmark(newBookmark);
-      setBookmarked(true);
-      AccessibilityInfo.announceForAccessibility("현재 위치를 저장했습니다");
+    } catch (error) {
+      console.error("[PlayerScreen] toggleBookmark 실패:", error);
+      AccessibilityInfo.announceForAccessibility(
+        "서버와 통신 중 오류가 발생하여 저장 상태를 변경하지 못했습니다"
+      );
     }
-  }, [material.id, chapterId, currentSectionIndex, chapter]);
+  }, [chapter, chapterId, material.id, bookmarked]);
+
+  // 🔁 이전/다음 챕터로 이동
+  const handleMoveChapter = useCallback(
+    (direction: "prev" | "next") => {
+      if (!chapter) {
+        AccessibilityInfo.announceForAccessibility(
+          "챕터 정보를 불러오지 못했습니다."
+        );
+        return;
+      }
+      if (currentChapterIndex === -1) {
+        AccessibilityInfo.announceForAccessibility(
+          "현재 챕터 위치를 알 수 없습니다."
+        );
+        return;
+      }
+
+      const targetIndex =
+        direction === "prev" ? currentChapterIndex - 1 : currentChapterIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= chaptersFromJson.length) {
+        AccessibilityInfo.announceForAccessibility(
+          direction === "prev"
+            ? "이전 챕터가 없습니다."
+            : "다음 챕터가 없습니다."
+        );
+        return;
+      }
+
+      const targetChapter = chaptersFromJson[targetIndex];
+
+      // 현재 진행 상황 저장 + 재생 일시정지
+      saveProgressData(false);
+      ttsActions.pause();
+
+      AccessibilityInfo.announceForAccessibility(
+        direction === "prev"
+          ? `이전 챕터로 이동합니다. ${targetChapter.title}`
+          : `다음 챕터로 이동합니다. ${targetChapter.title}`
+      );
+
+      // 현재 PlayerScreen을 다음 챕터로 교체
+      navigation.replace("Player", {
+        material,
+        chapterId: targetChapter.chapterId,
+        fromStart: true,
+        initialSectionIndex: 0,
+      });
+    },
+    [
+      chapter,
+      currentChapterIndex,
+      chaptersFromJson,
+      material,
+      navigation,
+      saveProgressData,
+      ttsActions,
+    ]
+  );
+
+  const handlePrevChapter = useCallback(() => {
+    handleMoveChapter("prev");
+  }, [handleMoveChapter]);
+
+  const handleNextChapter = useCallback(() => {
+    handleMoveChapter("next");
+  }, [handleMoveChapter]);
 
   // 뒤로가기
   const handleBackPress = useCallback(() => {
@@ -377,7 +463,6 @@ export default function PlayerScreen() {
 
   // 챕터 완료 후 퀴즈 이동 (지금은 사용 X)
   const handleQuizNavigation = useCallback(() => {
-    // 퀴즈 화면 연결은 추후 구현
     AccessibilityInfo.announceForAccessibility(
       "퀴즈 기능이 아직 준비 중입니다."
     );
@@ -427,6 +512,25 @@ export default function PlayerScreen() {
     (spoken: string) => {
       const t = spoken.trim().toLowerCase();
 
+      // 0) 챕터 이동
+      if (
+        t.includes("다음 챕터") ||
+        t.includes("다음 단원") ||
+        t.includes("다음 장")
+      ) {
+        handleNextChapter();
+        return;
+      }
+
+      if (
+        t.includes("이전 챕터") ||
+        t.includes("이전 단원") ||
+        t.includes("이전 장")
+      ) {
+        handlePrevChapter();
+        return;
+      }
+
       // 1) 재생 모드 변경
       const modeFromVoice = parseModeVoice(spoken);
       if (modeFromVoice) {
@@ -451,13 +555,13 @@ export default function PlayerScreen() {
         return;
       }
 
-      // 4) 질문하기 (전역 파서가 놓친 경우 대비)
+      // 4) 질문하기
       if (t.includes("질문")) {
         handleQuestionPress();
         return;
       }
 
-      // 5) 퀴즈 (전역 파서가 놓친 경우 대비) - 지금은 안내만
+      // 5) 퀴즈
       if (t.includes("퀴즈") || t.includes("문제 풀")) {
         AccessibilityInfo.announceForAccessibility(
           "퀴즈 기능이 아직 준비 중입니다."
@@ -465,13 +569,14 @@ export default function PlayerScreen() {
         return;
       }
 
-      // 그 외: 안내
       console.log("[VoiceCommands][Player] 처리할 수 없는 rawText:", spoken);
       AccessibilityInfo.announceForAccessibility(
-        "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드처럼 말해 주세요."
+        "이 화면에서 사용할 수 없는 음성 명령입니다. 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 다음 챕터, 이전 챕터처럼 말해 주세요."
       );
     },
     [
+      handleNextChapter,
+      handlePrevChapter,
       handlePlayModeChange,
       handleToggleBookmark,
       handleOpenSettings,
@@ -488,14 +593,14 @@ export default function PlayerScreen() {
     registerPlayPause(ttsActions.togglePlayPause);
 
     registerVoiceHandlers("Player", {
-      // 전역 명령
+      // 전역 명령 (섹션 단위 이동)
       playPause: ttsActions.togglePlayPause,
       next: ttsActions.playNext,
       prev: ttsActions.playPrevious,
       openQuestion: handleQuestionPress,
       goBack: handleBackPress,
       openQuiz: hasQuiz ? handleQuizNavigation : undefined,
-      // Player 전용 rawText 명령
+      // Player 전용 rawText 명령 (챕터 이동 포함)
       rawText: handlePlayerVoiceRaw,
     });
 
@@ -525,10 +630,10 @@ export default function PlayerScreen() {
     handlePlayerVoiceRaw,
   ]);
 
-  // 화면 진입 시 음성 안내 (처음 쓰는 사용자용)
+  // 화면 진입 시 음성 안내
   useEffect(() => {
     const msg =
-      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
+      "교재 듣기 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 설정 열기, 하나씩 모드, 연속 모드, 반복 모드, 다음 챕터, 이전 챕터, 뒤로 가기처럼 말하면 해당 기능이 실행됩니다.";
     const timer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(msg);
     }, 600);
@@ -614,7 +719,7 @@ export default function PlayerScreen() {
           </Text>
         </ScrollView>
 
-        {/* 재생 컨트롤 */}
+        {/* 재생 컨트롤 (섹션 단위) */}
         <View style={styles.controls} onLayout={onControlsLayout}>
           <TouchableOpacity
             ref={prevButtonRef}
@@ -670,14 +775,59 @@ export default function PlayerScreen() {
             accessibilityLabel={isLastSection ? "학습 완료" : "다음 섹션"}
             accessibilityRole="button"
             accessibilityHint={
-              isLastSection
-                ? "챕터 학습을 완료합니다"
-                : ""
+              isLastSection ? "챕터 학습을 완료합니다" : ""
             }
           >
             <Text style={styles.controlButtonText}>
               {isLastSection ? "완료" : "다음 →"}
             </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 🔀 챕터 이동 버튼 */}
+        <View style={styles.chapterNavRow}>
+          <TouchableOpacity
+            style={[
+              styles.chapterNavButton,
+              !hasPrevChapter && styles.chapterNavButtonDisabled,
+            ]}
+            onPress={handlePrevChapter}
+            disabled={!hasPrevChapter}
+            accessible
+            accessibilityLabel={
+              hasPrevChapter ? "이전 챕터로 이동" : "이전 챕터 없음"
+            }
+            accessibilityHint={
+              hasPrevChapter
+                ? "이전 챕터의 처음부터 학습을 시작합니다"
+                : undefined
+            }
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !hasPrevChapter }}
+          >
+            <Text style={styles.chapterNavButtonText}>← 이전 챕터</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.chapterNavButton,
+              !hasNextChapter && styles.chapterNavButtonDisabled,
+            ]}
+            onPress={handleNextChapter}
+            disabled={!hasNextChapter}
+            accessible
+            accessibilityLabel={
+              hasNextChapter ? "다음 챕터로 이동" : "다음 챕터 없음"
+            }
+            accessibilityHint={
+              hasNextChapter
+                ? "다음 챕터의 처음부터 학습을 시작합니다"
+                : undefined
+            }
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !hasNextChapter }}
+          >
+            <Text style={styles.chapterNavButtonText}>다음 챕터 →</Text>
           </TouchableOpacity>
         </View>
 
@@ -731,7 +881,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#ffffff" },
 
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingTop: 12,
     paddingBottom: 12,
     borderBottomWidth: 2,
@@ -820,6 +970,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#BDBDBD",
     borderColor: "#9E9E3E",
     opacity: 0.6,
+  },
+
+  // 챕터 이동 버튼 영역
+  chapterNavRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: "#f8f9fa",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+    gap: 8,
+  },
+  chapterNavButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#EEEEEE",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#BDBDBD",
+  },
+  chapterNavButtonDisabled: {
+    backgroundColor: "#F5F5F5",
+    borderColor: "#E0E0E0",
+    opacity: 0.7,
+  },
+  chapterNavButtonText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#424242",
   },
 
   bottomActionWrap: {
