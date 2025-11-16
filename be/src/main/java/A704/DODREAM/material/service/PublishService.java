@@ -1,5 +1,6 @@
 package A704.DODREAM.material.service;
 
+import A704.DODREAM.file.service.TempPdfDataService;
 import A704.DODREAM.material.dto.PublishRequest;
 import A704.DODREAM.material.dto.PublishResponseDto;
 import A704.DODREAM.file.entity.UploadedFile;
@@ -35,6 +36,7 @@ public class PublishService {
     private final UploadedFileRepository uploadedFileRepository;
     private final S3Client s3Client;
     private final ObjectMapper objectMapper;
+    private final TempPdfDataService tempPdfDataService;
 
     @Value("${aws.s3.bucket}")
     private String bucketName;
@@ -100,6 +102,10 @@ public class PublishService {
             }
 
             materialRepository.save(material);
+
+            // 발행 완료 후 Redis 임시 저장 데이터 삭제
+            tempPdfDataService.delete(pdfId, userId);
+            log.info("발행 완료 후 임시 저장 데이터 삭제: pdfId={}, userId={}", pdfId, userId);
 
         } catch (Exception e) {
             log.error("JSON 발행 실패: pdfId={}, error={}", pdfId, e.getMessage(), e);
