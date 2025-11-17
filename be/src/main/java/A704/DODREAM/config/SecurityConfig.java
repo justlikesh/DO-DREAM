@@ -61,6 +61,8 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.POST, "/api/files/presigned-url").permitAll()
 				// 교사 전용
 				.requestMatchers("/api/teacher/**").hasRole("TEACHER")
+							.requestMatchers("/api/progress/students/**").hasRole("TEACHER")
+							.requestMatchers("/api/progress/**").authenticated()
 				// 나머지는 인증 필요
 				.anyRequest().authenticated()
 			)
