@@ -39,6 +39,17 @@ class CloudFrontPDFRequest(BaseModel):
                         }
                     ]
                 }
+            ],
+            "concept_checks": [
+                {
+                    "title": "개념 Check",
+                    "questions": [
+                        {
+                            "question": "1. 질문1\\n2. 질문2",
+                            "answer": "1. 답변1\\n2. 답변2"
+                        }
+                    ]
+                }
             ]
         }
     ]
