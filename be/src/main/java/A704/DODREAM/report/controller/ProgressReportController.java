@@ -3,6 +3,8 @@ package A704.DODREAM.report.controller;
 import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.global.response.ApiResponse;
 import A704.DODREAM.report.dto.ProgressReportResponse;
+import A704.DODREAM.report.dto.UpdateProgressRequest;
+import A704.DODREAM.report.dto.UpdateProgressResponse;
 import A704.DODREAM.report.service.ProgressReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -112,6 +114,34 @@ public class ProgressReportController {
                         String.format("학생의 %d개 교재 진행률 조회 성공", responses.size()),
                         HttpStatus.OK,
                         responses)
+        );
+    }
+
+    @Operation(
+            summary = "학습 진행률 업데이트 (학생/앱)",
+            description = "학생이 학습을 진행하면서 현재 위치를 업데이트합니다.\n" +
+                    "- currentPage: 현재 섹션 번호 (1부터 시작)\n" +
+                    "- totalPages: 전체 섹션 수 (optional, 서버에서 자동 계산 가능)\n" +
+                    "- 완료 시 자동으로 completedAt이 설정됩니다."
+    )
+    @PostMapping("/update")
+    public ResponseEntity<ApiResponse<UpdateProgressResponse>> updateProgress(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestBody UpdateProgressRequest request
+    ) {
+        Long studentId = userPrincipal.userId();
+        log.info("진행률 업데이트 요청: studentId={}, materialId={}, currentPage={}", 
+                studentId, request.getMaterialId(), request.getCurrentPage());
+
+        UpdateProgressResponse response = progressReportService.updateProgress(
+                studentId,
+                request.getMaterialId(),
+                request.getCurrentPage(),
+                request.getTotalPages()
+        );
+        
+        return ResponseEntity.ok(
+                ApiResponse.success(response.getMessage(), HttpStatus.OK, response)
         );
     }
 }

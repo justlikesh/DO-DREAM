@@ -9,6 +9,7 @@ import A704.DODREAM.material.repository.MaterialShareRepository;
 import A704.DODREAM.progress.entity.StudentMaterialProgress;
 import A704.DODREAM.report.dto.ChapterProgressDto;
 import A704.DODREAM.report.dto.ProgressReportResponse;
+import A704.DODREAM.report.dto.UpdateProgressResponse;
 import A704.DODREAM.report.repository.StudentMaterialProgressRepository;
 import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.UserRepository;
@@ -68,7 +69,8 @@ public class ProgressReportService {
 
         // 4. S3에서 JSON 가져와서 분석
         Map<String, Object> jsonData = getMaterialJsonFromS3(material);
-        log.info("JSON 구조 확인 - keys: {}", jsonData.keySet());
+        log.info("=== JSON 구조 상세 분석 시작 ===");
+        log.info("최상위 keys: {}", jsonData.keySet());
         
         // parsedData 구조 확인 및 chapters 추출
         List<Map<String, Object>> chapters = null;
@@ -76,14 +78,20 @@ public class ProgressReportService {
         // 패턴 1: parsedData.data 구조
         Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
         if (parsedData != null) {
-            log.info("parsedData 구조 확인 - keys: {}", parsedData.keySet());
+            log.info("parsedData 존재 - keys: {}", parsedData.keySet());
             chapters = (List<Map<String, Object>>) parsedData.get("data");
+            if (chapters != null) {
+                log.info("parsedData.data에서 챕터 발견 - 개수: {}", chapters.size());
+            }
         }
         
         // 패턴 2: 직접 data 구조 (fallback)
         if (chapters == null) {
             log.warn("parsedData.data를 찾을 수 없어서 직접 data를 확인합니다.");
             chapters = (List<Map<String, Object>>) jsonData.get("data");
+            if (chapters != null) {
+                log.info("직접 data에서 챕터 발견 - 개수: {}", chapters.size());
+            }
         }
 
         if (chapters == null || chapters.isEmpty()) {
@@ -93,7 +101,26 @@ public class ProgressReportService {
             throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
         }
         
-        log.info("챕터 수: {}", chapters.size());
+        log.info("총 챕터 수: {}", chapters.size());
+        
+        // 첫 번째 챕터 구조 로깅
+        if (!chapters.isEmpty()) {
+            Map<String, Object> firstChapter = chapters.get(0);
+            log.info("첫 번째 챕터 keys: {}", firstChapter.keySet());
+            log.info("첫 번째 챕터 - index: {}, index_title: {}", 
+                    firstChapter.get("index"), 
+                    firstChapter.get("index_title"));
+            
+            // titles 구조 확인
+            List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
+            if (titles != null && !titles.isEmpty()) {
+                log.info("titles 개수: {}", titles.size());
+                Map<String, Object> firstTitle = titles.get(0);
+                log.info("첫 번째 title keys: {}", firstTitle.keySet());
+                log.info("첫 번째 title - title: {}", firstTitle.get("title"));
+            }
+        }
+        log.info("=== JSON 구조 분석 완료 ===");
 
         // 5. 챕터별 진행률 계산
         List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
@@ -278,13 +305,22 @@ public class ProgressReportService {
      */
     private int calculateSectionsFromChapter(Map<String, Object> chapter) {
         int sectionCount = 0;
+        
+        String chapterId = (String) chapter.get("index");
+        String chapterTitle = (String) chapter.get("index_title");
 
         // 1. titles 배열 처리
         List<Map<String, Object>> titles = (List<Map<String, Object>>) chapter.get("titles");
         if (titles != null) {
-            for (Map<String, Object> title : titles) {
+            log.debug("챕터 [{}] titles 개수: {}", chapterId, titles.size());
+            
+            for (int i = 0; i < titles.size(); i++) {
+                Map<String, Object> title = titles.get(i);
+                int titleSections = 0;
+                
                 // title 자체도 하나의 섹션
                 sectionCount++;
+                titleSections++;
 
                 // s_titles 배열 처리
                 List<Map<String, Object>> sTitles = (List<Map<String, Object>>) title.get("s_titles");
@@ -292,27 +328,139 @@ public class ProgressReportService {
                     for (Map<String, Object> sTitle : sTitles) {
                         // s_title도 하나의 섹션
                         sectionCount++;
+                        titleSections++;
 
                         // ss_titles 배열 처리
                         List<Map<String, Object>> ssTitles = (List<Map<String, Object>>) sTitle.get("ss_titles");
                         if (ssTitles != null) {
                             // 각 ss_title도 하나의 섹션
                             sectionCount += ssTitles.size();
+                            titleSections += ssTitles.size();
                         }
                     }
                 }
+                
+                log.debug("  - title[{}]: {} → {} 섹션", i, title.get("title"), titleSections);
             }
         }
 
         // 2. concept_checks 배열 처리
         List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
-        if (conceptChecks != null) {
+        if (conceptChecks != null && !conceptChecks.isEmpty()) {
+            log.debug("챕터 [{}] concept_checks 개수: {}", chapterId, conceptChecks.size());
             // 각 concept_check를 하나의 섹션으로 카운팅
             sectionCount += conceptChecks.size();
         }
 
+        log.info("챕터 [{}] {} - 총 {} 섹션", chapterId, chapterTitle, sectionCount);
+        
         // 최소 1개 섹션 보장
         return Math.max(1, sectionCount);
+    }
+
+    /**
+     * 학습 진행률 업데이트
+     */
+    @Transactional
+    public UpdateProgressResponse updateProgress(Long studentId, Long materialId, Integer currentPage, Integer totalPages) {
+        // 1. 학생 조회
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        // 2. 공유 권한 확인
+        MaterialShare share = materialShareRepository.findByStudentIdAndMaterialId(studentId, materialId)
+                .orElseThrow(() -> new CustomException(ErrorCode.MATERIAL_NOT_FOUND));
+
+        Material material = share.getMaterial();
+
+        // 3. totalPages 자동 계산 (제공되지 않은 경우)
+        if (totalPages == null) {
+            try {
+                Map<String, Object> jsonData = getMaterialJsonFromS3(material);
+                List<Map<String, Object>> chapters = extractChapters(jsonData);
+                totalPages = calculateTotalSections(chapters);
+            } catch (Exception e) {
+                log.error("총 페이지 수 계산 실패: materialId={}", materialId, e);
+                // totalPages를 계산할 수 없으면 현재 페이지를 totalPages로 설정
+                totalPages = currentPage;
+            }
+        }
+
+        // 4. 진행 상태 조회 또는 생성
+        StudentMaterialProgress progress = progressRepository
+                .findByStudentIdAndMaterialId(studentId, materialId)
+                .orElse(null);
+
+        if (progress == null) {
+            // 새로운 진행 기록 생성
+            progress = StudentMaterialProgress.builder()
+                    .student(student)
+                    .material(material)
+                    .currentPage(currentPage)
+                    .totalPages(totalPages)
+                    .progressPercentage(0)
+                    .build();
+        }
+
+        // 5. 진행률 업데이트
+        progress.updateProgress(currentPage);
+        
+        // totalPages가 변경된 경우 업데이트
+        if (!totalPages.equals(progress.getTotalPages())) {
+            // Reflection 또는 Setter가 필요한데, 일단 로그만
+            log.warn("totalPages 불일치: DB={}, 요청={}", progress.getTotalPages(), totalPages);
+        }
+
+        // 6. 저장
+        StudentMaterialProgress saved = progressRepository.save(progress);
+
+        // 7. 응답 생성
+        String message = saved.getCompletedAt() != null 
+                ? "🎉 축하합니다! 모든 학습을 완료했습니다!"
+                : String.format("진행률 업데이트 완료 (%d%%)", saved.getProgressPercentage());
+
+        return UpdateProgressResponse.builder()
+                .studentId(saved.getStudent().getId())
+                .materialId(saved.getMaterial().getId())
+                .currentPage(saved.getCurrentPage())
+                .totalPages(saved.getTotalPages())
+                .progressPercentage(saved.getProgressPercentage())
+                .isCompleted(saved.getCompletedAt() != null)
+                .lastAccessedAt(saved.getLastAccessedAt())
+                .completedAt(saved.getCompletedAt())
+                .message(message)
+                .build();
+    }
+
+    /**
+     * JSON에서 chapters 추출 (패턴 1, 2 모두 지원)
+     */
+    private List<Map<String, Object>> extractChapters(Map<String, Object> jsonData) {
+        Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
+        if (parsedData != null) {
+            List<Map<String, Object>> chapters = (List<Map<String, Object>>) parsedData.get("data");
+            if (chapters != null) {
+                return chapters;
+            }
+        }
+        
+        List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("data");
+        if (chapters != null) {
+            return chapters;
+        }
+        
+        throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
+    }
+
+    /**
+     * 총 섹션 수 계산
+     */
+    private int calculateTotalSections(List<Map<String, Object>> chapters) {
+        int total = 0;
+        for (Map<String, Object> chapter : chapters) {
+            total += calculateSectionsFromChapter(chapter);
+        }
+        return total;
     }
 
     /**
