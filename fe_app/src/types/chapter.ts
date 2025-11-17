@@ -10,5 +10,5 @@ export interface Chapter {
 export interface Section {
   id: number;
   text: string;
-  type: 'paragraph' | 'heading' | 'formula' | 'image_description';
+  type: 'paragraph' | 'heading';
 }
