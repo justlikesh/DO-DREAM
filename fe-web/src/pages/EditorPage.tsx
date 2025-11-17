@@ -14,7 +14,8 @@ type NavState = {
   extractedText?: string;
   chapters?: Chapter[];
   from?: string;
-  pdfId?: number; // 🆕 PDF ID 추가
+  pdfId?: number;
+  initialLabel?: string;
 };
 
 type SessionPayload = {
@@ -96,6 +97,7 @@ export default function EditorPage() {
     extractedText = '<p>내용을 입력하세요...</p>',
     chapters,
     pdfId,
+    initialLabel,
   } = editorData;
 
   console.log('[EditorPage] AdvancedEditor에 전달:', {
@@ -113,7 +115,8 @@ export default function EditorPage() {
       initialTitle={fileName}
       extractedText={extractedText}
       initialChapters={chapters}
-      pdfId={pdfId} // 🆕 PDF ID 전달
+      pdfId={pdfId}
+      initialLabel={initialLabel} 
       onBack={() => navigate(-1)}
       onPublish={(title, publishedChapters, label) => {
         console.log('발행된 데이터:', { title, chapters: publishedChapters, label });

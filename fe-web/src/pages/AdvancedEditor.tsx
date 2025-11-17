@@ -45,6 +45,7 @@ type EditorProps = {
   onPublish: (title: string, chapters: Chapter[], label?: string) => void;
   onBack: () => void;
   pdfId?: number;
+  initialLabel?: string;
 };
 
 const LABEL_OPTIONS = [
@@ -104,11 +105,12 @@ export default function AdvancedEditor({
   onPublish,
   onBack,
   pdfId,
+  initialLabel
 }: EditorProps) {
   const [materialTitle, setMaterialTitle] = useState(initialTitle);
   const [showTitleInput, setShowTitleInput] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<string | undefined>();
+  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(initialLabel);
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [mergeMode, setMergeMode] = useState(false);

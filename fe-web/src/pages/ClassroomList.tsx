@@ -288,8 +288,6 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     return chapters;
   }
 
-  // ✅ 수정된 handleViewMaterial 함수 전체 - ClassroomList.tsx에 복사해서 사용하세요
-
   const handleViewMaterial = async (materialId: string) => {
     try {
       const material = materials.find((m) => m.id === materialId);
@@ -354,7 +352,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         parsedData.editedJson?.chapters,
       );
 
-      // ✅ 올바른 경로에서 chapters 추출
+      // 올바른 경로에서 chapters 추출
       let chapters: any[] = [];
 
       // 1) parsedData.chapters가 배열이면 사용
@@ -417,7 +415,28 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       console.log('🎯 Final chapters:', chapters);
       console.log('🎯 First chapter structure:', chapters[0]);
 
-      // ✅ 검증: chapters가 올바른 형태인지 확인
+      // 라벨 정보 추출
+      let labelColor: string | undefined = undefined;
+
+      // 1) parsedData.labelColor 확인
+      if (parsedData.labelColor) {
+        labelColor = parsedData.labelColor.toLowerCase();
+        console.log('✅ parsedData.labelColor 사용:', labelColor);
+      }
+      // 2) parsedData.label 확인
+      else if (parsedData.label) {
+        labelColor = parsedData.label.toLowerCase();
+        console.log('✅ parsedData.label 사용:', labelColor);
+      }
+      // 3) material.label 사용 (로컬 state - 가장 확실!)
+      else if (material.label) {
+        labelColor = material.label;
+        console.log('✅ material.label 사용:', labelColor);
+      }
+
+      console.log('🎨 Final labelColor:', labelColor);
+
+      // 검증: chapters가 올바른 형태인지 확인
       if (chapters.length > 0) {
         if (chapters[0]?.id !== undefined && chapters[0]?.title !== undefined) {
           console.log('✅ 올바른 Chapter 객체입니다!');
@@ -439,6 +458,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       }
 
       console.log('🚀 Navigating to editor with chapters:', chapters);
+      console.log('🚀 Navigating to editor with labelColor:', labelColor);
 
       // 에디터로 이동
       navigate('/editor', {
@@ -449,6 +469,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           materialId: materialId,
           from: 'classroom',
           mode: 'view',
+          initialLabel: labelColor,
         },
       });
     } catch (err: any) {
