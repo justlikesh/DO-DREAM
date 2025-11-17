@@ -26,3 +26,4 @@ public interface StudentMaterialProgressRepository extends JpaRepository<Student
     List<StudentMaterialProgress> findByMaterialId(Long materialId);
 }
 
+
