@@ -15,9 +15,10 @@ public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
     @Query("SELECT b FROM Bookmark b " +
             "WHERE b.user = :user " +
             "AND b.material = :material " +
-            "AND b.titleId = :titleId ")
-    Optional<Bookmark> findByUserAndMaterialAndTitleId(
-            User user, Material material, String titleId
+            "AND b.titleId = :titleId " +
+            "AND b.pageNumber = :pageNumber")
+    Optional<Bookmark> findBookmark(
+            User user, Material material, String titleId, Long pageNumber
     );
 
     List<Bookmark> findByUserOrderByCreatedAtDesc(User user);

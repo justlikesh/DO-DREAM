@@ -9,5 +9,5 @@ import java.util.Set;
 @AllArgsConstructor
 public class MaterialBookmarksResponse {
     private Long materialId;
-    private Set<String> bookmarkedTitleIds;
+    private Set<Long> bookmarkedPageNumbers;
 }

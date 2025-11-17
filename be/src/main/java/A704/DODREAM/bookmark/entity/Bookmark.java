@@ -36,6 +36,9 @@ public class Bookmark {
     @Column(name = "title_id", nullable = false, length = 50)
     private String titleId;
 
+    @Column(name = "page_number", nullable = false)
+    private Long pageNumber;
+
     @Column(nullable = false)
     private String title;
 
