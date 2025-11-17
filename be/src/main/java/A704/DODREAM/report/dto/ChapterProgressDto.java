@@ -39,3 +39,4 @@ public class ChapterProgressDto {
     private boolean isCompleted;
 }
 
+

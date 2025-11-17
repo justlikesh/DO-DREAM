@@ -229,7 +229,7 @@ public class ProgressReportService {
 
     /**
      * 챕터별 진행률 계산
-     * 실제 JSON 구조(parsedData.data)를 분석하여 각 챕터의 섹션 수를 계산
+     * 두 가지 JSON 구조를 모두 지원
      */
     private List<ChapterProgressDto> calculateChapterProgress(
             List<Map<String, Object>> chapters,
@@ -242,10 +242,26 @@ public class ProgressReportService {
         for (int i = 0; i < chapters.size(); i++) {
             Map<String, Object> chapter = chapters.get(i);
             
-            String chapterId = (String) chapter.get("index");
-            String chapterTitle = (String) chapter.get("index_title");
+            // 챕터 ID와 제목 추출 (두 가지 구조 지원)
+            String chapterId;
+            String chapterTitle;
+            String chapterType;
             
-            // Section 수 계산: titles, s_titles, ss_titles, concept_checks 모두 카운팅
+            if (chapter.containsKey("index")) {
+                // 이전 구조
+                chapterId = (String) chapter.get("index");
+                chapterTitle = (String) chapter.get("index_title");
+                // concept_checks가 있으면 quiz 타입으로 간주
+                List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
+                chapterType = (conceptChecks != null && !conceptChecks.isEmpty()) ? "quiz" : "content";
+            } else {
+                // 새로운 구조
+                chapterId = (String) chapter.get("id");
+                chapterTitle = (String) chapter.get("title");
+                chapterType = (String) chapter.getOrDefault("type", "content");
+            }
+            
+            // Section 수 계산 (구조에 맞게 자동 판별)
             int totalSections = calculateSectionsFromChapter(chapter);
             
             // 현재 진행 상황에 따른 완료된 섹션 계산
@@ -278,10 +294,6 @@ public class ProgressReportService {
                     ? (double) completedSections / totalSections * 100.0 
                     : 0.0;
 
-            // concept_checks가 있으면 quiz 타입으로 간주
-            List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
-            String chapterType = (conceptChecks != null && !conceptChecks.isEmpty()) ? "quiz" : "content";
-
             result.add(ChapterProgressDto.builder()
                     .chapterId(chapterId)
                     .chapterTitle(chapterTitle)
@@ -301,9 +313,29 @@ public class ProgressReportService {
 
     /**
      * 챕터에서 섹션 수 계산
-     * 실제 JSON 구조를 기반으로 titles, s_titles, ss_titles, concept_checks를 모두 카운팅
+     * 두 가지 JSON 구조를 모두 지원:
+     * 1. 이전 구조: titles, s_titles, ss_titles, concept_checks
+     * 2. 새로운 구조: 단순 chapters 배열 (각 chapter = 1 섹션)
      */
     private int calculateSectionsFromChapter(Map<String, Object> chapter) {
+        // 구조 판별: "index" 키가 있으면 이전 구조, "id" 키가 있으면 새로운 구조
+        if (chapter.containsKey("index") && chapter.containsKey("index_title")) {
+            // 이전 구조 (parsedData.data)
+            return calculateSectionsFromOldStructure(chapter);
+        } else if (chapter.containsKey("id") && chapter.containsKey("title")) {
+            // 새로운 구조 (chapters)
+            return calculateSectionsFromNewStructure(chapter);
+        } else {
+            log.warn("알 수 없는 챕터 구조: keys={}", chapter.keySet());
+            return 1; // 최소 1 섹션
+        }
+    }
+    
+    /**
+     * 이전 JSON 구조에서 섹션 수 계산
+     * titles, s_titles, ss_titles, concept_checks를 모두 카운팅
+     */
+    private int calculateSectionsFromOldStructure(Map<String, Object> chapter) {
         int sectionCount = 0;
         
         String chapterId = (String) chapter.get("index");
@@ -352,10 +384,25 @@ public class ProgressReportService {
             sectionCount += conceptChecks.size();
         }
 
-        log.info("챕터 [{}] {} - 총 {} 섹션", chapterId, chapterTitle, sectionCount);
+        log.info("챕터 [{}] {} - 총 {} 섹션 (이전 구조)", chapterId, chapterTitle, sectionCount);
         
         // 최소 1개 섹션 보장
         return Math.max(1, sectionCount);
+    }
+    
+    /**
+     * 새로운 JSON 구조에서 섹션 수 계산
+     * 각 chapter가 1개의 섹션
+     */
+    private int calculateSectionsFromNewStructure(Map<String, Object> chapter) {
+        String chapterId = (String) chapter.get("id");
+        String chapterTitle = (String) chapter.get("title");
+        String chapterType = (String) chapter.get("type");
+        
+        log.info("챕터 [{}] {} (type: {}) - 1 섹션 (새로운 구조)", chapterId, chapterTitle, chapterType);
+        
+        // 새로운 구조에서는 각 chapter가 1개의 섹션
+        return 1;
     }
 
     /**
@@ -433,22 +480,41 @@ public class ProgressReportService {
     }
 
     /**
-     * JSON에서 chapters 추출 (패턴 1, 2 모두 지원)
+     * JSON에서 chapters 추출 (3가지 패턴 모두 지원)
+     * 패턴 1: parsedData.data (이전 구조)
+     * 패턴 2: data (이전 구조)
+     * 패턴 3: chapters (새로운 구조 - EC2)
      */
     private List<Map<String, Object>> extractChapters(Map<String, Object> jsonData) {
+        log.info("=== extractChapters 시작 ===");
+        log.info("JSON 최상위 keys: {}", jsonData.keySet());
+        
+        // 패턴 1: parsedData.data 구조 (이전)
         Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
         if (parsedData != null) {
+            log.info("패턴 1 시도: parsedData 존재, keys: {}", parsedData.keySet());
             List<Map<String, Object>> chapters = (List<Map<String, Object>>) parsedData.get("data");
             if (chapters != null) {
+                log.info("✅ 패턴 1 성공: parsedData.data에서 {} 개의 챕터 발견", chapters.size());
                 return chapters;
             }
         }
         
+        // 패턴 2: 직접 data 구조 (이전)
         List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("data");
         if (chapters != null) {
+            log.info("✅ 패턴 2 성공: data에서 {} 개의 챕터 발견", chapters.size());
             return chapters;
         }
         
+        // 패턴 3: 직접 chapters 구조 (새로운 - EC2)
+        chapters = (List<Map<String, Object>>) jsonData.get("chapters");
+        if (chapters != null) {
+            log.info("✅ 패턴 3 성공: chapters에서 {} 개의 챕터 발견 (새로운 JSON 구조)", chapters.size());
+            return chapters;
+        }
+        
+        log.error("❌ 모든 패턴 실패: chapters를 찾을 수 없습니다.");
         throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
     }
 

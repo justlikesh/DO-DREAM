@@ -60,3 +60,4 @@ public class ProgressReportResponse {
     private List<ChapterProgressDto> chapterProgress;
 }
 
+
