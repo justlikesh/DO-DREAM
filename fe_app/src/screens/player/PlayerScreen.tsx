@@ -808,11 +808,7 @@ export default function PlayerScreen() {
           <View
             ref={contentRef}
             style={styles.contentBox}
-            accessible={true}
-            accessibilityRole="text"
-            accessibilityLabel={`${chapter.title}, 섹션 ${
-              currentSectionIndex + 1
-            } 중 ${currentSectionIndex + 1}번째`}
+            accessible={false}
           >
             <Text style={styles.contentText}>{currentSection.text}</Text>
           </View>
@@ -933,7 +929,7 @@ export default function PlayerScreen() {
         </View>
 
         {/* 하단 액션 버튼들 */}
-        <View style={styles.bottomActionWrap}>
+        <View style={styles.bottomButtons}>
           <TouchableOpacity
             style={styles.askButton}
             onPress={handleQuestionPress}
@@ -986,7 +982,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 12,
     // borderBottomWidth: 3,
-    // borderBottomColor: COLORS.border.main,
+    // borderBottomColor: COLORS.border.light,
   },
 
   scrollView: { flex: 1 },
@@ -1041,7 +1037,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.primary.dark,
   },
-  controlButtonText: { fontSize: 22, fontWeight: "800", color: COLORS.text.inverse },
+  controlButtonText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.text.inverse,
+  },
 
   controlButtonComplete: {
     paddingVertical: 18,
@@ -1080,68 +1080,80 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  // 챕터 이동 버튼 영역
   chapterNavRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 6,
-    backgroundColor: COLORS.background.elevated,
-    borderTopWidth: 2,
-    borderTopColor: COLORS.border.light,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
   },
   chapterNavButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary.lightest,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: COLORS.background.elevated,
     borderWidth: 3,
     borderColor: COLORS.primary.main,
+    alignItems: "center",
+    minHeight: 64,
+    justifyContent: "center",
   },
   chapterNavButtonDisabled: {
-    backgroundColor: COLORS.gray[100],
-    borderColor: COLORS.border.light,
+    backgroundColor: COLORS.gray[300],
+    borderColor: COLORS.gray[400],
     opacity: 0.7,
+    color: COLORS.text.inverse,
   },
   chapterNavButtonText: {
     fontSize: 20,
     fontWeight: "700",
-    color: COLORS.text.secondary,
+    color: COLORS.text.primary,
   },
 
-  bottomActionWrap: {
-    paddingHorizontal: 16,
+  bottomButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
     paddingBottom: 20,
-    paddingTop: 12,
-    gap: 12,
+    paddingTop: 4,
+    gap: 16,
   },
   askButton: {
+    flex: 1,
     backgroundColor: COLORS.secondary.main, // 노란색
     borderRadius: 16,
-    padding: 22,
-    alignItems: "center",
-    minHeight: 76,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    minHeight: 68,
     justifyContent: "center",
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: COLORS.secondary.dark,
+    alignItems: "center",
   },
-  askButtonText: { fontSize: 26, fontWeight: "bold", color: COLORS.text.primary },
+  askButtonText: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: COLORS.text.primary,
+  },
 
   moreButton: {
+    flex: 1,
     backgroundColor: COLORS.primary.lightest,
     borderRadius: 16,
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     alignItems: "center",
     minHeight: 68,
     justifyContent: "center",
     borderWidth: 3,
     borderColor: COLORS.primary.main,
   },
-  moreButtonText: { fontSize: 22, fontWeight: "bold", color: COLORS.primary.dark },
+  moreButtonText: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.primary.dark,
+  },
 
   errorText: {
     fontSize: 22,
