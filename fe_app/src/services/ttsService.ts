@@ -133,6 +133,13 @@ class TTSService {
   }
 
   async initialize(sections: Section[], startIndex: number = 0, options: TTSOptions = {}): Promise<void> {
+    console.log('[TTS] Initialize called with', sections.length, 'sections');
+
+    // 이전 상태를 먼저 정리
+    this.clearPauseAfterTimer();
+    this.bumpSpeakToken();
+
+    // sections를 먼저 설정 (race condition 방지)
     this.sections = sections;
     this.currentSectionIndex = startIndex;
     this.playMode = options.playMode || 'single';
@@ -149,9 +156,6 @@ class TTSService {
     };
     this.status = 'idle';
 
-    this.clearPauseAfterTimer();
-    this.bumpSpeakToken();
-
     if (this.isTtsInitialized) {
       await this.applyTtsOptions(this.options);
     }
@@ -159,7 +163,7 @@ class TTSService {
     // 재시도 카운터 초기화
     this.retryCount = 0;
 
-    console.log('[TTS] Initialized with options:', this.options);
+    console.log('[TTS] Initialized with', this.sections.length, 'sections, options:', this.options);
   }
 
   /** TalkBack 안내 대기 시간(ms) 조정 - 현재는 사용하지 않음 */
@@ -673,21 +677,21 @@ class TTSService {
     return this.status === 'playing';
   }
 
-  async cleanup(): Promise<void> {
+  cleanup(): void {
     console.log('[TTS] Cleanup started');
 
     this.clearPauseAfterTimer();
     this.bumpSpeakToken();
 
-    try {
-      await Tts.stop();
-    } catch (error) {
+    // Tts.stop()을 비동기로 호출하되, cleanup은 동기적으로 완료
+    Tts.stop().catch((error) => {
       console.warn('[TTS] Stop failed during cleanup:', error);
-    }
+    });
 
-    Tts.removeAllListeners('tts-start');
-    Tts.removeAllListeners('tts-finish');
-    Tts.removeAllListeners('tts-error');
+    // 리스너는 제거하지 않음 - ttsService는 싱글톤이므로 리스너는 유지되어야 함
+    // Tts.removeAllListeners('tts-start');
+    // Tts.removeAllListeners('tts-finish');
+    // Tts.removeAllListeners('tts-error');
 
     this.sections = [];
     this.currentSectionIndex = 0;
