@@ -20,7 +20,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import type { QuestionScreenNavigationProp, QuestionScreenRouteProp } from "../../navigation/navigationTypes";
+import type {
+  QuestionScreenNavigationProp,
+  QuestionScreenRouteProp,
+} from "../../navigation/navigationTypes";
 import * as Haptics from "expo-haptics";
 import { asrService } from "../../services/asrService";
 import { TriggerContext } from "../../triggers/TriggerContext";
@@ -45,44 +48,47 @@ interface Message {
   timestamp: Date;
 }
 
+const BTN_HEIGHT = 56;
+
 export default function QuestionScreen() {
   const navigation = useNavigation<QuestionScreenNavigationProp>();
   const route = useRoute<QuestionScreenRouteProp>();
-  const { material, chapterId, sectionIndex, questionId, sessionId: initialSessionId } = route.params;
+  const {
+    material,
+    chapterId,
+    sectionIndex,
+    questionId,
+    sessionId: initialSessionId,
+  } = route.params;
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
-  // 채팅 데이터
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
 
-  // RAG API 관련 상태
-  const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
+  const [sessionId, setSessionId] = useState<string | null>(
+    initialSessionId || null
+  );
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
+  const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(
+    questionId || null
+  );
 
-  // 현재 질문 히스토리 ID (기존 질문에서 진입한 경우)
-  const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(questionId || null);
-
-  // ASR 상태 (로컬 질문용)
   const [listening, setListening] = useState(false);
-  const [interim, setInterim] = useState(""); // 실시간(중간) 텍스트
+  const [interim, setInterim] = useState("");
+
   const offRef = useRef<null | (() => void)>(null);
+  const lastCommittedRef = useRef<string>("");
+  const lastFinalAtRef = useRef<number>(0);
 
-  // 명령 중복 확정 방지용
-  const lastCommittedRef = useRef<string>(""); // 마지막으로 말풍선에 올린 텍스트
-  const lastFinalAtRef = useRef<number>(0); // 마지막 확정 시간 (ms)
-
-  // 발화 종료(침묵) 감지
   const SILENCE_TIMEOUT_MS = 1400;
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastHeardAtRef = useRef<number>(0);
 
-  // 🔧 TalkBack 안내음 무시 타임윈도
-  const ignoreUntilRef = useRef<number>(0); // 이 시간 이전 이벤트는 무시
+  const ignoreUntilRef = useRef<number>(0);
   const screenReaderOnRef = useRef<boolean>(false);
 
-  // 웨이브(인식 중 시각 피드백)
   const wave1 = useRef(new Animated.Value(0)).current;
   const wave2 = useRef(new Animated.Value(0)).current;
   const wave3 = useRef(new Animated.Value(0)).current;
@@ -93,7 +99,9 @@ export default function QuestionScreen() {
   const micBtnRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
 
+  // =========================
   // 화면 진입 안내 + 포커스
+  // =========================
   useEffect(() => {
     let mounted = true;
     AccessibilityInfo.isScreenReaderEnabled().then(
@@ -108,11 +116,11 @@ export default function QuestionScreen() {
 
     setTimeout(() => {
       if (!mounted) return;
-      
+
       const announcement = currentQuestionId
-        ? "질문하기 화면입니다. 이전 대화를 이어서 계속할 수 있습니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요."
-        : "질문하기 화면입니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요.";
-      
+        ? "질문하기 화면입니다. 이전 대화를 이어서 계속할 수 있습니다. 화면 상단 오른쪽의 음성 명령 버튼을 누르거나, 아래 입력창에 질문을 작성하세요."
+        : "질문하기 화면입니다. 화면 상단 오른쪽의 음성 명령 버튼을 누르거나, 아래 입력창에 질문을 작성하세요.";
+
       AccessibilityInfo.announceForAccessibility(announcement);
       const tag = micBtnRef.current ? findNodeHandle(micBtnRef.current) : null;
       if (tag) AccessibilityInfo.setAccessibilityFocus(tag);
@@ -125,27 +133,29 @@ export default function QuestionScreen() {
     };
   }, [currentQuestionId]);
 
-  // 기존 질문 히스토리 복원 (questionId가 있는 경우)
+  // =========================
+  // 기존 히스토리 복원
+  // =========================
   useEffect(() => {
     if (questionId) {
       const history = getQuestionHistory(questionId);
       if (history) {
-        console.log("[QuestionScreen] 질문 히스토리 복원:", history);
-        
-        // 메시지 복원
-        const restoredMessages: Message[] = history.messages.map((msg, index) => ({
-          id: `${history.id}_${index}`,
-          type: msg.type,
-          text: msg.text,
-          timestamp: new Date(msg.timestamp),
-        }));
-        
+        const restoredMessages: Message[] = history.messages.map(
+          (msg, index) => ({
+            id: `${history.id}_${index}`,
+            type: msg.type,
+            text: msg.text,
+            timestamp: new Date(msg.timestamp),
+          })
+        );
+
         setMessages(restoredMessages);
         setSessionId(history.sessionId);
         setCurrentQuestionId(history.id);
-        
-        // 마지막 사용자 메시지를 lastCommittedRef에 저장 (중복 방지용)
-        const lastUserMessage = [...history.messages].reverse().find(m => m.type === 'user');
+
+        const lastUserMessage = [...history.messages]
+          .reverse()
+          .find((m) => m.type === "user");
         if (lastUserMessage) {
           lastCommittedRef.current = lastUserMessage.text;
         }
@@ -153,7 +163,9 @@ export default function QuestionScreen() {
     }
   }, [questionId]);
 
+  // =========================
   // 웨이브 애니메이션
+  // =========================
   useEffect(() => {
     const make = (v: Animated.Value, delay: number) =>
       Animated.loop(
@@ -194,12 +206,12 @@ export default function QuestionScreen() {
     };
   }, [listening, wave1, wave2, wave3, wave4, wave5]);
 
-  // 메시지 추가(중복 필터 포함)
+  // =========================
+  // 유틸
+  // =========================
   const pushUserMessage = (text: string) => {
     const t = text.trim();
     if (!t) return;
-
-    // 🔧 완전 중복 차단
     if (t === lastCommittedRef.current) return;
 
     const msg: Message = {
@@ -243,7 +255,6 @@ export default function QuestionScreen() {
     return `${y}. ${m}. ${day}. ${hh}:${mm}:${ss}`;
   };
 
-  // 침묵 타임아웃 arm/disarm
   const armSilenceTimer = () => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     silenceTimerRef.current = setTimeout(() => {
@@ -251,7 +262,7 @@ export default function QuestionScreen() {
       const elapsed = Date.now() - lastHeardAtRef.current;
       if (elapsed >= SILENCE_TIMEOUT_MS) {
         if (interim.trim()) {
-          pushUserMessage(interim); // 확정 전에 마지막 중간문장만 채택
+          pushUserMessage(interim);
           setInterim("");
         }
         stopListening(false).then(() => {
@@ -262,13 +273,13 @@ export default function QuestionScreen() {
     }, SILENCE_TIMEOUT_MS + 80);
   };
 
-  // ASR 구독 (로컬 질문용)
+  // =========================
+  // ASR
+  // =========================
   const subscribeASR = () => {
     if (offRef.current) offRef.current();
     offRef.current = asrService.on((raw, isFinal) => {
       const now = Date.now();
-
-      // 🔧 TalkBack 안내 음성 무시: 시작 직후 ignoreUntil 시점 전 이벤트는 버림
       if (now < ignoreUntilRef.current) return;
 
       const text = (raw || "").trim();
@@ -277,25 +288,20 @@ export default function QuestionScreen() {
       lastHeardAtRef.current = now;
 
       if (isFinal) {
-        // 최종결과 중복 방지: 직전 확정과 동일/거의 동일하면 무시
         if (text === lastCommittedRef.current) return;
         pushUserMessage(text);
         setInterim("");
       } else {
-        // 중간문장 업데이트
         setInterim(text);
       }
       armSilenceTimer();
     });
   };
 
-  // 마이크 시작/정지 (로컬 질문용)
   const startListening = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     subscribeASR();
 
-    // TalkBack 켜져 있으면, 시작 직후 N ms 동안 캡처 무시
-    // 버튼 라벨/힌트 낭독이 흘러들어오는 것을 방지
     const IGNORE_MS = screenReaderOnRef.current ? 2200 : 300;
     ignoreUntilRef.current = Date.now() + IGNORE_MS;
 
@@ -329,29 +335,27 @@ export default function QuestionScreen() {
       AccessibilityInfo.announceForAccessibility("음성 인식을 종료했습니다.");
   };
 
-  // 질문 히스토리 저장/업데이트
+  // =========================
+  // 질문 히스토리 저장
+  // =========================
   const saveOrUpdateQuestionHistory = useCallback(
     (question: string, answer: string, newSessionId: string) => {
       try {
         if (currentQuestionId) {
-          // 기존 질문 히스토리에 메시지 추가
           const userMessage: QuestionMessage = {
-            type: 'user',
+            type: "user",
             text: question,
             timestamp: new Date().toISOString(),
           };
           const botMessage: QuestionMessage = {
-            type: 'bot',
+            type: "bot",
             text: answer,
             timestamp: new Date().toISOString(),
           };
-          
+
           addMessageToQuestionHistory(currentQuestionId, userMessage);
           addMessageToQuestionHistory(currentQuestionId, botMessage);
-          
-          console.log("[QuestionScreen] 질문 히스토리 업데이트:", currentQuestionId);
         } else {
-          // 새 질문 히스토리 생성
           const newHistory = createQuestionHistory({
             materialId: material.id.toString(),
             chapterId,
@@ -359,9 +363,7 @@ export default function QuestionScreen() {
             question,
             answer,
           });
-          
           setCurrentQuestionId(newHistory.id);
-          console.log("[QuestionScreen] 새 질문 히스토리 생성:", newHistory.id);
         }
       } catch (error) {
         console.error("[QuestionScreen] 질문 히스토리 저장 실패:", error);
@@ -370,7 +372,9 @@ export default function QuestionScreen() {
     [currentQuestionId, material.id, chapterId]
   );
 
-  // RAG API 호출하여 질문에 대한 답변 받기
+  // =========================
+  // RAG API
+  // =========================
   const sendQuestionToRAG = useCallback(
     async (question: string) => {
       try {
@@ -382,37 +386,29 @@ export default function QuestionScreen() {
           session_id: sessionId,
         };
 
-        console.log("[QuestionScreen] RAG API 요청:", payload);
-
         const response = await ragApi.chat(payload);
 
-        console.log("[QuestionScreen] RAG API 응답:", response);
-
-        // 세션 ID 업데이트 (연속 대화 지원)
         setSessionId(response.session_id);
-
-        // 봇 응답 추가
         addBotMessage(response.answer);
-
-        // 질문 히스토리 저장/업데이트
-        saveOrUpdateQuestionHistory(question, response.answer, response.session_id);
+        saveOrUpdateQuestionHistory(
+          question,
+          response.answer,
+          response.session_id
+        );
       } catch (error: any) {
         console.error("[QuestionScreen] RAG API 호출 실패:", error);
-        console.error("[QuestionScreen] 에러 상세:", {
-          message: error?.message,
-          response: error?.response?.data,
-          status: error?.response?.status,
-          code: error?.code,
-        });
 
-        let errorMessage = "질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.";
+        let errorMessage =
+          "질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.";
 
         if (error?.response?.data?.detail) {
           errorMessage = error.response.data.detail;
         } else if (error?.message === "Network Error") {
-          errorMessage = "네트워크 연결을 확인해주세요. 서버와 통신할 수 없습니다.";
+          errorMessage =
+            "네트워크 연결을 확인해주세요. 서버와 통신할 수 없습니다.";
         } else if (error?.code === "ECONNABORTED") {
-          errorMessage = "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.";
+          errorMessage =
+            "서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.";
         } else if (error?.message) {
           errorMessage = error.message;
         }
@@ -428,7 +424,9 @@ export default function QuestionScreen() {
     [material.id, sessionId, saveOrUpdateQuestionHistory]
   );
 
-  // 입력 전송
+  // =========================
+  // 입력 전송 / 뒤로가기
+  // =========================
   const handleSend = useCallback(async () => {
     const t = inputText.trim();
     if (!t) {
@@ -437,25 +435,25 @@ export default function QuestionScreen() {
     }
 
     if (isLoadingResponse) {
-      AccessibilityInfo.announceForAccessibility("이전 질문을 처리 중입니다. 잠시만 기다려주세요.");
+      AccessibilityInfo.announceForAccessibility(
+        "이전 질문을 처리 중입니다. 잠시만 기다려주세요."
+      );
       return;
     }
 
-    // 사용자 메시지 추가
     pushUserMessage(t);
     setInputText("");
-
-    // RAG API 호출
     await sendQuestionToRAG(t);
   }, [inputText, isLoadingResponse, sendQuestionToRAG]);
 
-  // 뒤로가기
   const handleBack = useCallback(async () => {
     if (listening) await stopListening(false);
     navigation.goBack();
   }, [listening, navigation, stopListening]);
 
-  // Question 화면 전용 음성 명령/질문(rawText) 처리
+  // =========================
+  // VoiceCommand(rawText)
+  // =========================
   const handleQuestionVoiceCommand = useCallback(
     (spoken: string) => {
       const raw = spoken.trim();
@@ -464,10 +462,6 @@ export default function QuestionScreen() {
 
       console.log("[QuestionScreen] rawText 핸들러 호출:", raw);
 
-      // 1) 말하기 시작 / 종료 / 토글 (로컬 ASR 제어) - QuestionScreen에서는 사용 안 함
-      // VoiceCommandButton은 전역 음성 명령용이므로, 로컬 말하기 기능과 분리
-
-      // 2) 질문 보내기 / 확인 (입력창 기반 전송)
       if (
         t === "보내" ||
         t === "확인" ||
@@ -478,7 +472,6 @@ export default function QuestionScreen() {
         return;
       }
 
-      // 3) 대화 지우기
       if (
         t.includes("지워") ||
         t.includes("초기화") ||
@@ -488,8 +481,8 @@ export default function QuestionScreen() {
       ) {
         setMessages([]);
         setInterim("");
-        setSessionId(null); // 세션 ID 초기화
-        setCurrentQuestionId(null); // 현재 질문 ID 초기화
+        setSessionId(null);
+        setCurrentQuestionId(null);
         lastCommittedRef.current = "";
         AccessibilityInfo.announceForAccessibility(
           "대화 내용을 모두 지웠습니다."
@@ -497,7 +490,6 @@ export default function QuestionScreen() {
         return;
       }
 
-      // 4) 입력창 포커스
       if (
         t.includes("입력창") ||
         t.includes("키보드") ||
@@ -510,11 +502,10 @@ export default function QuestionScreen() {
         return;
       }
 
-      // 5) 뒤로가기는 전역 핸들러(TriggerContext)가 처리하므로 여기서는 제외
-
-      // 6) 위 명령어에 해당하지 않으면 → 일반 질문으로 처리
       if (isLoadingResponse) {
-        AccessibilityInfo.announceForAccessibility("질문을 처리 중입니다. 잠시만 기다려주세요.");
+        AccessibilityInfo.announceForAccessibility(
+          "질문을 처리 중입니다. 잠시만 기다려주세요."
+        );
         return;
       }
 
@@ -525,7 +516,6 @@ export default function QuestionScreen() {
     [handleSend, isLoadingResponse, sendQuestionToRAG]
   );
 
-  // 핸들러를 ref로 저장하여 최신 버전 유지
   const handleQuestionVoiceCommandRef = useRef(handleQuestionVoiceCommand);
   useEffect(() => {
     handleQuestionVoiceCommandRef.current = handleQuestionVoiceCommand;
@@ -536,7 +526,9 @@ export default function QuestionScreen() {
     handleBackRef.current = handleBack;
   }, [handleBack]);
 
-  // QuestionScreen용 전역 음성 명령 핸들러 등록
+  // =========================
+  // TriggerContext 등록
+  // =========================
   useEffect(() => {
     setCurrentScreenId("Question");
 
@@ -579,7 +571,7 @@ export default function QuestionScreen() {
       </View>
     );
 
-  // 로딩 말풍선 (RAG 응답 대기 중)
+  // 로딩 말풍선
   const LoadingBubble = () =>
     !isLoadingResponse ? null : (
       <View style={[styles.messageRow, styles.botRow]}>
@@ -588,7 +580,9 @@ export default function QuestionScreen() {
           accessibilityRole="text"
           accessibilityLabel="답변을 생성하고 있습니다"
         >
-          <Text style={[styles.msgText, styles.botText]}>답변을 생성하고 있습니다...</Text>
+          <Text style={[styles.msgText, styles.botText]}>
+            두드림 AI가 답변을 생성하고 있습니다...
+          </Text>
           <Text
             style={[styles.timeText, styles.botTime]}
             accessible={false}
@@ -617,28 +611,39 @@ export default function QuestionScreen() {
     );
   };
 
+  // =========================
+  // 렌더링
+  // =========================
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.inner}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
         {/* 헤더 */}
-        <View style={commonStyles.headerContainer}>
-          <BackButton onPress={handleBack} style={commonStyles.headerBackButton} />
+        <View style={[commonStyles.headerContainer, styles.header]}>
+          <BackButton
+            onPress={handleBack}
+            style={commonStyles.headerBackButton}
+          />
 
-          <Text style={styles.title} accessibilityRole="header">
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+            accessibilityLabel="두드림 AI 질문 화면"
+          >
             두드림 AI
           </Text>
 
           <View style={styles.headerRight}>
             <TouchableOpacity
+              style={styles.clearButton}
               onPress={() => {
                 setMessages([]);
                 setInterim("");
-                setSessionId(null); // 세션 ID 초기화
-                setCurrentQuestionId(null); // 현재 질문 ID 초기화
+                setSessionId(null);
+                setCurrentQuestionId(null);
                 lastCommittedRef.current = "";
                 AccessibilityInfo.announceForAccessibility(
                   "대화 내용을 모두 지웠습니다."
@@ -654,7 +659,7 @@ export default function QuestionScreen() {
 
             <VoiceCommandButton
               style={commonStyles.headerVoiceButton}
-              accessibilityHint="두 번 탭한 후 질문이나 음성 명령을 말씀하세요."
+              accessibilityHint="두 번 탭한 후 질문하거나, 대화 지우기, 입력창 포커스와 같은 음성 명령을 말씀하세요."
             />
           </View>
         </View>
@@ -665,14 +670,22 @@ export default function QuestionScreen() {
           style={styles.chatArea}
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           accessible={false}
         >
-          {messages.length === 0 ? (
-            <View style={styles.emptyWrap}>
+          <View
+            style={[
+              styles.messagesContainer,
+              messages.length === 0
+                ? styles.messagesEmpty
+                : styles.messagesFilled,
+            ]}
+          >
+            {messages.length === 0 ? (
               <View style={styles.welcomeBubble} accessibilityRole="text">
                 <Text style={styles.welcomeTxt}>
-                  두드림 AI에게 물어보세요. 오른쪽 위 버튼으로 음성 인식을
-                  시작하거나, 아래 입력창에 질문을 적고 확인을 눌러 주세요.
+                  두드림 AI에게 물어보세요. 오른쪽 위 음성 명령 버튼으로 질문을
+                  말하거나, 아래 입력창에 질문을 적고 확인을 눌러 주세요.
                 </Text>
                 <Text
                   style={styles.botTime}
@@ -682,59 +695,64 @@ export default function QuestionScreen() {
                   {formatTime(new Date())}
                 </Text>
               </View>
-            </View>
-          ) : (
-            <View style={styles.msgsWrap}>
-              {messages.map((m) => {
-                const isUser = m.type === "user";
-                return (
-                  <View
-                    key={m.id}
-                    style={[
-                      styles.messageRow,
-                      isUser ? styles.userRow : styles.botRow,
-                    ]}
-                  >
+            ) : (
+              <>
+                {messages.map((m) => {
+                  const isUser = m.type === "user";
+                  return (
                     <View
+                      key={m.id}
                       style={[
-                        styles.bubble,
-                        isUser ? styles.userBubble : styles.botBubble,
+                        styles.messageRow,
+                        isUser ? styles.userRow : styles.botRow,
                       ]}
-                      accessible
-                      accessibilityRole="text"
-                      accessibilityLabel={m.text}
                     >
-                      <Text
+                      <View
                         style={[
-                          styles.msgText,
-                          isUser ? styles.userText : styles.botText,
+                          styles.bubble,
+                          isUser ? styles.userBubble : styles.botBubble,
                         ]}
+                        accessible
+                        accessibilityRole="text"
+                        accessibilityLabel={m.text}
                       >
-                        {m.text}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.timeText,
-                          isUser ? styles.userTime : styles.botTime,
-                        ]}
-                        accessible={false}
-                        importantForAccessibility="no"
-                      >
-                        {formatTime(m.timestamp)}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.msgText,
+                            isUser ? styles.userText : styles.botText,
+                          ]}
+                        >
+                          {m.text}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.timeText,
+                            isUser ? styles.userTime : styles.botTime,
+                          ]}
+                          accessible={false}
+                          importantForAccessibility="no"
+                        >
+                          {formatTime(m.timestamp)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-              <DraftBubble />
-              <LoadingBubble />
-            </View>
-          )}
+                  );
+                })}
+                <DraftBubble />
+                <LoadingBubble />
+              </>
+            )}
+          </View>
         </ScrollView>
 
-        {/* 인식 중 웨이브 (로컬 ASR용) */}
+        {/* 인식 중 웨이브 */}
         {listening && (
-          <View style={styles.waveBar}>
+          <View
+            style={styles.waveBar}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="음성 인식 중입니다"
+          >
             <View style={styles.waveDots}>
               <WaveDot v={wave1} i={1} />
               <WaveDot v={wave2} i={2} />
@@ -754,7 +772,6 @@ export default function QuestionScreen() {
             onChangeText={setInputText}
             placeholder="질문 입력"
             placeholderTextColor="#999"
-            aria-label="질문 입력"
             multiline
             maxLength={1200}
             accessibilityLabel="질문 입력창"
@@ -777,32 +794,64 @@ export default function QuestionScreen() {
   );
 }
 
-const BTN_HEIGHT = 56; // 버튼/입력 최소 높이 기준
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.primary.lighter },
-  title: { fontSize: 22, fontWeight: "600", color: COLORS.text.secondary, flex: 1, textAlign: "center" },
+  container: {
+    flex: 1,
+    // backgroundColor: COLORS.primary.lighter,
+  },
+  inner: {
+    flex: 1,
+  },
+
+  header: {
+    borderBottomWidth: 3,
+    borderBottomColor: COLORS.border.light,
+    backgroundColor: COLORS.background.default,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: COLORS.text.secondary,
+    flex: 1,
+    textAlign: "center",
+  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
+  clearButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minHeight: 44,
+    minWidth: 60,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   clearTxt: {
     fontSize: 16,
     color: COLORS.status.error,
     fontWeight: "700",
-    paddingRight: 8,
   },
-
-  // 대화
-  chatArea: { flex: 1, backgroundColor: COLORS.primary.lighter },
+  chatArea: {
+    flex: 1,
+    backgroundColor: COLORS.primary.lightest,
+  },
   chatContent: {
+    flexGrow: 1, // ScrollView 전체 높이 채우기
+  },
+  messagesContainer: {
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 16,
   },
-  emptyWrap: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 },
-  msgsWrap: { flex: 1 },
+  messagesEmpty: {
+    justifyContent: "flex-start",
+  },
+  messagesFilled: {
+    justifyContent: "flex-end", // 마지막 말풍선을 입력창 바로 위로
+  },
 
   messageRow: { marginBottom: 12, flexDirection: "row" },
   userRow: { justifyContent: "flex-end" },
@@ -814,10 +863,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  userBubble: { backgroundColor: COLORS.primary.main, alignSelf: "flex-end" },
-  botBubble: { backgroundColor: COLORS.secondary.main, alignSelf: "flex-start" },
+  userBubble: {
+    backgroundColor: COLORS.primary.main,
+    alignSelf: "flex-end",
+  },
+  botBubble: {
+    backgroundColor: COLORS.secondary.main,
+    alignSelf: "flex-start",
+  },
 
-  draftBubble: { opacity: 0.85, borderWidth: 2, borderColor: COLORS.primary.light },
+  draftBubble: {
+    opacity: 0.85,
+    borderWidth: 2,
+    borderColor: COLORS.primary.light,
+  },
 
   msgText: { fontSize: 20, lineHeight: 30, marginBottom: 6 },
   userText: { color: COLORS.text.inverse },
@@ -900,6 +959,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.primary.dark,
   },
-  sendDisabled: { backgroundColor: COLORS.border.main },
-  sendTxt: { color: COLORS.text.primary, fontSize: 16, fontWeight: "700" },
+  sendDisabled: {
+    backgroundColor: COLORS.border.main,
+    borderColor: COLORS.border.main,
+  },
+  sendTxt: {
+    color: COLORS.text.primary,
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });
