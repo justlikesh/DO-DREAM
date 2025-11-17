@@ -1,61 +1,100 @@
-import React, { useContext } from 'react';
-import { Platform, AccessibilityInfo } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import MagicTapCatcher from './MagicTapCatcher';
-import AndroidVolumeDoublePress from './AndroidVolumeDoublePress';
-import { TriggerContext } from '../triggers/TriggerContext';
+import React, { useContext } from "react";
+import { Platform, AccessibilityInfo } from "react-native";
+import * as Haptics from "expo-haptics";
+import MagicTapCatcher from "./MagicTapCatcher";
+import AndroidVolumeDoublePress from "./AndroidVolumeDoublePress";
+import { TriggerContext } from "../triggers/TriggerContext";
 
 type Props = {
+  /** 전역 음성 명령 시 이동할 화면 (질문하기) */
   onVoiceCommand: () => void;
-  /**
-   * TalkBack(스크린리더) 켜져 있어도 Android 볼륨 더블프레스를 허용할지 여부
-   * - 기본값: true (요청사항 반영)
-   * - 사용자 옵션으로, 끄고 싶으면 false로 변경
-   */
-  allowWithScreenReaderOn?: boolean;
 };
 
-export default function GlobalVoiceTriggers({
-  onVoiceCommand
-}: Props) {
-  const { mode, getPlayPause } = useContext(TriggerContext);
+export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
+  const {
+    mode,
+    getPlayPause,
+    startVoiceCommandListening,
+    stopVoiceCommandListening,
+    isVoiceCommandListening,
+    getTTSPlayRef,
+    getTTSPauseRef,
+  } = useContext(TriggerContext);
 
-  const fireVoice = async () => {
+  // ================================
+  // (1) 전역 음성 명령 시작
+  // ================================
+  const fireVoiceStart = async () => {
+    if (isVoiceCommandListening) return;
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    AccessibilityInfo.announceForAccessibility('질문하기로 이동합니다');
-    onVoiceCommand();
+    AccessibilityInfo.announceForAccessibility("음성 명령을 시작합니다.");
+    await startVoiceCommandListening();
   };
 
-  const firePlayPause = () => {
-    const fn = getPlayPause();
-    if (fn) fn();
-    // 재생/정지 토글은 내부 핸들러에서 announce/haptic 처리
+  // ================================
+  // (2) 전역 음성 명령 중지
+  // ================================
+  const fireVoiceStop = async () => {
+    if (!isVoiceCommandListening) return;
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    AccessibilityInfo.announceForAccessibility("음성 명령을 종료합니다.");
+    await stopVoiceCommandListening();
   };
 
-  // iOS: Magic Tap 라우팅
+  // ================================
+  // (3) PlayerScreen 전용 (mode === "playpause")
+  // ================================
+  const firePlay = () => {
+    const fn = getTTSPlayRef();
+    if (fn) {
+      fn();
+      AccessibilityInfo.announceForAccessibility("재생합니다.");
+    }
+  };
+
+  const firePause = () => {
+    const fn = getTTSPauseRef();
+    if (fn) {
+      fn();
+      AccessibilityInfo.announceForAccessibility("일시정지합니다.");
+    }
+  };
+
+  // ================================
+  // (4) iOS — MagicTap(두 손가락 두 번 탭)
+  // ================================
   const onMagicTap = () => {
-    if (mode === 'playpause') firePlayPause();
-    else fireVoice();
+    if (mode === "playpause") {
+      const toggle = getPlayPause();
+      if (toggle) toggle();
+    } else {
+      onVoiceCommand();
+    }
   };
 
-  // Android: TalkBack ON이어도 트리거 허용(옵션)
-  //  - 업 더블: 질문(전역)
-  //  - 다운 더블: 재생/정지 (playpause 모드에서만)
+  // ================================
+  // (5) Android - 볼륨키 멀티프레스
+  // ================================
   const androidOverlay =
-    Platform.OS === 'android' ? (
+    Platform.OS === "android" ? (
       <AndroidVolumeDoublePress
-        // TalkBack ON/OFF와 상관없이 항상 작동
         enabled={true}
-        onVolumeUpDouble={fireVoice}
-        onVolumeDownDouble={mode === 'playpause' ? firePlayPause : undefined}
+        onVolumeUpPressCount={(count) => {
+          if (count === 2) fireVoiceStart();
+          else if (count === 3 && mode === "playpause") firePlay();
+        }}
+        onVolumeDownPressCount={(count) => {
+          if (count === 2) fireVoiceStop();
+          else if (count === 3 && mode === "playpause") firePause();
+        }}
       />
     ) : null;
 
   return (
     <MagicTapCatcher
-      onMagicTap={onMagicTap} // iOS VoiceOver Magic Tap
-      style={{ position: 'absolute', inset: 0, backgroundColor: 'transparent' }}
-      pointerEvents="none" // 화면 조작 방해 없음 (접근성 액션만 수신)
+      onMagicTap={onMagicTap}
+      style={{ position: "absolute", inset: 0, backgroundColor: "transparent" }}
+      pointerEvents="none"
     >
       {androidOverlay}
     </MagicTapCatcher>
