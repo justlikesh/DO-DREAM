@@ -385,6 +385,9 @@ export default function AdvancedEditor({
     const rest = parts.slice(1);
 
     setChapters((prev) => {
+      const currentChapter = prev.find((ch) => ch.id === activeChapterId);
+      const originalType = currentChapter?.type || 'content';
+
       const updated = prev.map((ch) =>
         ch.id === activeChapterId
           ? {
@@ -397,11 +400,24 @@ export default function AdvancedEditor({
 
       const newOnes: Chapter[] = rest.map((content, idx) => {
         const nextId = String(baseIndex + idx);
+
+        const defaultTitle =
+          originalType === 'quiz' ? `문제 ${nextId}` : `챕터 ${nextId}`;
+
+        const extractedTitle = extractTitle(content, defaultTitle);
+
+        let finalContent = content;
+        if (originalType === 'quiz') {
+          if (!content.trim().startsWith('<h2>') && !content.includes('<h2')) {
+            finalContent = `<h2>${extractedTitle}</h2>\n${content}`;
+          }
+        }
+
         return {
           id: nextId,
-          title: extractTitle(content, `챕터 ${nextId}`),
-          content,
-          type: 'content',
+          title: extractedTitle,
+          content: finalContent,
+          type: originalType,
         };
       });
 
@@ -620,7 +636,7 @@ export default function AdvancedEditor({
 
         return {
           id: newId,
-          title: `📝 ${block.index}. ${block.index_title}`,
+          title: `${block.index}. ${block.index_title}`,
           content,
           type: 'quiz',
           qa: block.questions.map((q) => ({
@@ -744,7 +760,7 @@ export default function AdvancedEditor({
 
         const newQuiz: Chapter = {
           id: String(maxId + 1),
-          title: `📝 ${title}`,
+          title: `${title}`,
           content,
           type: 'quiz',
           qa: [{ question, answer }],
