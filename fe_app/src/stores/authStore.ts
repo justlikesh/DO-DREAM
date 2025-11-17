@@ -90,6 +90,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isHydrated: true,
         });
         console.log("[AuthStore] Hydrated successfully");
+        console.log("[AuthStore] ========================================");
+        console.log("[AuthStore] ACCESS TOKEN:", token);
+        console.log("[AuthStore] ========================================");
       } else {
         set({ isHydrated: true });
         console.log("[AuthStore] No stored auth data");
