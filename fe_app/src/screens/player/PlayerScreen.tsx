@@ -65,12 +65,14 @@ export default function PlayerScreen() {
   const appSettings = useAppSettingsStore((state) => state.settings);
   const [isChapterCompleted, setIsChapterCompleted] = useState(false);
 
-  // ⭐ 서버 북마크 상태 (이 챕터가 서버 북마크 되어 있는지)
+  // 서버 북마크 상태 (이 챕터가 서버 북마크 되어 있는지)
   const [bookmarked, setBookmarked] = useState(false);
 
   const {
     setMode,
     registerPlayPause,
+    registerTTSPlay,
+    registerTTSPause,
     setCurrentScreenId,
     registerVoiceHandlers,
   } = useContext(TriggerContext);
@@ -676,13 +678,18 @@ export default function PlayerScreen() {
     handleBackPressRef.current = handleBackPress;
   }, [handleBackPress]);
 
-  // 음성 명령 핸들러 등록
+  // 음성 명령 핸들러 등록 + 볼륨키/재생 연결
   useEffect(() => {
     setCurrentScreenId("Player");
 
     // 볼륨키 모드: 재생/일시정지
     setMode("playpause");
+
+    // 2번: 재생/정지 토글
     registerPlayPause(ttsActions.togglePlayPause);
+    // 3번: 재생 / 일시정지 직접 호출용
+    registerTTSPlay(ttsActions.play);
+    registerTTSPause(ttsActions.pause);
 
     registerVoiceHandlers("Player", {
       // 전역 명령 (섹션 단위 이동)
@@ -699,6 +706,8 @@ export default function PlayerScreen() {
     return () => {
       console.log("[PlayerScreen] useEffect cleanup 시작");
       registerPlayPause(null);
+      registerTTSPlay(null);
+      registerTTSPause(null);
       setMode("voice");
       registerVoiceHandlers("Player", {});
 
@@ -711,10 +720,14 @@ export default function PlayerScreen() {
     setCurrentScreenId,
     setMode,
     registerPlayPause,
+    registerTTSPlay,
+    registerTTSPause,
     registerVoiceHandlers,
     ttsActions.togglePlayPause,
     ttsActions.playNext,
     ttsActions.playPrevious,
+    ttsActions.play,
+    ttsActions.pause,
     hasQuiz,
     handleQuizNavigation,
   ]);
