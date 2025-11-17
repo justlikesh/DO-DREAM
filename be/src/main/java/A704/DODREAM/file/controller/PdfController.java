@@ -174,7 +174,7 @@ public class PdfController {
 //    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
 //    Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
 //    return ResponseEntity.ok(result);
-//  }
+//  }dfdf
 
   /**
    * 임시 저장 (Redis)
