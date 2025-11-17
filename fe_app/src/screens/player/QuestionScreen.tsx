@@ -11,7 +11,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   AccessibilityInfo,
-  // Alert,
   ScrollView,
   Animated,
   TextInput,
@@ -30,6 +29,12 @@ import BackButton from "../../components/BackButton";
 import { commonStyles } from "../../styles/commonStyles";
 import { ragApi } from "../../api/ragApi";
 import type { RagChatRequest } from "../../types/api/ragApiTypes";
+import {
+  getQuestionHistory,
+  createQuestionHistory,
+  addMessageToQuestionHistory,
+  QuestionMessage,
+} from "../../services/questionStorage";
 
 type MsgType = "user" | "bot";
 interface Message {
@@ -42,7 +47,7 @@ interface Message {
 export default function QuestionScreen() {
   const navigation = useNavigation<QuestionScreenNavigationProp>();
   const route = useRoute<QuestionScreenRouteProp>();
-  const { material, chapterId, sectionIndex } = route.params;
+  const { material, chapterId, sectionIndex, questionId, sessionId: initialSessionId } = route.params;
 
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
@@ -52,8 +57,11 @@ export default function QuestionScreen() {
   const [inputText, setInputText] = useState("");
 
   // RAG API 관련 상태
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
   const [isLoadingResponse, setIsLoadingResponse] = useState(false);
+
+  // 현재 질문 히스토리 ID (기존 질문에서 진입한 경우)
+  const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(questionId || null);
 
   // ASR 상태 (로컬 질문용)
   const [listening, setListening] = useState(false);
@@ -99,9 +107,12 @@ export default function QuestionScreen() {
 
     setTimeout(() => {
       if (!mounted) return;
-      AccessibilityInfo.announceForAccessibility(
-        "질문하기 화면입니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요."
-      );
+      
+      const announcement = currentQuestionId
+        ? "질문하기 화면입니다. 이전 대화를 이어서 계속할 수 있습니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요."
+        : "질문하기 화면입니다. 화면 상단 오른쪽의 말하기 버튼을 누르거나, 입력창에 질문을 작성하세요.";
+      
+      AccessibilityInfo.announceForAccessibility(announcement);
       const tag = micBtnRef.current ? findNodeHandle(micBtnRef.current) : null;
       if (tag) AccessibilityInfo.setAccessibilityFocus(tag);
     }, 400);
@@ -111,13 +122,35 @@ export default function QuestionScreen() {
       sub?.remove?.();
       mounted = false;
     };
-  }, []);
+  }, [currentQuestionId]);
 
-  // QuestionScreen 진입 시 초기화
+  // 기존 질문 히스토리 복원 (questionId가 있는 경우)
   useEffect(() => {
-    // 세션 초기화 (필요시)
-    // setSessionId(null);
-  }, []);
+    if (questionId) {
+      const history = getQuestionHistory(questionId);
+      if (history) {
+        console.log("[QuestionScreen] 질문 히스토리 복원:", history);
+        
+        // 메시지 복원
+        const restoredMessages: Message[] = history.messages.map((msg, index) => ({
+          id: `${history.id}_${index}`,
+          type: msg.type,
+          text: msg.text,
+          timestamp: new Date(msg.timestamp),
+        }));
+        
+        setMessages(restoredMessages);
+        setSessionId(history.sessionId);
+        setCurrentQuestionId(history.id);
+        
+        // 마지막 사용자 메시지를 lastCommittedRef에 저장 (중복 방지용)
+        const lastUserMessage = [...history.messages].reverse().find(m => m.type === 'user');
+        if (lastUserMessage) {
+          lastCommittedRef.current = lastUserMessage.text;
+        }
+      }
+    }
+  }, [questionId]);
 
   // 웨이브 애니메이션
   useEffect(() => {
@@ -295,6 +328,47 @@ export default function QuestionScreen() {
       AccessibilityInfo.announceForAccessibility("음성 인식을 종료했습니다.");
   };
 
+  // 질문 히스토리 저장/업데이트
+  const saveOrUpdateQuestionHistory = useCallback(
+    (question: string, answer: string, newSessionId: string) => {
+      try {
+        if (currentQuestionId) {
+          // 기존 질문 히스토리에 메시지 추가
+          const userMessage: QuestionMessage = {
+            type: 'user',
+            text: question,
+            timestamp: new Date().toISOString(),
+          };
+          const botMessage: QuestionMessage = {
+            type: 'bot',
+            text: answer,
+            timestamp: new Date().toISOString(),
+          };
+          
+          addMessageToQuestionHistory(currentQuestionId, userMessage);
+          addMessageToQuestionHistory(currentQuestionId, botMessage);
+          
+          console.log("[QuestionScreen] 질문 히스토리 업데이트:", currentQuestionId);
+        } else {
+          // 새 질문 히스토리 생성
+          const newHistory = createQuestionHistory({
+            materialId: material.id.toString(),
+            chapterId,
+            sessionId: newSessionId,
+            question,
+            answer,
+          });
+          
+          setCurrentQuestionId(newHistory.id);
+          console.log("[QuestionScreen] 새 질문 히스토리 생성:", newHistory.id);
+        }
+      } catch (error) {
+        console.error("[QuestionScreen] 질문 히스토리 저장 실패:", error);
+      }
+    },
+    [currentQuestionId, material.id, chapterId]
+  );
+
   // RAG API 호출하여 질문에 대한 답변 받기
   const sendQuestionToRAG = useCallback(
     async (question: string) => {
@@ -318,6 +392,9 @@ export default function QuestionScreen() {
 
         // 봇 응답 추가
         addBotMessage(response.answer);
+
+        // 질문 히스토리 저장/업데이트
+        saveOrUpdateQuestionHistory(question, response.answer, response.session_id);
       } catch (error: any) {
         console.error("[QuestionScreen] RAG API 호출 실패:", error);
         console.error("[QuestionScreen] 에러 상세:", {
@@ -347,7 +424,7 @@ export default function QuestionScreen() {
         setIsLoadingResponse(false);
       }
     },
-    [material.id, sessionId]
+    [material.id, sessionId, saveOrUpdateQuestionHistory]
   );
 
   // 입력 전송
@@ -369,7 +446,7 @@ export default function QuestionScreen() {
 
     // RAG API 호출
     await sendQuestionToRAG(t);
-  }, [inputText, isLoadingResponse, material.id, sessionId]);
+  }, [inputText, isLoadingResponse, sendQuestionToRAG]);
 
   // 뒤로가기
   const handleBack = useCallback(async () => {
@@ -411,6 +488,7 @@ export default function QuestionScreen() {
         setMessages([]);
         setInterim("");
         setSessionId(null); // 세션 ID 초기화
+        setCurrentQuestionId(null); // 현재 질문 ID 초기화
         lastCommittedRef.current = "";
         AccessibilityInfo.announceForAccessibility(
           "대화 내용을 모두 지웠습니다."
@@ -559,6 +637,7 @@ export default function QuestionScreen() {
                 setMessages([]);
                 setInterim("");
                 setSessionId(null); // 세션 ID 초기화
+                setCurrentQuestionId(null); // 현재 질문 ID 초기화
                 lastCommittedRef.current = "";
                 AccessibilityInfo.announceForAccessibility(
                   "대화 내용을 모두 지웠습니다."
