@@ -2,6 +2,7 @@ package A704.DODREAM.file.controller;
 
 import A704.DODREAM.auth.dto.request.UserPrincipal;
 import A704.DODREAM.file.service.PdfService;
+import A704.DODREAM.file.service.TempPdfDataService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,9 @@ public class PdfController {
 
   @Autowired
   private PdfService pdfService;
+
+  @Autowired
+  private TempPdfDataService tempPdfDataService;
 
   /**
    * PDF 업로드 + 파싱 통합 API (바이너리 직접 전송 - 권장)
@@ -170,5 +174,61 @@ public class PdfController {
     Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
     Map<String, Object> result = pdfService.extractConceptCheck(pdfId, userId);
     return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 임시 저장 (Redis)
+   */
+  @Operation(
+      summary = "PDF 수정 내용 임시 저장",
+      description = "교사가 수정 중인 PDF JSON 데이터를 Redis에 임시 저장합니다. " +
+          "프론트엔드에서 자동 저장 기능으로 주기적으로 호출합니다. " +
+          "임시 저장 데이터는 24시간 동안 보관되며, 이후 자동 삭제됩니다. " +
+          "발행하기 완료 시 자동으로 삭제됩니다."
+  )
+  @PostMapping("/{pdfId}/temp-save")
+  public ResponseEntity<Map<String, Object>> saveTempData(
+      @PathVariable Long pdfId,
+      @RequestBody Map<String, Object> editedJson,
+      @AuthenticationPrincipal UserPrincipal userPrincipal
+  ) {
+    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+    tempPdfDataService.save(pdfId, userId, editedJson);
+    return ResponseEntity.ok(Map.of(
+        "success", true,
+        "message", "임시 저장이 완료되었습니다.",
+        "pdfId", pdfId
+    ));
+  }
+
+  /**
+   * 임시 저장 데이터 조회 (Redis)
+   */
+  @Operation(
+      summary = "임시 저장된 데이터 조회",
+      description = "Redis에 임시 저장된 PDF 수정 내용을 조회합니다. " +
+          "페이지 재접속 시 자동으로 호출하여 임시 저장 데이터가 있으면 화면에 표시합니다. " +
+          "임시 저장 데이터가 없으면 S3의 원본 JSON을 사용합니다."
+  )
+  @GetMapping("/{pdfId}/temp-data")
+  public ResponseEntity<Map<String, Object>> getTempData(
+      @PathVariable Long pdfId,
+      @AuthenticationPrincipal UserPrincipal userPrincipal
+  ) {
+    Long userId = (userPrincipal != null) ? userPrincipal.userId() : 1L;
+    Map<String, Object> tempData = tempPdfDataService.get(pdfId, userId);
+
+    if (tempData == null) {
+      return ResponseEntity.ok(Map.of(
+          "exists", false,
+          "message", "임시 저장 데이터가 없습니다."
+      ));
+    }
+
+    return ResponseEntity.ok(Map.of(
+        "exists", true,
+        "message", "임시 저장 데이터를 불러왔습니다.",
+        "data", tempData
+    ));
   }
 }
