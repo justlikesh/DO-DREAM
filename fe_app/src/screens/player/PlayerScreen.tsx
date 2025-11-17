@@ -15,7 +15,6 @@ import {
   AccessibilityInfo,
   findNodeHandle,
   LayoutChangeEvent,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -441,20 +440,8 @@ export default function PlayerScreen() {
 
   // 뒤로가기
   const handleBackPress = useCallback(() => {
-    Alert.alert(
-      "학습 종료",
-      "학습을 종료하시겠습니까? 진행 상황은 자동으로 저장됩니다.",
-      [
-        { text: "취소", style: "cancel" },
-        {
-          text: "종료",
-          onPress: () => {
-            saveProgressData(false);
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    saveProgressData(false);
+    navigation.goBack();
   }, [navigation, saveProgressData]);
 
   // 챕터 완료 후 퀴즈 이동 (지금은 사용 X)

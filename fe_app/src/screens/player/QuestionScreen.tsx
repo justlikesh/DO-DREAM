@@ -11,7 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   AccessibilityInfo,
-  Alert,
+  // Alert,
   ScrollView,
   Animated,
   TextInput,
