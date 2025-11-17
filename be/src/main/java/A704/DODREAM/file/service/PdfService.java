@@ -735,9 +735,12 @@ public class PdfService {
     List<Map<String, Object>> groupedConceptCheckItems = new ArrayList<>();
 
     for (Map<String, Object> dataItem : dataList) {
-      // index와 index_title 추출
-      String index = (String) dataItem.get("index");
-      String indexTitle = (String) dataItem.get("index_title");
+      // index와 index_title 추출 (타입 안전하게 처리)
+      Object indexObj = dataItem.get("index");
+      Object indexTitleObj = dataItem.get("index_title");
+
+      String index = (indexObj != null) ? indexObj.toString() : "";
+      String indexTitle = (indexTitleObj != null) ? indexTitleObj.toString() : "";
 
       log.info("🔍 처리 중인 index: '{}', index_title: '{}'", index, indexTitle);
 
@@ -754,14 +757,34 @@ public class PdfService {
         continue;
       }
 
-      List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) conceptChecksObj;
+      List<?> conceptChecks = (List<?>) conceptChecksObj;
       log.info("🔍 concept_checks 배열 크기: {}", conceptChecks.size());
 
       // 이 index에 해당하는 모든 "개념 Check"의 questions를 모음
       List<Map<String, Object>> allQuestions = new ArrayList<>();
 
-      for (Map<String, Object> conceptCheck : conceptChecks) {
-        String titleValue = (String) conceptCheck.get("title");
+      for (Object conceptCheckObj : conceptChecks) {
+        // conceptCheck가 String인지 Map인지 확인
+        Map<String, Object> conceptCheck;
+
+        if (conceptCheckObj instanceof String) {
+          // JSON 문자열을 파싱
+          try {
+            conceptCheck = objectMapper.readValue((String) conceptCheckObj, Map.class);
+            log.info("🔄 concept_check를 JSON 문자열에서 파싱했습니다.");
+          } catch (JsonProcessingException e) {
+            log.warn("⚠️ concept_check JSON 파싱 실패: {}", e.getMessage());
+            continue;
+          }
+        } else if (conceptCheckObj instanceof Map) {
+          conceptCheck = (Map<String, Object>) conceptCheckObj;
+        } else {
+          log.warn("⚠️ concept_check 타입이 올바르지 않습니다: {}", conceptCheckObj.getClass().getName());
+          continue;
+        }
+
+        Object titleObj = conceptCheck.get("title");
+        String titleValue = (titleObj != null) ? titleObj.toString() : "";
         log.info("🔍 concept_check title 값: '{}'", titleValue);
 
         // title == "개념 Check"인 항목의 questions 추가
@@ -769,17 +792,52 @@ public class PdfService {
           log.info("✅ 개념 Check 발견!");
 
           Object questionsObj = conceptCheck.get("questions");
-          if (questionsObj instanceof List) {
-            List<Map<String, Object>> questions = (List<Map<String, Object>>) questionsObj;
+          List<Map<String, Object>> questions = null;
 
+          if (questionsObj instanceof String) {
+            // JSON 문자열을 파싱
+            try {
+              questions = objectMapper.readValue((String) questionsObj, List.class);
+              log.info("🔄 questions를 JSON 문자열에서 파싱했습니다.");
+            } catch (JsonProcessingException e) {
+              log.warn("⚠️ questions JSON 파싱 실패: {}", e.getMessage());
+              continue;
+            }
+          } else if (questionsObj instanceof List) {
+            questions = (List<Map<String, Object>>) questionsObj;
+          }
+
+          if (questions != null) {
             // answer에서 숫자 부분 제거하면서 추가
-            for (Map<String, Object> question : questions) {
+            for (Object questionObj : questions) {
+              Map<String, Object> question;
+
+              if (questionObj instanceof String) {
+                // JSON 문자열을 파싱
+                try {
+                  question = objectMapper.readValue((String) questionObj, Map.class);
+                } catch (JsonProcessingException e) {
+                  log.warn("⚠️ question JSON 파싱 실패: {}", e.getMessage());
+                  continue;
+                }
+              } else if (questionObj instanceof Map) {
+                question = (Map<String, Object>) questionObj;
+              } else {
+                log.warn("⚠️ question 타입이 올바르지 않습니다: {}", questionObj.getClass().getName());
+                continue;
+              }
+
               Map<String, Object> cleanedQuestion = new HashMap<>();
-              cleanedQuestion.put("question", question.get("question"));
+
+              // question 값 안전하게 처리
+              Object qObj = question.get("question");
+              String questionValue = (qObj != null) ? qObj.toString() : "";
+              cleanedQuestion.put("question", questionValue);
 
               // answer에서 앞의 "숫자. " 패턴 제거
-              String answer = (String) question.get("answer");
-              if (answer != null) {
+              Object answerObj = question.get("answer");
+              String answer = (answerObj != null) ? answerObj.toString() : "";
+              if (!answer.isEmpty()) {
                 // "1. ", "2. ", "3. " 등의 패턴 제거 (정규식 사용)
                 answer = answer.replaceAll("^\\d+\\.\\s*", "");
               }
