@@ -85,8 +85,8 @@ export default function SettingsScreen() {
       // 3) 학습용에 어울리는 한글 이름으로 다시 라벨링
       const friendlyNames = [
         "집중 잘 되는 기본 목소리",
-        "조용하고 차분한 목소리",
         "또렷한 선생님 목소리",
+        "조용하고 차분한 목소리",
         "부드러운 설명용 목소리",
       ];
 
