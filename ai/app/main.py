@@ -12,7 +12,7 @@ app = FastAPI(
     title="dodream 파이썬 서버",
     description="Spring 서버 JWT와 연동된 FastAPI 서버입니다.",
     version="1.0.0",
-    root_path="/ai"  # 예: http://<도메인>/ai/docs 로 접속 시
+    root_path="/ai",  # 예: http://<도메인>/ai/docs 로 접속 시
 )
 
 # CORS 설정 추가
@@ -39,6 +39,7 @@ from app.rag.router import router as rag_router
 app.include_router(user_router.router, prefix="/users", tags=["Users"])
 app.include_router(document_router)
 app.include_router(rag_router)
+
 
 # --- 루트 엔드포인트 ---
 # 서버가 살아있는지 확인하는 헬스 체크용 엔드포인트
