@@ -251,30 +251,51 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
     file: File,
     API_BASE: string,
   ): Promise<ParsedPdfResponse> {
+    const token = localStorage.getItem('accessToken'); // ✅ 토큰 가져오기
+
     const url = `${API_BASE}/api/pdf/upload-and-parse?filename=${encodeURIComponent(
       file.name,
     )}`;
+
+    console.log('📤 [PDF Upload] 요청 시작:', {
+      url,
+      filename: file.name,
+      fileSize: file.size,
+      hasToken: !!token,
+    });
 
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         accept: '*/*',
         'Content-Type': 'application/pdf',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}), // ✅ 토큰 추가
       },
       body: file,
       credentials: 'include',
     });
 
+    console.log('📥 [PDF Upload] 응답:', {
+      status: res.status,
+      statusText: res.statusText,
+      ok: res.ok,
+    });
+
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      console.error('PDF 업로드 오류', res.status, text);
+      console.error('❌ [PDF Upload] 오류:', {
+        status: res.status,
+        responseText: text,
+      });
+
       throw new Error(
         text || `PDF 파싱 요청에 실패했습니다. (status: ${res.status})`,
       );
     }
 
     const json = (await res.json()) as ParsedPdfResponse;
-    console.log('[uploadAndParsePdf] raw response:', json);
+    console.log('✅ [PDF Upload] 성공:', json);
+
     return json;
   }
 
@@ -557,6 +578,8 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 
       if (isPdf) {
+        console.log('📄 PDF 파일 업로드 시작:', file.name);
+
         const [parsed] = await Promise.all([
           uploadAndParsePdf(file, API_BASE),
           sleep(MIN_SHOW_MS),
@@ -577,7 +600,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           return;
         }
 
-        console.log('[handlePickFile] 파싱 완료:', {
+        console.log('✅ [handlePickFile] 파싱 완료:', {
           fileName: docTitle,
           chaptersCount: chapters.length,
           pdfId,
@@ -608,11 +631,27 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
         });
       }
     } catch (err) {
+      console.error('❌ [handlePickFile] 파일 처리 실패:', err);
+
       await Swal.close();
       await Swal.fire({
         icon: 'error',
-        title: '추출 실패',
-        text: '파일에서 텍스트를 추출하지 못했습니다. 다시 시도해 주세요.',
+        title: '파일 처리 실패',
+        html: `
+        <div style="text-align: left;">
+          <p style="margin-bottom: 12px;">
+            <strong>오류:</strong> ${err instanceof Error ? err.message : '알 수 없는 오류'}
+          </p>
+          <p style="margin-bottom: 12px; font-size: 14px; color: #666;">
+            다음을 확인해 주세요:
+          </p>
+          <ul style="text-align: left; padding-left: 20px; font-size: 14px;">
+            <li>PDF 파일이 손상되지 않았는지</li>
+            <li>파일 크기가 너무 크지 않은지</li>
+            <li>인터넷 연결 상태</li>
+          </ul>
+        </div>
+      `,
         confirmButtonColor: '#192b55',
         heightAuto: false,
       });

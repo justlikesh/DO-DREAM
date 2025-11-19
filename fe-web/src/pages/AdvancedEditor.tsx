@@ -564,6 +564,17 @@ export default function AdvancedEditor({
       return;
     }
 
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      Swal.fire({
+        icon: 'error',
+        title: '인증이 필요합니다',
+        text: '다시 로그인해주세요.',
+        confirmButtonColor: '#192b55',
+      });
+      return;
+    }
+
     void Swal.fire({
       title: '문제를 불러오는 중...',
       allowOutsideClick: false,
@@ -572,116 +583,201 @@ export default function AdvancedEditor({
     });
 
     try {
-      const url = `${API_BASE}/api/pdf/${pdfId}/concept-check`;
+      const url = `https://www.dodream.io.kr/ai/rag/quiz/generate`;
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          accept: '*/*',
-        },
-        credentials: 'include',
+      const documentId = materialId
+        ? String(materialId)
+        : mode === 'edit'
+          ? String(pdfId)
+          : `pdf_${pdfId}`;
+
+      const requestBody = {
+        document_id: documentId,
+        num_questions: 5,
+      };
+
+      console.log('🔍 [Quiz API] 요청:', {
+        url,
+        mode,
+        pdfId,
+        materialId,
+        documentId,
+        requestBody,
       });
 
-      if (!response.ok) {
-        await Swal.close();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
 
-        // 500 에러 특별 처리
-        if (response.status === 500) {
-          Swal.fire({
-            icon: 'warning',
-            title: '문제 불러오기 기능 준비 중',
+      console.log('📥 [Quiz API] 응답:', {
+        status: response.status,
+        ok: response.ok,
+      });
+
+      await Swal.close();
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          await Swal.fire({
+            icon: 'error',
+            title: 'DB에서 자료를 찾을 수 없습니다 (404)',
             html: `
-            <div style="text-align: left; line-height: 1.7;">
-              <p style="margin-bottom: 12px;">
-                AI 생성 퀴즈 기능이 현재 준비 중입니다.
-              </p>
-              <p style="margin-bottom: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
-                💡 <strong>해결 방법:</strong><br/>
-                "<strong>직접 퀴즈 추가</strong>" 버튼으로 문제를 만들어보세요!
-              </p>
-              <div style="font-size: 13px; color: #666; margin-top: 12px;">
-                <strong>참고:</strong> 백엔드 팀에서 API 구조 업데이트 중입니다.
-              </div>
+          <div style="text-align: left; line-height: 1.7;">
+            <p style="margin-bottom: 12px;">
+              <strong>404 오류:</strong> 백엔드 DB에서 해당 자료를 찾을 수 없습니다.
+            </p>
+            <div style="padding: 12px; background: #f3f4f6; border-radius: 8px; font-family: monospace; font-size: 11px; margin-bottom: 12px;">
+              <strong>요청 정보:</strong><br/>
+              • Document ID: <strong>${documentId}</strong><br/>
+              • Material ID: ${materialId || 'null'}<br/>
+              • PDF ID: ${pdfId}<br/>
+              • Mode: ${mode}
             </div>
-          `,
+            <div style="font-size: 13px; color: #666; margin-top: 12px;">
+              💡 "<strong>직접 퀴즈 추가</strong>" 버튼을 사용하세요
+            </div>
+          </div>
+        `,
             confirmButtonColor: '#192b55',
-            confirmButtonText: '확인',
+            width: '600px',
           });
           return;
         }
 
-        throw new Error('문제를 불러오지 못했습니다');
+        if (response.status === 500) {
+          const errorText = await response.text().catch(() => '');
+          console.error('❌ [Quiz API] 500 에러:', errorText);
+
+          await Swal.fire({
+            icon: 'warning',
+            title: '서버 내부 오류 (500)',
+            html: `
+          <div style="text-align: left; line-height: 1.7;">
+            <p style="margin-bottom: 12px;">
+              백엔드 서버에서 오류가 발생했습니다.
+            </p>
+            <p style="margin-bottom: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+              💡 <strong>해결 방법:</strong><br/>
+              "<strong>직접 퀴즈 추가</strong>" 버튼으로 문제를 만드세요!
+            </p>
+          </div>
+        `,
+            confirmButtonColor: '#192b55',
+          });
+          return;
+        }
+
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data: ConceptCheckResponse = await response.json();
-      await Swal.close();
+      type QuizAPIResponse = {
+        questions: Array<{
+          question_type: string;
+          question_number: number;
+          title: string;
+          content: string;
+          correct_answer: string;
+          chapter_reference: string;
+        }>;
+        generated_at: string;
+      };
 
-      if (!data.data || data.data.length === 0) {
-        Swal.fire({
+      const data: QuizAPIResponse = await response.json();
+      console.log('✅ [Quiz API] 응답 데이터:', data);
+
+      if (!data.questions || data.questions.length === 0) {
+        await Swal.fire({
           icon: 'info',
           title: '생성된 문제가 없습니다',
           html: `
-          <p>이 자료에는 아직 개념 체크 문제가 없습니다.</p>
-          <p style="margin-top: 10px; font-size: 14px; color: #666;">
-            "직접 퀴즈 추가" 버튼으로 문제를 추가할 수 있습니다.
-          </p>
-        `,
+        <p>이 자료에는 아직 생성된 문제가 없습니다.</p>
+        <p style="margin-top: 10px; font-size: 14px; color: #666;">
+          "직접 퀴즈 추가" 버튼으로 문제를 추가할 수 있습니다.
+        </p>
+      `,
           confirmButtonColor: '#192b55',
         });
         return;
       }
 
-      // 기존 코드...
-      const maxIdBase = chapters.reduce(
+      // ✅ 각 문제를 개별 퀴즈 챕터로 생성
+      const maxId = chapters.reduce(
         (max, ch) => Math.max(max, parseInt(ch.id, 10) || 0),
         0,
       );
 
-      const quizChapters: Chapter[] = data.data.map((block, idx) => {
-        const newId = String(maxIdBase + idx + 1);
+      const newQuizChapters: Chapter[] = data.questions.map((q, index) => {
+        const typeLabel =
+          {
+            TERM_DEFINITION: '용어 정의',
+            FILL_BLANK: '빈칸 채우기',
+            SHORT_ANSWER: '단답형',
+            CUSTOM: '사용자 생성',
+          }[q.question_type] || q.question_type;
 
-        let content = `<h2>${block.index}. ${block.index_title}</h2>\n`;
-        content += `<div class="quiz-content">\n<ol>\n`;
+        // 각 문제의 HTML 콘텐츠 생성
+        const content = `
+      <h2>${q.title}</h2>
+      <div class="quiz-content">
+        <ol>
+          <li>
+            <p><strong>${q.title}</strong> <span style="color: #666; font-size: 0.9em;">[${typeLabel}]</span></p>
+            <p>${q.content}</p>
+            <p><strong>정답:</strong> ${q.correct_answer}</p>
+            ${q.chapter_reference ? `<p style="color: #666; font-size: 0.9em; margin-top: 8px;">📚 참고: ${q.chapter_reference}</p>` : ''}
+          </li>
+        </ol>
+      </div>
+    `;
 
-        block.questions.forEach((q) => {
-          content += `
-    <li>
-      <p>${q.question}</p>
-      <p><strong>정답:</strong> ${q.answer}</p>
-    </li>
-  `;
-        });
-
-        content += `</ol>\n</div>\n`;
+        // 개별 qa 배열
+        const qa = [
+          {
+            question: q.content,
+            answer: q.correct_answer,
+          },
+        ];
 
         return {
-          id: newId,
-          title: `${block.index}. ${block.index_title}`,
+          id: String(maxId + index + 1),
+          title: q.title,
           content,
-          type: 'quiz',
-          qa: block.questions.map((q) => ({
-            question: q.question,
-            answer: q.answer,
-          })),
+          type: 'quiz' as const,
+          qa,
         };
       });
 
-      setChapters((prev) => [...prev, ...quizChapters]);
+      setChapters((prev) => [...prev, ...newQuizChapters]);
 
-      Swal.fire({
+      await Swal.fire({
         icon: 'success',
         title: '문제를 불러왔습니다!',
-        text: `${quizChapters.length}개의 문제를 추가했습니다`,
+        text: `${data.questions.length}개의 문제가 추가되었습니다`,
         confirmButtonColor: '#192b55',
       });
     } catch (error) {
       await Swal.close();
-      console.error('❌ Quiz fetch error:', error);
+      console.error('❌ [Quiz API] 에러:', error);
 
-      Swal.fire({
+      await Swal.fire({
         icon: 'error',
         title: '문제 불러오기 실패',
-        text: error instanceof Error ? error.message : '다시 시도해주세요',
+        html: `
+      <div style="text-align: left;">
+        <p style="margin-bottom: 12px;">
+          <strong>오류:</strong> ${error instanceof Error ? error.message : '알 수 없는 오류'}
+        </p>
+        <div style="font-size: 13px; color: #666; margin-top: 12px;">
+          💡 "<strong>직접 퀴즈 추가</strong>" 기능을 사용하세요
+        </div>
+      </div>
+    `,
         confirmButtonColor: '#192b55',
       });
     }
@@ -702,7 +798,7 @@ export default function AdvancedEditor({
         </div>
         
         <div class="ae-quiz-field">
-          <label class="ae-quiz-label">질문</label>
+          <label class="ae-quiz-label">질문 입력</label>
           <textarea 
             id="quizQuestion" 
             class="ae-quiz-textarea" 
@@ -714,7 +810,7 @@ export default function AdvancedEditor({
         </div>
 
         <div class="ae-quiz-field">
-          <label class="ae-quiz-label">정답</label>
+          <label class="ae-quiz-label">답안 입력</label>
           <textarea 
             id="quizAnswer" 
             class="ae-quiz-textarea" 
@@ -749,7 +845,7 @@ export default function AdvancedEditor({
         const answer = aInput?.value.trim();
 
         if (!title || !question || !answer) {
-          Swal.showValidationMessage('제목, 질문, 정답을 모두 입력하세요');
+          Swal.showValidationMessage('제목, 질문, 답안을 모두 입력하세요');
           return null;
         }
 
@@ -771,6 +867,7 @@ export default function AdvancedEditor({
         <div class="quiz-content">
           <ol>
             <li>
+              <p><strong>${title}</strong> <span style="color: #666; font-size: 0.9em;">[사용자 생성]</span></p>
               <p>${formattedQuestion}</p>
               <p><strong>정답:</strong> ${formattedAnswer}</p>
             </li>

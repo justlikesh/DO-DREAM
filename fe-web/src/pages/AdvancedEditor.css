@@ -841,7 +841,7 @@
 }
 
 .ae-quiz-label {
-  display: block;
+  display: flex;
   font-weight: 600;
   font-size: 14px;
   color: #374151;
