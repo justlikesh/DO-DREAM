@@ -12,6 +12,7 @@ import A704.DODREAM.material.dto.PublishedMaterialListResponse;
 import A704.DODREAM.material.entity.Material;
 import A704.DODREAM.material.enums.LabelColor;
 import A704.DODREAM.material.repository.MaterialRepository;
+import A704.DODREAM.quiz.service.QuizService;
 import A704.DODREAM.user.entity.User;
 import A704.DODREAM.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +46,7 @@ public class PublishService {
 	private final ObjectMapper objectMapper;
 	private final WebClient webClient; // (WebClientConfig Bean으로 생성되었다고 가정)
 	private final CloudFrontService cloudFrontService; // (CloudFrontService Bean으로 생성되었다고 가정)
+	private final QuizService quizService;
 
 	@Value("${aws.s3.bucket}")
 	private String bucketName;
@@ -165,6 +167,31 @@ public class PublishService {
 			materialRepository.save(material);
 
 			log.info("✅ 자료 발행 및 Material 저장 완료 [Material ID: {}]", material.getId());
+
+			// ===============================================================
+			// [추가된 로직] 5. QuizService를 통해 퀴즈 DB 저장
+			// ===============================================================
+			try {
+				// PublishRequest에 List<QuizSaveDto> quizzes 필드가 있다고 가정
+				if (publishRequest.getQuizzes() != null && !publishRequest.getQuizzes().isEmpty()) {
+					log.info("퀴즈 DB 저장을 시작합니다. (Material ID: {}, 퀴즈 수: {})",
+						material.getId(), publishRequest.getQuizzes().size());
+
+					// QuizService 호출
+					quizService.saveQuizzes(material.getId(), userId, publishRequest.getQuizzes());
+
+					log.info("✅ 퀴즈 DB 저장 완료");
+				} else {
+					log.info("ℹ️ 저장할 퀴즈 데이터가 없습니다.");
+				}
+			} catch (Exception quizDbError) {
+				// 퀴즈 DB 저장이 실패했을 때 전체 발행을 롤백할지 여부 결정 필요
+				// 여기서는 중요 데이터이므로 에러를 로그에 남기고,
+				// 필요하다면 throw하여 전체 트랜잭션을 롤백시킵니다.
+				log.error("❗️ 퀴즈 DB 저장 실패: {}", quizDbError.getMessage(), quizDbError);
+				throw new RuntimeException("퀴즈 저장 중 오류가 발생했습니다.", quizDbError);
+			}
+			// ===============================================================
 
 			// --- (신규) FastAPI 임베딩 생성 API 호출 ---
 			try {
