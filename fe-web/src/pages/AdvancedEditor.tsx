@@ -1205,6 +1205,11 @@ export default function AdvancedEditor({
             >
               <Tag
                 size={18}
+                fill={
+                  selectedLabel
+                    ? LABEL_OPTIONS.find((l) => l.id === selectedLabel)?.color
+                    : 'none'
+                }
                 style={{
                   color: selectedLabel
                     ? LABEL_OPTIONS.find((l) => l.id === selectedLabel)?.color
@@ -1385,7 +1390,6 @@ export default function AdvancedEditor({
               </button>
             </div>
           </div>
-
           {/* 안내 배너들 */}
           {isSplitMode && !mergeMode && (
             <div className="ae-split-hint">
@@ -1396,7 +1400,6 @@ export default function AdvancedEditor({
               </span>
             </div>
           )}
-
           {mergeMode && (
             <div className="ae-merge-hint">
               <strong>🔗 병합 모드 : </strong>
@@ -1406,7 +1409,6 @@ export default function AdvancedEditor({
               </span>
             </div>
           )}
-
           {/* 에디터 영역 */}
           <div
             className={`ae-editor-wrapper ${
@@ -1419,6 +1421,103 @@ export default function AdvancedEditor({
                 <span>문제 챕터</span>
               </div>
             )}
+
+            {/* ✅ 서식 메뉴 추가 */}
+            {editor && (
+              <div className="ae-editor-menu">
+                <button
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  className={editor.isActive('italic') ? 'is-active' : ''}
+                  title="기울임 (Ctrl+I)"
+                >
+                  <i>I</i>
+                </button>
+                <button
+                  onClick={() => editor.chain().focus().toggleUnderline().run()}
+                  className={editor.isActive('underline') ? 'is-active' : ''}
+                  title="밑줄 (Ctrl+U)"
+                >
+                  <u>U</u>
+                </button>
+
+                <div className="menu-divider" />
+
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 1 }).run()
+                  }
+                  className={
+                    editor.isActive('heading', { level: 1 }) ? 'is-active' : ''
+                  }
+                  title="제목 1"
+                >
+                  H1
+                </button>
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 2 }).run()
+                  }
+                  className={
+                    editor.isActive('heading', { level: 2 }) ? 'is-active' : ''
+                  }
+                  title="제목 2"
+                >
+                  H2
+                </button>
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleHeading({ level: 3 }).run()
+                  }
+                  className={
+                    editor.isActive('heading', { level: 3 }) ? 'is-active' : ''
+                  }
+                  title="제목 3"
+                >
+                  H3
+                </button>
+
+                <div className="menu-divider" />
+
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                  className={editor.isActive('bulletList') ? 'is-active' : ''}
+                  title="글머리 기호"
+                >
+                  ●
+                </button>
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleOrderedList().run()
+                  }
+                  className={editor.isActive('orderedList') ? 'is-active' : ''}
+                  title="번호 매기기"
+                >
+                  1.
+                </button>
+
+                <div className="menu-divider" />
+
+                <button
+                  onClick={() =>
+                    editor.chain().focus().toggleBlockquote().run()
+                  }
+                  className={editor.isActive('blockquote') ? 'is-active' : ''}
+                  title="인용구"
+                >
+                  ""
+                </button>
+                <button
+                  onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+                  className={editor.isActive('codeBlock') ? 'is-active' : ''}
+                  title="코드 블록"
+                >
+                  {'</>'}
+                </button>
+              </div>
+            )}
+
             <EditorContent editor={editor} className="ae-editor" />
           </div>
         </div>
