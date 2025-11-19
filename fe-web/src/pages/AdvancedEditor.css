@@ -109,6 +109,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%
 }
 
 .ae-title:hover {
@@ -125,7 +126,6 @@
   text-align: center;
   outline: none;
   width: 100%;
-  max-width: 300px;
   font-family: inherit;
   background: var(--ae-card-soft);
 }
