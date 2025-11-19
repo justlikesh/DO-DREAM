@@ -27,6 +27,7 @@ import {
   saveProgress,
   savePlayerPosition,
   getPlayerPosition,
+  getProgress,
 } from "../../services/appStorage";
 import { LocalProgress } from "../../types/progress";
 import { PlayMode } from "../../types/playMode";
@@ -248,9 +249,12 @@ export default function PlayerScreen() {
     initialPlayMode,
     appSettings,
     onCompletion: useCallback(() => {
+      // 로컬에 완료 상태 저장
       saveProgressDataRef.current(true);
+      // 백엔드에 완료 상태 전송
+      updateProgressToBackendRef.current(true);
       AccessibilityInfo.announceForAccessibility("챕터 학습을 완료했습니다.");
-    }, []),
+    }, [material.id, chapter]),
     onSectionChange: useCallback((newIndex: number) => {
       setTimeout(
         () =>
@@ -260,31 +264,55 @@ export default function PlayerScreen() {
           }),
         50
       );
+      // 섹션 변경 시 로컬에 진행률 저장
       saveProgressDataRef.current(false, newIndex);
-    }, []),
+      // 섹션 변경 시 백엔드에 진행률 업데이트
+      updateProgressToBackendRef.current(false, newIndex);
+    }, [material.id, chapter]),
   });
 
+  // 백엔드 진행률 업데이트 함수 (ref로 관리)
   useEffect(() => {
     ttsStateRef.current = { currentSectionIndex, playMode };
   }, [currentSectionIndex, playMode]);
 
   // 백엔드에 진행률 업데이트 (API 호출)
-  const updateProgressToBackend = useCallback(async () => {
+  const updateProgressToBackend = async (isCompleted: boolean = false, sectionIndexOverride?: number) => {
     if (!chapter) return;
 
-    const currentPage = currentSectionIndex + 1;
-    const totalPages = chapter.sections.length;
+    const newCurrentPage = (sectionIndexOverride ?? currentSectionIndex) + 1;
 
+    // 챕터 완료가 아닌 경우, 진행률이 감소하는 것을 방지
+    if (!isCompleted) {
+      const localProgress = getProgress(material.id.toString(), chapter.chapterId);
+      const lastSavedPage = (localProgress?.currentSectionIndex ?? -1) + 1;
+
+      // 로컬에 저장된 진행률보다 낮은 값으로 업데이트하려는 경우 API 호출을 막음
+      if (newCurrentPage < lastSavedPage) {
+        console.log(`[PlayerScreen] 진행률 감소 방지: new=${newCurrentPage}, last=${lastSavedPage}`);
+        return;
+      }
+    }
+    
+    const totalPages = chapter.sections.length;
+  
     try {
       await updateProgress({
         materialId: material.id,
-        currentPage,
+        // 완료 시에는 currentPage를 totalPages와 동일하게 보내 100%로 처리
+        currentPage: isCompleted ? totalPages : newCurrentPage,
         totalPages,
       });
     } catch (error) {
       console.error("[PlayerScreen] 진행률 업데이트 실패:", error);
     }
-  }, [material.id, chapter, currentSectionIndex]);
+  };
+
+  // 핸들러를 ref로 저장하여 최신 버전 유지
+  const updateProgressToBackendRef = useRef(updateProgressToBackend);
+  useEffect(() => {
+    updateProgressToBackendRef.current = updateProgressToBackend;
+  }, [updateProgressToBackend]);
 
   // 스크린리더 상태 추적
   useEffect(() => {
@@ -310,16 +338,16 @@ export default function PlayerScreen() {
   // 화면 이탈 시 진행 상황 저장
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", async () => {
-      saveProgressData(false);
-      await updateProgressToBackend();
+      saveProgressDataRef.current(false); // 현재 위치 저장
+      await updateProgressToBackendRef.current(false); // 백엔드에 현재 진행률 업데이트 (완료 아님)
     });
     return unsubscribe;
-  }, [navigation, saveProgressData, updateProgressToBackend]);
+  }, [navigation]);
 
   // 질문하기 화면 이동
   const handleQuestionPress = useCallback(async () => {
-    await ttsActions.pause();
-    await updateProgressToBackend();
+    await ttsActions.pause(); // TTS 중지
+    await updateProgressToBackendRef.current(false); // 현재 진행률 전송
 
     AccessibilityInfo.announceForAccessibility("질문하기 화면으로 이동합니다.");
     setTimeout(() => {
@@ -330,12 +358,7 @@ export default function PlayerScreen() {
       });
     }, 300);
   }, [
-    navigation,
-    material,
-    chapterId,
-    currentSectionIndex,
-    ttsActions,
-    updateProgressToBackend,
+    navigation, material, chapterId, ttsActions
   ]);
 
   // 설정 열기
@@ -433,9 +456,9 @@ export default function PlayerScreen() {
 
       const targetChapter = chaptersFromJson[targetIndex];
 
-      saveProgressData(false);
-      ttsActions.pause();
-      await updateProgressToBackend();
+      saveProgressDataRef.current(false);
+      await ttsActions.pause();
+      await updateProgressToBackendRef.current(false);
 
       AccessibilityInfo.announceForAccessibility(
         direction === "prev"
@@ -455,10 +478,7 @@ export default function PlayerScreen() {
       currentChapterIndex,
       chaptersFromJson,
       material,
-      navigation,
-      saveProgressData,
-      ttsActions,
-      updateProgressToBackend,
+      navigation, ttsActions
     ]
   );
 
@@ -473,15 +493,15 @@ export default function PlayerScreen() {
 
   // 뒤로 가기
   const handleBackPress = useCallback(async () => {
-    saveProgressData(false);
-    await updateProgressToBackend();
+    saveProgressDataRef.current(false);
+    await updateProgressToBackendRef.current(false);
     navigation.goBack();
-  }, [navigation, saveProgressData, updateProgressToBackend]);
+  }, [navigation]);
 
   // 챕터 완료 처리
   const handleChapterComplete = useCallback(async () => {
-    saveProgressData(true);
-    await updateProgressToBackend();
+    saveProgressDataRef.current(true); // 로컬에 완료 상태 저장
+    await updateProgressToBackendRef.current(true); // 백엔드에 완료 상태 전송
 
     if (hasNextChapter) {
       const nextChapterData = chaptersFromJson[currentChapterIndex + 1];
@@ -502,8 +522,6 @@ export default function PlayerScreen() {
       navigation.goBack();
     }
   }, [
-    saveProgressData,
-    updateProgressToBackend,
     hasNextChapter,
     chaptersFromJson,
     currentChapterIndex,

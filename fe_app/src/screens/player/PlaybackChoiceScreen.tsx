@@ -69,25 +69,27 @@ export default function PlaybackChoiceScreen() {
   const { setCurrentScreenId, registerVoiceHandlers } =
     useContext(TriggerContext);
 
-  // 화면 진입 시 백엔드에서 진행률 조회
-  useEffect(() => {
-    const loadProgress = async () => {
-      try {
-        setIsLoadingProgress(true);
-        const response = await fetchMaterialProgress(material.id);
-        console.log("[PlaybackChoiceScreen] 진행률 조회 성공:", response.data);
-        setProgressData(response.data);
-      } catch (error) {
-        console.error("[PlaybackChoiceScreen] 진행률 조회 실패:", error);
-        // 에러가 발생해도 화면은 정상적으로 표시
-        setProgressData(null);
-      } finally {
-        setIsLoadingProgress(false);
-      }
-    };
+  // 화면에 포커스가 올 때마다 백엔드에서 진행률 조회
+  useFocusEffect(
+    useCallback(() => {
+      const loadProgress = async () => {
+        try {
+          setIsLoadingProgress(true);
+          const response = await fetchMaterialProgress(material.id);
+          console.log("[PlaybackChoiceScreen] 진행률 조회 성공:", response.data);
+          setProgressData(response.data);
+        } catch (error) {
+          console.error("[PlaybackChoiceScreen] 진행률 조회 실패:", error);
+          // 에러가 발생해도 화면은 정상적으로 표시
+          setProgressData(null);
+        } finally {
+          setIsLoadingProgress(false);
+        }
+      };
 
-    loadProgress();
-  }, [material.id]);
+      loadProgress();
+    }, [])
+  );
 
   useEffect(() => {
     const announcement = `${material.title}, 이어듣기, 처음부터, 저장 목록, 질문 목록, 퀴즈 중 선택하세요. 상단의 말하기 버튼을 두 번 탭하고, 이어서 듣기, 처음부터, 다음 챕터, 이전 챕터, 이 챕터 듣기, 저장 목록, 질문 목록, 설정, 퀴즈 풀기, 뒤로 가기처럼 말할 수 있습니다.`;

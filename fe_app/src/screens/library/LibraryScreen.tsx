@@ -14,7 +14,7 @@ import {
   AccessibilityInfo,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import { LibraryScreenNavigationProp } from "../../navigation/navigationTypes";
 import { Material } from "../../types/material";
@@ -70,104 +70,106 @@ export default function LibraryScreen() {
   };
 
   // 서버에서 공유 자료 목록 + 진행률 불러오기
-  useEffect(() => {
-    let isMounted = true;
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
 
-    const loadMaterials = async () => {
-      setLoadingList(true);
-      setError(null);
+      const loadMaterials = async () => {
+        setLoadingList(true);
+        setError(null);
 
-      try {
-        // 1. 공유된 교재 목록 조회
-        const response = await fetchSharedMaterials();
-        if (!isMounted) return;
-
-        const mapped = response.materials.map(mapSharedToMaterial);
-        setMaterials(mapped);
-
-        // 2. 모든 교재의 진행률 조회
         try {
-          const progressResponse = await fetchAllProgress();
+          // 1. 공유된 교재 목록 조회
+          const response = await fetchSharedMaterials();
           if (!isMounted) return;
 
-          console.log("[LibraryScreen] 진행률 API 응답:", progressResponse);
+          const mapped = response.materials.map(mapSharedToMaterial);
+          setMaterials(mapped);
 
-          // materialId를 키로 하는 Map으로 변환
-          const progressMap = new Map<number, MaterialProgress>();
-          if (progressResponse.data && Array.isArray(progressResponse.data)) {
-            progressResponse.data.forEach((progress) => {
-              progressMap.set(progress.materialId, progress);
-            });
-            setProgressDataMap(progressMap);
-            console.log(
-              "[LibraryScreen] 진행률 조회 성공:",
-              progressResponse.data.length,
-              "개"
+          // 2. 모든 교재의 진행률 조회
+          try {
+            const progressResponse = await fetchAllProgress();
+            if (!isMounted) return;
+
+            console.log("[LibraryScreen] 진행률 API 응답:", progressResponse);
+
+            // materialId를 키로 하는 Map으로 변환
+            const progressMap = new Map<number, MaterialProgress>();
+            if (progressResponse.data && Array.isArray(progressResponse.data)) {
+              progressResponse.data.forEach((progress) => {
+                progressMap.set(progress.materialId, progress);
+              });
+              setProgressDataMap(progressMap);
+              console.log(
+                "[LibraryScreen] 진행률 조회 성공:",
+                progressResponse.data.length,
+                "개"
+              );
+            } else {
+              console.warn(
+                "[LibraryScreen] 진행률 데이터가 배열이 아닙니다:",
+                progressResponse.data
+              );
+            }
+          } catch (progressError: any) {
+            console.error("[LibraryScreen] 진행률 조회 실패:", progressError);
+            if (progressError.response) {
+              console.error(
+                "[LibraryScreen] 에러 응답 상태:",
+                progressError.response.status
+              );
+              console.error(
+                "[LibraryScreen] 에러 응답 데이터:",
+                progressError.response.data
+              );
+            }
+            // 진행률 조회 실패해도 교재 목록은 표시
+          }
+
+          if (mapped.length === 0) {
+            AccessibilityInfo.announceForAccessibility(
+              `${displayName} 학생에게 아직 공유된 학습 자료가 없습니다. 교사가 자료를 공유하면 이 화면에서 바로 확인할 수 있습니다.`
             );
           } else {
-            console.warn(
-              "[LibraryScreen] 진행률 데이터가 배열이 아닙니다:",
-              progressResponse.data
+            AccessibilityInfo.announceForAccessibility(
+              `${displayName} 학생에게 공유된 학습 자료 ${mapped.length}개가 있습니다.`
             );
           }
-        } catch (progressError: any) {
-          console.error("[LibraryScreen] 진행률 조회 실패:", progressError);
-          if (progressError.response) {
-            console.error(
-              "[LibraryScreen] 에러 응답 상태:",
-              progressError.response.status
+        } catch (e: any) {
+          console.error("[LibraryScreen] 자료 로딩 실패:", e);
+
+          if (axios.isAxiosError(e) && e.response?.status === 401) {
+            AccessibilityInfo.announceForAccessibility(
+              "로그인이 만료되었습니다. 생체 인증 로그인 화면으로 이동합니다."
             );
-            console.error(
-              "[LibraryScreen] 에러 응답 데이터:",
-              progressError.response.data
-            );
+
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "AuthStart" as never }],
+            });
+
+            setLoadingList(false);
+            return;
           }
-          // 진행률 조회 실패해도 교재 목록은 표시
-        }
 
-        if (mapped.length === 0) {
+          setError("자료를 불러오는 도중 오류가 발생했습니다.");
           AccessibilityInfo.announceForAccessibility(
-            `${displayName} 학생에게 아직 공유된 학습 자료가 없습니다. 교사가 자료를 공유하면 이 화면에서 바로 확인할 수 있습니다.`
+            "서버에서 학습 자료를 불러오는 데 실패했습니다. 네트워크 상태를 확인해 주세요."
           );
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            `${displayName} 학생에게 공유된 학습 자료 ${mapped.length}개가 있습니다.`
-          );
+        } finally {
+          if (isMounted) {
+            setLoadingList(false);
+          }
         }
-      } catch (e: any) {
-        console.error("[LibraryScreen] 자료 로딩 실패:", e);
+      };
 
-        if (axios.isAxiosError(e) && e.response?.status === 401) {
-          AccessibilityInfo.announceForAccessibility(
-            "로그인이 만료되었습니다. 생체 인증 로그인 화면으로 이동합니다."
-          );
+      loadMaterials();
 
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "AuthStart" as never }],
-          });
-
-          setLoadingList(false);
-          return;
-        }
-
-        setError("자료를 불러오는 도중 오류가 발생했습니다.");
-        AccessibilityInfo.announceForAccessibility(
-          "서버에서 학습 자료를 불러오는 데 실패했습니다. 네트워크 상태를 확인해 주세요."
-        );
-      } finally {
-        if (isMounted) {
-          setLoadingList(false);
-        }
-      }
-    };
-
-    loadMaterials();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [displayName, navigation]);
+      return () => {
+        isMounted = false;
+      };
+    }, [displayName, navigation])
+  );
 
   // 헬퍼: 한글 교재명 / 음성 명령 정규화
   const normalize = (text: string) =>
