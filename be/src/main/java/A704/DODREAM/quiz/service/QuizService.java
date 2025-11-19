@@ -1,5 +1,6 @@
 package A704.DODREAM.quiz.service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -18,6 +19,8 @@ import A704.DODREAM.quiz.dto.GradingResultDto;
 import A704.DODREAM.quiz.dto.QuizDto;
 import A704.DODREAM.quiz.dto.QuizSaveDto;
 import A704.DODREAM.quiz.dto.QuizSubmissionDto;
+import A704.DODREAM.quiz.dto.StudentMaterialStatsDto;
+import A704.DODREAM.quiz.dto.StudentOverallStatsDto;
 import A704.DODREAM.quiz.entity.Quiz;
 import A704.DODREAM.quiz.entity.StudentQuizLog;
 import A704.DODREAM.quiz.repository.QuizRepository;
@@ -165,5 +168,115 @@ public class QuizService {
 				.aiFeedback(log.getAiFeedback())
 				.build())
 			.collect(Collectors.toList());
+	}
+
+	/**
+	 * [API 1 수정] 특정 학생의 '모든 자료별' 퀴즈 성적 통계 리스트 조회
+	 */
+	@Transactional(readOnly = true)
+	public List<StudentMaterialStatsDto> getStudentStatsByMaterialList(Long studentId) {
+		// 1. 학생의 모든 풀이 로그 조회 (Material 정보 포함 Fetch Join 필수)
+		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+
+		if (logs.isEmpty()) {
+			return new ArrayList<>();
+		}
+
+		// 2. 자료(Material) ID를 기준으로 로그 그룹화
+		// Key: MaterialId, Value: List<StudentQuizLog>
+		Map<Long, List<StudentQuizLog>> logsByMaterial = logs.stream()
+			.collect(Collectors.groupingBy(log -> log.getQuiz().getMaterial().getId()));
+
+		List<StudentMaterialStatsDto> resultList = new ArrayList<>();
+
+		// 3. 각 자료별 통계 계산
+		for (Map.Entry<Long, List<StudentQuizLog>> entry : logsByMaterial.entrySet()) {
+			Long materialId = entry.getKey();
+			List<StudentQuizLog> materialLogs = entry.getValue();
+
+			// 자료 정보 추출 (로그 중 하나에서 가져옴)
+			Material material = materialLogs.get(0).getQuiz().getMaterial();
+
+			// 해당 자료의 전체 퀴즈 개수 조회 (분모)
+			// (Loop 내 쿼리가 발생하지만, 학생이 푼 자료의 종류가 수백 개가 아니므로 수용 가능.
+			//  성능 최적화가 필요하면 materialId 리스트로 count를 한 번에 가져오는 쿼리 작성 필요)
+			int totalQuizCount = quizRepository.countByMaterialId(materialId);
+
+			if (totalQuizCount > 0) {
+				// 맞춘 개수
+				long correctCount = materialLogs.stream()
+					.filter(StudentQuizLog::isCorrect)
+					.count();
+
+				// 정답률 계산 (맞춘 개수 / 전체 퀴즈 개수 * 100)
+				double correctRate = (double) correctCount / totalQuizCount * 100.0;
+
+				// DTO 생성 및 추가
+				resultList.add(StudentMaterialStatsDto.builder()
+					.materialId(materialId)
+					.materialTitle(material.getTitle()) // 자료 제목 설정
+					.correctCount((int) correctCount)
+					.tryCount(materialLogs.size())
+					.totalQuizCount(totalQuizCount)
+					.correctRate(Math.round(correctRate * 10) / 10.0) // 소수점 첫째자리 반올림
+					.build());
+			}
+		}
+
+		return resultList;
+	}
+
+	/**
+	 * [API 2] 특정 학생의 종합 평균 정답률 조회
+	 * (각 자료별 정답률을 구하고, 그 정답률들의 평균을 계산)
+	 */
+	@Transactional(readOnly = true)
+	public StudentOverallStatsDto getStudentOverallStats(Long studentId) {
+		// 1. 학생의 모든 풀이 로그 조회 (Material 정보 포함)
+		List<StudentQuizLog> logs = studentQuizLogRepository.findAllByStudentIdWithMaterial(studentId);
+
+		if (logs.isEmpty()) {
+			return StudentOverallStatsDto.builder()
+				.studentId(studentId)
+				.solvedMaterialCount(0)
+				.averageCorrectRate(0.0)
+				.build();
+		}
+
+		// 2. 자료(Material) ID별로 로그 그룹화
+		Map<Long, List<StudentQuizLog>> logsByMaterial = logs.stream()
+			.collect(Collectors.groupingBy(log -> log.getQuiz().getMaterial().getId()));
+
+		double sumOfRates = 0.0;
+		int materialCount = 0;
+
+		// 3. 각 자료별 정답률 계산 후 합산
+		for (Long materialId : logsByMaterial.keySet()) {
+			// 해당 자료의 전체 퀴즈 개수 (DB 조회)
+			// (최적화 팁: 자료가 매우 많다면 loop 안에서 count 쿼리보다 미리 map으로 가져오는 것이 좋으나,
+			//  일반적인 학생 학습량에서는 현재 방식도 무방함)
+			int totalQuizInMaterial = quizRepository.countByMaterialId(materialId);
+
+			if (totalQuizInMaterial > 0) {
+				long correctCount = logsByMaterial.get(materialId).stream()
+					.filter(StudentQuizLog::isCorrect)
+					.count();
+
+				// 자료별 정답률 = (맞춘 개수 / 해당 자료 총 퀴즈 수) * 100
+				double materialRate = (double) correctCount / totalQuizInMaterial * 100.0;
+
+				sumOfRates += materialRate;
+				materialCount++;
+			}
+		}
+
+		// 4. 전체 평균 정답률 (자료별 정답률의 합 / 자료 개수)
+		double averageRate = materialCount > 0 ? sumOfRates / materialCount : 0.0;
+
+		return StudentOverallStatsDto.builder()
+			.studentId(studentId)
+			.solvedMaterialCount(materialCount)
+			.averageCorrectRate(Math.round(averageRate * 10) / 10.0)
+			.build();
 	}
 }

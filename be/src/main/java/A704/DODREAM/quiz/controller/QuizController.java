@@ -16,6 +16,8 @@ import A704.DODREAM.quiz.dto.GradingResultDto;
 import A704.DODREAM.quiz.dto.QuizDto;
 import A704.DODREAM.quiz.dto.QuizSaveDto;
 import A704.DODREAM.quiz.dto.QuizSubmissionDto;
+import A704.DODREAM.quiz.dto.StudentMaterialStatsDto;
+import A704.DODREAM.quiz.dto.StudentOverallStatsDto;
 import A704.DODREAM.quiz.service.QuizService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,14 +26,14 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Quiz API", description = "퀴즈 생성, 저장, 채점 API")
 @RestController
-@RequestMapping("/api/materials/{materialId}/quizzes")
+@RequestMapping("/api/materials")
 @RequiredArgsConstructor
 public class QuizController {
 
 	private final QuizService quizService;
 
 	@Operation(summary = "퀴즈 저장", description = "AI가 생성한 퀴즈를 검토 후 최종 저장합니다.")
-	@PostMapping
+	@PostMapping("/{materialId}/quizzes")
 	public ResponseEntity<Void> saveQuizzes(
 		@PathVariable Long materialId,
 		@RequestBody List<QuizSaveDto> quizzes, // (수정) QuizDto -> QuizSaveDto
@@ -42,13 +44,13 @@ public class QuizController {
 	}
 
 	@Operation(summary = "퀴즈 목록 조회", description = "해당 자료의 퀴즈 목록을 불러옵니다.")
-	@GetMapping
+	@GetMapping("/{materialId}/quizzes")
 	public ResponseEntity<List<QuizDto>> getQuizzes(@PathVariable Long materialId) {
 		return ResponseEntity.ok(quizService.getQuizzes(materialId));
 	}
 
 	@Operation(summary = "퀴즈 채점 및 제출", description = "학생이 푼 답안을 제출하고 AI 채점 결과를 받습니다.")
-	@PostMapping("/submit")
+	@PostMapping("/{materialId}/quizzes/submit")
 	public ResponseEntity<List<GradingResultDto>> submitQuiz(
 		@PathVariable Long materialId,
 		@RequestBody QuizSubmissionDto submission,
@@ -61,7 +63,7 @@ public class QuizController {
 	}
 
 	@Operation(summary = "나의 풀이 기록 조회", description = "이전에 푼 퀴즈의 채점 결과를 조회합니다.")
-	@GetMapping("/history")
+	@GetMapping("/{materialId}/quizzes/history")
 	public ResponseEntity<List<GradingResultDto>> getQuizHistory(
 		@PathVariable Long materialId,
 		@AuthenticationPrincipal UserPrincipal userPrincipal

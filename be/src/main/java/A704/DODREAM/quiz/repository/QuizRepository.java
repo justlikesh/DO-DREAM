@@ -10,4 +10,6 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 	List<Quiz> findAllByMaterialIdOrderByQuestionNumber(Long materialId);
 
 	void deleteAllByMaterialId(Long materialId);
+
+	int countByMaterialId(Long materialId);
 }
