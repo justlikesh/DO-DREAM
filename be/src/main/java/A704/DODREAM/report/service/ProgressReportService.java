@@ -111,17 +111,22 @@ public class ProgressReportService {
         // 5. 챕터별 진행률 계산
         List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
 
-        // 6. 전체 통계 계산
-        int totalChapters = chapters.size();
+        // 6. 전체 통계 계산 (퀴즈 제외)
+        int totalChapters = (int) chapterProgressList.stream()
+                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
+                .count();
         int totalSections = chapterProgressList.stream()
+                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .mapToInt(ChapterProgressDto::getTotalSections)
                 .sum();
         
         int completedChapters = (int) chapterProgressList.stream()
+                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .filter(ChapterProgressDto::isCompleted)
                 .count();
         
         int completedSections = chapterProgressList.stream()
+                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .mapToInt(ChapterProgressDto::getCompletedSections)
                 .sum();
 
@@ -247,6 +252,22 @@ public class ProgressReportService {
                 chapterType = (String) chapter.getOrDefault("type", "content");
             }
             
+            // 퀴즈 챕터는 진행률 계산에서 제외
+            if ("quiz".equals(chapterType)) {
+                // 퀴즈 챕터는 섹션 수 0으로 설정하고 cumulativeSections에 포함하지 않음
+                result.add(ChapterProgressDto.builder()
+                        .chapterId(chapterId)
+                        .chapterTitle(chapterTitle)
+                        .chapterType(chapterType)
+                        .chapterNumber(i + 1)
+                        .totalSections(0)
+                        .completedSections(0)
+                        .progressPercentage(0.0)
+                        .isCompleted(false)
+                        .build());
+                continue; // 다음 챕터로
+            }
+            
             // Section 수 계산 (구조에 맞게 자동 판별)
             int totalSections = calculateSectionsFromChapter(chapter);
             
@@ -362,12 +383,12 @@ public class ProgressReportService {
             }
         }
 
-        // 2. concept_checks 배열 처리
+        // 2. concept_checks 배열 처리 (퀴즈는 진행률에서 제외)
         List<Map<String, Object>> conceptChecks = (List<Map<String, Object>>) chapter.get("concept_checks");
         if (conceptChecks != null && !conceptChecks.isEmpty()) {
-            log.debug("챕터 [{}] concept_checks 개수: {}", chapterId, conceptChecks.size());
-            // 각 concept_check를 하나의 섹션으로 카운팅
-            sectionCount += conceptChecks.size();
+            log.debug("챕터 [{}] concept_checks 개수: {} (진행률 계산에서 제외)", chapterId, conceptChecks.size());
+            // 퀴즈는 진행률 계산에서 제외하므로 카운팅하지 않음
+            // sectionCount += conceptChecks.size();
         }
 
         log.info("챕터 [{}] {} - 총 {} 섹션 (이전 구조)", chapterId, chapterTitle, sectionCount);
