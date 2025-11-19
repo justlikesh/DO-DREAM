@@ -501,6 +501,7 @@ export default function BookmarkListScreen() {
         else handleStartReviewMode();
       },
       goBack: handleGoBack,
+      openLibrary: handleGoBack,
     });
 
     return () => {

@@ -421,9 +421,9 @@ export default function SettingsScreen() {
 
   // SettingsScreen 전용 음성 명령 처리
   const handleSettingsVoiceCommand = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const raw = spoken.trim();
-      if (!raw) return;
+      if (!raw) return false;
       const t = raw.toLowerCase();
       const nospace = t.replace(/\s+/g, "");
 
@@ -432,7 +432,7 @@ export default function SettingsScreen() {
       // 1) 뒤로 가기
       if (nospace.includes("뒤로") || nospace.includes("이전화면")) {
         handleGoBack();
-        return;
+        return true;
       }
 
       // 2) 재생 속도 (빠르게 / 느리게 / 기본 / 두 배 / 최고 / 최저 / 직접 값 지정)
@@ -451,99 +451,33 @@ export default function SettingsScreen() {
             const value = Math.max(0.5, Math.min(12.0, extractor(match)));
             if (value >= 0.5 && value <= 12.0) {
               handleRateChange(value);
-              return;
+              return true;
             }
           }
         }
 
-        // 두 배 / 2배
-        if (
-          nospace.includes("두배") ||
-          nospace.includes("2배") ||
-          nospace.includes("두배속") ||
-          nospace.includes("2배속")
-        ) {
+        if (nospace.includes("두배") || nospace.includes("2배")) {
           handleRateChange(2.0);
-          return;
-        }
-
-        // 반 배속 / 0.5배
-        if (
-          nospace.includes("반배") ||
-          nospace.includes("0.5배") ||
-          nospace.includes("0점5배") ||
-          nospace.includes("영점오배")
-        ) {
+        } else if (nospace.includes("반배") || nospace.includes("0.5배")) {
           handleRateChange(0.5);
-          return;
-        }
-
-        // 최고/최대 속도
-        if (
-          nospace.includes("최고") ||
-          nospace.includes("최대로") ||
-          nospace.includes("최대속도") ||
-          nospace.includes("가장빠")
-        ) {
+        } else if (nospace.includes("최고") || nospace.includes("가장빠")) {
           handleRateChange(12.0);
-          return;
-        }
-
-        // 최저/가장 느리게
-        if (
-          nospace.includes("최저") ||
-          nospace.includes("최소속도") ||
-          nospace.includes("가장느리")
-        ) {
+        } else if (nospace.includes("최저") || nospace.includes("가장느리")) {
           handleRateChange(0.5);
-          return;
-        }
-
-        // 상대적 조절 (조금 빠르게/느리게)
-        if (
-          nospace.includes("빠르") ||
-          nospace.includes("빨리") ||
-          nospace.includes("올려") ||
-          nospace.includes("증가")
-        ) {
-          const next = Math.min(
-            12.0,
-            Number((settings.ttsRate + 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("빠르") || nospace.includes("올려")) {
+          const next = Math.min(12.0, Number((settings.ttsRate + 0.1).toFixed(2)));
           handleRateChange(next);
-        } else if (
-          nospace.includes("느리") ||
-          nospace.includes("천천히") ||
-          nospace.includes("내려") ||
-          nospace.includes("감소")
-        ) {
-          const next = Math.max(
-            0.5,
-            Number((settings.ttsRate - 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("느리") || nospace.includes("내려")) {
+          const next = Math.max(0.5, Number((settings.ttsRate - 0.1).toFixed(2)));
           handleRateChange(next);
-        } else if (
-          nospace.includes("기본") ||
-          nospace.includes("처음") ||
-          nospace.includes("한배")
-        ) {
+        } else if (nospace.includes("기본") || nospace.includes("한배")) {
           handleRateChange(1.0);
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "재생 속도는 1.2배처럼 직접 말하거나, 두 배, 반 배속, 빠르게, 느리게, 기본 속도처럼 말해 주세요."
-          );
         }
-        return;
+        return true;
       }
 
-      // 3) 높낮이 / 톤 / 목소리 높이 (직접 값 지정 가능)
-      if (
-        nospace.includes("높낮이") ||
-        nospace.includes("톤") ||
-        nospace.includes("음높이") ||
-        nospace.includes("목소리높이")
-      ) {
-        // 직접 값 지정 패턴 (높낮이는 단위 없이도 인식)
+      // 3) 높낮이
+      if (nospace.includes("높낮이") || nospace.includes("톤") || nospace.includes("음높이")) {
         const pitchPatterns = [
           { pattern: /([0-2])\.?([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
           { pattern: /영?점([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
@@ -556,274 +490,108 @@ export default function SettingsScreen() {
             const value = extractor(match);
             if (value >= 0.5 && value <= 2.0) {
               handlePitchChange(value);
-              return;
+              return true;
             }
           }
         }
 
-        // 최고 톤
-        if (
-          nospace.includes("최고") ||
-          nospace.includes("최대로") ||
-          nospace.includes("최대") ||
-          nospace.includes("가장높")
-        ) {
+        if (nospace.includes("최고") || nospace.includes("가장높")) {
           handlePitchChange(2.0);
-          return;
-        }
-
-        // 최저 톤
-        if (
-          nospace.includes("최저") ||
-          nospace.includes("최소") ||
-          nospace.includes("가장낮")
-        ) {
+        } else if (nospace.includes("최저") || nospace.includes("가장낮")) {
           handlePitchChange(0.5);
-          return;
-        }
-
-        if (
-          nospace.includes("높게") ||
-          nospace.includes("올려") ||
-          nospace.includes("증가")
-        ) {
-          const next = Math.min(
-            2.0,
-            Number((settings.ttsPitch + 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("높게") || nospace.includes("올려")) {
+          const next = Math.min(2.0, Number((settings.ttsPitch + 0.1).toFixed(2)));
           handlePitchChange(next);
-        } else if (
-          nospace.includes("낮게") ||
-          nospace.includes("내려") ||
-          nospace.includes("감소")
-        ) {
-          const next = Math.max(
-            0.5,
-            Number((settings.ttsPitch - 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("낮게") || nospace.includes("내려")) {
+          const next = Math.max(0.5, Number((settings.ttsPitch - 0.1).toFixed(2)));
           handlePitchChange(next);
-        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+        } else if (nospace.includes("기본")) {
           handlePitchChange(1.0);
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "목소리 높이는 1.2처럼 직접 말하거나, 높게, 낮게, 최고, 최저, 기본처럼 말해 주세요."
-          );
         }
-        return;
+        return true;
       }
 
-      // 4) 볼륨 / 소리 크기 (퍼센트 또는 0-1 값으로 직접 지정 가능)
-      if (
-        nospace.includes("볼륨") ||
-        nospace.includes("소리") ||
-        nospace.includes("음량")
-      ) {
-        // 퍼센트로 지정: "70퍼센트", "80%"
+      // 4) 볼륨
+      if (nospace.includes("볼륨") || nospace.includes("소리") || nospace.includes("음량")) {
         const percentMatch = nospace.match(/([0-9]{1,3})(%|퍼센트|프로)/);
         if (percentMatch) {
           const percent = parseInt(percentMatch[1]);
           if (percent >= 0 && percent <= 100) {
             handleVolumeChange(percent / 100);
-            return;
+            return true;
           }
         }
 
-        // 0-1 값으로 지정: "0.7", "영점팔"
-        const decimalPatterns = [
-          { pattern: /0\.([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
-          { pattern: /영점([0-9])/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
-        ];
-
-        for (const { pattern, extractor } of decimalPatterns) {
-          const match = nospace.match(pattern);
-          if (match) {
-            const value = extractor(match);
-            if (value >= 0 && value <= 1.0) {
-              handleVolumeChange(value);
-              return;
-            }
-          }
-        }
-
-        // 최대/최고 볼륨
-        if (
-          nospace.includes("최대") ||
-          nospace.includes("최대로") ||
-          nospace.includes("최고") ||
-          nospace.includes("가장크게")
-        ) {
+        if (nospace.includes("최대") || nospace.includes("가장크게")) {
           handleVolumeChange(1.0);
-          return;
-        }
-
-        // 최소/무음
-        if (
-          nospace.includes("최소") ||
-          nospace.includes("최저") ||
-          nospace.includes("무음") ||
-          nospace.includes("묵음") ||
-          nospace.includes("가장작")
-        ) {
+        } else if (nospace.includes("최소") || nospace.includes("무음")) {
           handleVolumeChange(0.0);
-          return;
-        }
-
-        if (
-          nospace.includes("크게") ||
-          nospace.includes("올려") ||
-          nospace.includes("증가")
-        ) {
-          const next = Math.min(
-            1.0,
-            Number((settings.ttsVolume + 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("크게") || nospace.includes("올려")) {
+          const next = Math.min(1.0, Number((settings.ttsVolume + 0.1).toFixed(2)));
           handleVolumeChange(next);
-        } else if (
-          nospace.includes("작게") ||
-          nospace.includes("내려") ||
-          nospace.includes("감소") ||
-          nospace.includes("줄여")
-        ) {
-          const next = Math.max(
-            0.0,
-            Number((settings.ttsVolume - 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("작게") || nospace.includes("줄여")) {
+          const next = Math.max(0.0, Number((settings.ttsVolume - 0.1).toFixed(2)));
           handleVolumeChange(next);
-        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+        } else if (nospace.includes("기본")) {
           handleVolumeChange(1.0);
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "볼륨은 70퍼센트처럼 직접 말하거나, 크게, 작게, 최고, 최저, 기본처럼 말해 주세요."
-          );
         }
-        return;
+        return true;
       }
 
       // 5) 고대비 모드
       if (nospace.includes("고대비") || nospace.includes("반전")) {
-        if (
-          nospace.includes("켜") ||
-          nospace.includes("온") ||
-          nospace.includes("on")
-        ) {
-          if (settings.highContrastMode) {
-            AccessibilityInfo.announceForAccessibility(
-              "이미 고대비 모드가 켜져 있습니다."
-            );
-          } else {
-            handleHighContrastChange(true);
-          }
-        } else if (
-          nospace.includes("꺼") ||
-          nospace.includes("오프") ||
-          nospace.includes("off")
-        ) {
-          if (!settings.highContrastMode) {
-            AccessibilityInfo.announceForAccessibility(
-              "이미 고대비 모드가 꺼져 있습니다."
-            );
-          } else {
-            handleHighContrastChange(false);
-          }
+        if (nospace.includes("켜") || nospace.includes("온")) {
+          handleHighContrastChange(true);
+        } else if (nospace.includes("꺼") || nospace.includes("오프")) {
+          handleHighContrastChange(false);
         } else {
-          // 토글
           handleHighContrastChange(!settings.highContrastMode);
         }
-        return;
+        return true;
       }
 
-      // 6) 글자 크기 (퍼센트 또는 배율로 직접 지정 가능)
-      if (
-        nospace.includes("글자") ||
-        nospace.includes("글씨") ||
-        nospace.includes("폰트")
-      ) {
-        // 퍼센트로 지정: "120퍼센트", "150%"
+      // 6) 글자 크기
+      if (nospace.includes("글자") || nospace.includes("글씨") || nospace.includes("폰트")) {
         const percentMatch = nospace.match(/([0-9]{2,3})(%|퍼센트|프로)/);
         if (percentMatch) {
           const percent = parseInt(percentMatch[1]);
           if (percent >= 80 && percent <= 200) {
             handleFontSizeChange(percent / 100);
-            return;
-          }
-        }
-
-        // 배율로 지정: "1.5배", "일점오배"
-        const scalePatterns = [
-          { pattern: /([0-2])\.([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`${m[1]}.${m[2]}`) },
-          { pattern: /영?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`0.${m[1]}`) },
-          { pattern: /일?점([0-9])배/, extractor: (m: RegExpMatchArray) => parseFloat(`1.${m[1]}`) },
-        ];
-
-        for (const { pattern, extractor } of scalePatterns) {
-          const match = nospace.match(pattern);
-          if (match) {
-            const value = extractor(match);
-            if (value >= 0.8 && value <= 2.0) {
-              handleFontSizeChange(value);
-              return;
-            }
+            return true;
           }
         }
 
         if (nospace.includes("크게") || nospace.includes("키워")) {
-          const next = Math.min(
-            2.0,
-            Number((settings.fontSizeScale + 0.1).toFixed(2))
-          );
+          const next = Math.min(2.0, Number((settings.fontSizeScale + 0.1).toFixed(2)));
           handleFontSizeChange(next);
-        } else if (
-          nospace.includes("작게") ||
-          nospace.includes("줄여") ||
-          nospace.includes("작아")
-        ) {
-          const next = Math.max(
-            0.8,
-            Number((settings.fontSizeScale - 0.1).toFixed(2))
-          );
+        } else if (nospace.includes("작게") || nospace.includes("줄여")) {
+          const next = Math.max(0.8, Number((settings.fontSizeScale - 0.1).toFixed(2)));
           handleFontSizeChange(next);
-        } else if (nospace.includes("기본") || nospace.includes("처음")) {
+        } else if (nospace.includes("기본")) {
           handleFontSizeChange(1.0);
-        } else {
-          AccessibilityInfo.announceForAccessibility(
-            "글자 크기는 120퍼센트나 1.5배처럼 직접 말하거나, 크게, 작게, 기본처럼 말해 주세요."
-          );
         }
-        return;
+        return true;
       }
 
       // 7) 테스트 재생
-      if (
-        nospace.includes("테스트") ||
-        nospace.includes("샘플") ||
-        nospace.includes("들려줘") ||
-        nospace.includes("틀어줘") ||
-        nospace.includes("재생해")
-      ) {
+      if (nospace.includes("테스트") || nospace.includes("샘플") || nospace.includes("들려줘")) {
         handleTestTTS();
-        return;
+        return true;
       }
 
-      // 8) 초기화 / 기본값
-      if (
-        nospace.includes("초기화") ||
-        nospace.includes("기본값") ||
-        nospace.includes("처음상태")
-      ) {
+      // 8) 초기화
+      if (nospace.includes("초기화") || nospace.includes("기본값")) {
         handleResetSettings();
-        return;
+        return true;
       }
 
       AccessibilityInfo.announceForAccessibility(
-        "이 화면에서는 뒤로 가기, 재생 속도 1.2배, 높낮이 1.5, 볼륨 70퍼센트, 글자 크기 120퍼센트처럼 직접 값을 말하거나, 빠르게, 느리게, 높게, 낮게, 크게, 작게, 고대비 모드 켜기, 테스트 재생, 설정 초기화 같은 음성 명령을 사용할 수 있습니다."
+        "이 화면에서는 뒤로 가기, 재생 속도 1.2배, 높낮이 1.5, 볼륨 70퍼센트, 글자 크기 120퍼센트처럼 직접 값을 말하거나, 빠르게, 느리게, 크게, 작게, 고대비 모드 켜기, 테스트 재생, 설정 초기화 같은 음성 명령을 사용할 수 있습니다."
       );
+      return false;
     },
     [
-      settings.ttsRate,
-      settings.ttsPitch,
-      settings.ttsVolume,
-      settings.highContrastMode,
-      settings.fontSizeScale,
+      settings,
       handleGoBack,
       handleRateChange,
       handlePitchChange,
@@ -852,6 +620,7 @@ export default function SettingsScreen() {
 
     registerVoiceHandlers("Settings", {
       goBack: () => handleGoBackRef.current(),
+      openLibrary: () => handleGoBackRef.current(),
       rawText: (text: string) => handleSettingsVoiceCommandRef.current(text),
     });
 
@@ -865,7 +634,7 @@ export default function SettingsScreen() {
       clearTimeout(introTimer);
       registerVoiceHandlers("Settings", {});
     };
-  }, [setCurrentScreenId, registerVoiceHandlers]);
+  }, [setCurrentScreenId, registerVoiceHandlers, handleGoBack]);
 
   const HC = settings.highContrastMode;
   const baseSize = 24;

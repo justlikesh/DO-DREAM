@@ -160,13 +160,13 @@ export default function QuestionListScreen() {
 
   // 음성 명령 핸들러
   const handleVoiceCommand = useCallback(
-    (spoken: string) => {
+    (spoken: string): boolean => {
       const t = spoken.trim().toLowerCase();
 
       // 뒤로가기
       if (t.includes("뒤로") || t.includes("이전") || t.includes("돌아가")) {
         handleGoBack();
-        return;
+        return true;
       }
 
       // 새로고침
@@ -180,13 +180,14 @@ export default function QuestionListScreen() {
           "질문 목록을 새로고침합니다."
         );
         loadQuestions();
-        return;
+        return true;
       }
 
       // 그 외
       AccessibilityInfo.announceForAccessibility(
         "이 화면에서 사용할 수 없는 명령입니다. 뒤로 가기 또는 새로고침처럼 말해주세요."
       );
+      return false;
     },
     [handleGoBack, loadQuestions]
   );
@@ -196,6 +197,7 @@ export default function QuestionListScreen() {
     setCurrentScreenId("QuestionList");
     registerVoiceHandlers("QuestionList", {
       goBack: handleGoBack,
+      openLibrary: handleGoBack,
       rawText: handleVoiceCommand,
     });
   }, [

@@ -6,8 +6,9 @@ import React, {
   useState,
   useEffect,
 } from "react";
-import { AccessibilityInfo } from "react-native";
 import { asrService } from "../services/asrService";
+import { useNavigation } from "@react-navigation/native";
+import { AccessibilityInfo } from "react-native";
 
 // 볼륨키 모드
 type TriggerMode = "voice" | "playpause";
@@ -21,11 +22,12 @@ type VoiceCommandHandlers = {
   goBack?: () => void;
   openQuiz?: () => void;
   openSettings?: () => void;
+  openLibrary?: () => void;
 
   /**
    * 인식된 원문 텍스트를 그대로 받아 처리하는 핸들러
    */
-  rawText?: (spoken: string) => void;
+  rawText?: (spoken: string) => boolean; // 처리했으면 true, 안했으면 false
 };
 
 // TriggerContext에 들어갈 타입
@@ -86,12 +88,17 @@ type VoiceCommandKey =
   | "openQuestion"
   | "goBack"
   | "openQuiz"
-  | "openSettings";
+  | "openSettings"
+  | "openLibrary";
 
 // 간단한 한국어 → 명령 키 매핑
 function parseVoiceCommand(raw: string): VoiceCommandKey | null {
   const t = raw.trim().toLowerCase();
   if (!t) return null;
+
+  if (t.includes("로비") || t.includes("홈") || t.includes("서재") || t.includes("목록")) {
+    return "openLibrary";
+  }
 
   if (t.includes("뒤로") || t.includes("이전 화면") || t.includes("돌아가"))
     return "goBack";
@@ -137,6 +144,7 @@ function parseVoiceCommand(raw: string): VoiceCommandKey | null {
 
 export function TriggerProvider({ children }: { children: React.ReactNode }) {
   // (1) 볼륨키 모드
+  const navigation = useNavigation();
   const [mode, setMode] = useState<TriggerMode>("voice");
 
   // (2) 재생/정지 토글용 핸들러 (기존)
@@ -176,6 +184,14 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
+
+  const handleOpenLibrary = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.navigate("Library" as never);
+    } else {
+      navigation.reset({ index: 0, routes: [{ name: "Library" as never }] });
+    }
+  }, [navigation]);
 
   // (6) 음성 인식 상태/타이머
   const [isVoiceCommandListening, setIsVoiceCommandListening] = useState(false);
@@ -232,9 +248,22 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
         voiceHandlersRef.current[screenId] ||
         ({} as VoiceCommandHandlers);
 
+      // (A) 현재 화면의 rawText 핸들러 우선 처리
+      if (handlers.rawText) {
+        console.log("[VoiceCommands] rawText 핸들러 호출:", text);
+        try {
+          const handled = handlers.rawText(text);
+          if (handled) {
+            return; // rawText 핸들러가 처리했으면 여기서 종료
+          }
+        } catch (e) {
+          console.warn("[VoiceCommands] rawText 오류:", e);
+        }
+      }
+
       const key = parseVoiceCommand(text);
 
-      // (A) 전역 명령 매칭
+      // (B) 화면별 전역 명령 매칭
       if (key && handlers[key]) {
         console.log(
           "[VoiceCommands] 명령 실행:",
@@ -252,15 +281,17 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // 2) 전역 명령어가 아니거나, 핸들러가 없으면 rawText 핸들러로 전달
-      // (B) rawText 처리
-      if (handlers.rawText) {
-        console.log("[VoiceCommands] rawText 핸들러 호출:", text);
-        try {
-          handlers.rawText(text);
-        } catch (e) {
-          console.warn("[VoiceCommands] rawText 오류:", e);
-        }
+      // (C) 전역 핸들러 매칭 (화면별 핸들러에 없는 경우)
+      if (key === "openLibrary") {
+        console.log(
+          "[VoiceCommands] 명령 실행:",
+          key,
+          "screen=",
+          screenId,
+          "text=",
+          text
+        );
+        handleOpenLibrary();
         return;
       }
 

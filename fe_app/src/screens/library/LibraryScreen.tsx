@@ -281,50 +281,6 @@ export default function LibraryScreen() {
   );
 
   /**
-   * Library 화면 전용 음성 명령 처리
-   * - "영어 1", "문학", "생물 1로 이동", "합법과 작문" 등
-   */
-  const handleLibraryVoiceCommand = useCallback(
-    (spoken: string) => {
-      const raw = spoken.trim();
-
-      console.log("[LibraryScreen] rawText 핸들러 호출:", raw);
-
-      // 1) 자료 로딩 중이면 대기 요청
-      if (loadingList) {
-        AccessibilityInfo.announceForAccessibility(
-          "학습 자료를 불러오는 중입니다. 잠시 후 다시 말씀해 주세요."
-        );
-        return;
-      }
-
-      // 2) 자료가 없으면 안내
-      if (materials.length === 0) {
-        AccessibilityInfo.announceForAccessibility(
-          "현재 공유된 학습 자료가 없습니다."
-        );
-        return;
-      }
-
-      // 3) 교재명으로 매칭 시도
-      const material = findMaterialByVoice(raw);
-
-      if (!material) {
-        AccessibilityInfo.announceForAccessibility(
-          "말씀하신 이름의 교재를 찾지 못했습니다. 다시 한 번 말씀해 주세요."
-        );
-        return;
-      }
-
-      AccessibilityInfo.announceForAccessibility(
-        `${material.title} 교재로 이동합니다`
-      );
-      handleMaterialPress(material);
-    },
-    [findMaterialByVoice, loadingList, materials]
-  );
-
-  /**
    * 교재 버튼을 눌렀을 때:
    * - materialId로 JSON(본문 + 퀴즈)을 먼저 가져온 뒤
    * - material.json에 담아서 PlaybackChoice로 전달
@@ -389,6 +345,51 @@ export default function LibraryScreen() {
       setLoadingMaterialId(null);
     }
   };
+
+  /**
+   * Library 화면 전용 음성 명령 처리
+   * - "영어 1", "문학", "생물 1로 이동", "합법과 작문" 등
+   */
+  const handleLibraryVoiceCommand = useCallback(
+    (spoken: string): boolean => {
+      const raw = spoken.trim();
+
+      console.log("[LibraryScreen] rawText 핸들러 호출:", raw);
+
+      // 1) 자료 로딩 중이면 대기 요청
+      if (loadingList) {
+        AccessibilityInfo.announceForAccessibility(
+          "학습 자료를 불러오는 중입니다. 잠시 후 다시 말씀해 주세요."
+        );
+        return true;
+      }
+
+      // 2) 자료가 없으면 안내
+      if (materials.length === 0) {
+        AccessibilityInfo.announceForAccessibility(
+          "현재 공유된 학습 자료가 없습니다."
+        );
+        return true;
+      }
+
+      // 3) 교재명으로 매칭 시도
+      const material = findMaterialByVoice(raw);
+
+      if (!material || raw.toLowerCase().includes("소리")) {
+        AccessibilityInfo.announceForAccessibility(
+          "말씀하신 이름의 교재를 찾지 못했습니다. 다시 한 번 말씀해 주세요."
+        );
+        return false;
+      }
+
+      AccessibilityInfo.announceForAccessibility(
+        `${material.title} 교재로 이동합니다.`
+      );
+      handleMaterialPress(material);
+      return true;
+    },
+    [findMaterialByVoice, loadingList, materials, handleMaterialPress]
+  );
 
   const handleSettingsPress = () => {
     AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
@@ -480,7 +481,6 @@ export default function LibraryScreen() {
   const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
   const headerFontSize = themeFont(36);
 
-  // 핸들러를 ref로 저장하여 최신 버전 유지
   const handleLibraryVoiceCommandRef = useRef(handleLibraryVoiceCommand);
   useEffect(() => {
     handleLibraryVoiceCommandRef.current = handleLibraryVoiceCommand;
@@ -491,15 +491,16 @@ export default function LibraryScreen() {
     setCurrentScreenId("Library");
 
     registerVoiceHandlers("Library", {
-      // 전역 명령: "뒤로 가" → 이전 화면
-      goBack: () => navigation.goBack(),
-      // 전역 명령: "설정" → 설정 화면
+      rawText: (text: string) => handleLibraryVoiceCommandRef.current(text),
+      openLibrary: () => AccessibilityInfo.announceForAccessibility("이미 서재 화면입니다."),
       openSettings: () => {
         AccessibilityInfo.announceForAccessibility("설정 화면으로 이동합니다.");
         navigation.navigate("Settings");
       },
+      // // 전역 명령: "뒤로 가" → 이전 화면
+      // goBack: () => navigation.goBack(),
       // 나머지 일반 문장(영어 1, 문학, 생물 1 등)은 여기서 처리
-      rawText: (text: string) => handleLibraryVoiceCommandRef.current(text),
+      // rawText: (text: string) => handleLibraryVoiceCommandRef.current(text),
     });
 
     return () => {
@@ -509,7 +510,7 @@ export default function LibraryScreen() {
 
   // 화면 진입 안내 (음성 명령 안내 포함)
   useEffect(() => {
-    const msg = `${displayName} 학생의 서재 화면입니다. 상단의 음성 명령 버튼을 두 번 탭한 후, 영어 1, 문학, 생물 1, 화법과 작문처럼 교재 이름을 말하면 해당 교재로 이동합니다.`;
+    const msg = `${displayName} 학생의 서재 화면입니다. 상단의 말하기 버튼을 두 번 탭한 후, 영어 1, 문학, 생물 1, 화법과 작문처럼 교재 이름을 말하면 해당 교재로 이동합니다.`;
     const timer = setTimeout(() => {
       AccessibilityInfo.announceForAccessibility(msg);
     }, 500);
@@ -596,7 +597,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number, isHighCon
       fontSize: 40,
       fontWeight: "bold",
       color: colors.text.primary,
+      height: HEADER_BTN_HEIGHT,
       lineHeight: HEADER_BTN_HEIGHT,
+      textAlignVertical: "center",
     },
     // 오른쪽: 음성 명령 + 설정
     headerRight: {
