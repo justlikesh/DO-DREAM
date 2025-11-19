@@ -19,6 +19,8 @@ export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
     isVoiceCommandListening,
     getTTSPlayRef,
     getTTSPauseRef,
+    getCurrentScreenId,
+    volumeTriggerHandlers,
   } = useContext(TriggerContext);
 
   // ================================
@@ -80,12 +82,24 @@ export default function GlobalVoiceTriggers({ onVoiceCommand }: Props) {
       <AndroidVolumeDoublePress
         enabled={true}
         onVolumeUpPressCount={(count) => {
-          if (count === 2) fireVoiceStart();
-          else if (count === 3 && mode === "playpause") firePlay();
+          const screenId = getCurrentScreenId();
+          const handler = volumeTriggerHandlers[screenId]?.onVolumeUpPress;
+          if (handler) {
+            handler(count);
+          } else {
+            // 기본 동작
+            if (count === 2) fireVoiceStart();
+          }
         }}
         onVolumeDownPressCount={(count) => {
-          if (count === 2) fireVoiceStop();
-          else if (count === 3 && mode === "playpause") firePause();
+          const screenId = getCurrentScreenId();
+          const handler = volumeTriggerHandlers[screenId]?.onVolumeDownPress;
+          if (handler) {
+            handler(count);
+          } else {
+            // 기본 동작
+            if (count === 2) fireVoiceStop();
+          }
         }}
       />
     ) : null;

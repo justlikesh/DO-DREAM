@@ -30,6 +30,12 @@ type VoiceCommandHandlers = {
   rawText?: (spoken: string) => boolean; // 처리했으면 true, 안했으면 false
 };
 
+// 화면별로 등록할 볼륨키 트리거 핸들러
+export type VolumeTriggerHandlers = {
+  onVolumeUpPress?: (count: number) => void;
+  onVolumeDownPress?: (count: number) => void;
+};
+
 // TriggerContext에 들어갈 타입
 type Ctx = {
   mode: TriggerMode;
@@ -50,6 +56,13 @@ type Ctx = {
   registerVoiceHandlers: (
     screenId: string,
     handlers: VoiceCommandHandlers
+  ) => void;
+
+  volumeTriggerHandlers: Record<string, VolumeTriggerHandlers>;
+
+  registerVolumeTriggers: (
+    screenId: string,
+    handlers: VolumeTriggerHandlers
   ) => void;
 
   startVoiceCommandListening: () => Promise<void>;
@@ -74,6 +87,10 @@ export const TriggerContext = createContext<Ctx>({
   getCurrentScreenId: () => "",
 
   registerVoiceHandlers: () => {},
+
+  volumeTriggerHandlers: {},
+
+  registerVolumeTriggers: () => {},
 
   startVoiceCommandListening: async () => {},
   stopVoiceCommandListening: async () => {},
@@ -181,6 +198,15 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
   const registerVoiceHandlers = useCallback(
     (screenId: string, handlers: VoiceCommandHandlers) => {
       voiceHandlersRef.current[screenId] = handlers;
+    },
+    []
+  );
+
+  // (5-2) VolumeTrigger 핸들러
+  const volumeTriggerHandlersRef = useRef<Record<string, VolumeTriggerHandlers>>({});
+  const registerVolumeTriggers = useCallback(
+    (screenId: string, handlers: VolumeTriggerHandlers) => {
+      volumeTriggerHandlersRef.current[screenId] = handlers;
     },
     []
   );
@@ -367,6 +393,9 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
 
       registerVoiceHandlers,
 
+      volumeTriggerHandlers: volumeTriggerHandlersRef.current, // 이 부분은 직접 사용하지 않고, GlobalVoiceTriggers에서 참조
+      registerVolumeTriggers,
+
       startVoiceCommandListening,
       stopVoiceCommandListening,
       isVoiceCommandListening,
@@ -382,6 +411,7 @@ export function TriggerProvider({ children }: { children: React.ReactNode }) {
       setCurrentScreenId,
       getCurrentScreenId,
       registerVoiceHandlers,
+      registerVolumeTriggers,
       startVoiceCommandListening,
       stopVoiceCommandListening,
       isVoiceCommandListening,
