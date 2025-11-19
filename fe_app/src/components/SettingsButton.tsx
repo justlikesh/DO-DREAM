@@ -41,7 +41,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
   return StyleSheet.create({
     settingsButton: {
-      minWidth: 56,
+      width: 104,
       height: HEADER_BTN_HEIGHT,
       alignItems: "center",
       justifyContent: "center",
@@ -57,6 +57,9 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       fontSize: 18,
       color: isPrimaryColors ? colors.primary.main : colors.accent.secondary,
       fontWeight: "bold",
+      lineHeight: 22,
+      textAlignVertical: "center",
+      includeFontPadding: false,
     },
   });
 };

@@ -61,7 +61,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       borderColor: isPrimaryColors ? colors.status.info : colors.status.info,
       backgroundColor: isPrimaryColors ? colors.status.infoLight : colors.background.elevated,
       height: HEADER_BTN_HEIGHT,
-      minWidth: 100,
+      width: 104,
       justifyContent: "center",
       alignItems: "center",
     },
