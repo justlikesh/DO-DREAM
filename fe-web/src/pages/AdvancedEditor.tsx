@@ -45,6 +45,8 @@ type EditorProps = {
   onPublish: (title: string, chapters: Chapter[], label?: string) => void;
   onBack: () => void;
   pdfId?: number;
+  materialId?: string;
+  mode?: 'create' | 'edit';
   initialLabel?: string;
 };
 
@@ -105,12 +107,16 @@ export default function AdvancedEditor({
   onPublish,
   onBack,
   pdfId,
-  initialLabel
+  materialId,
+  mode = 'create',
+  initialLabel,
 }: EditorProps) {
   const [materialTitle, setMaterialTitle] = useState(initialTitle);
   const [showTitleInput, setShowTitleInput] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(initialLabel);
+  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(
+    initialLabel,
+  );
   const [isSplitMode, setIsSplitMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [mergeMode, setMergeMode] = useState(false);
@@ -879,7 +885,6 @@ export default function AdvancedEditor({
     }
 
     const token = localStorage.getItem('accessToken');
-
     if (!token) {
       Swal.fire({
         icon: 'error',
@@ -899,16 +904,19 @@ export default function AdvancedEditor({
     };
 
     try {
-      // ✅ await 제거! void만 사용
       void Swal.fire({
-        title: '발행 중입니다...',
+        title: mode === 'edit' ? '수정 중입니다...' : '발행 중입니다...',
         allowOutsideClick: false,
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
       });
 
-      const res = await fetch(`${API_BASE}/api/documents/${pdfId}/publish`, {
-        method: 'POST',
+      // 🔹 생성/수정 모두 동일 엔드포인트 + POST
+      const url = `${API_BASE}/api/documents/${pdfId}/publish`;
+      const method = 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           accept: 'application/json',
@@ -925,14 +933,12 @@ export default function AdvancedEditor({
         body: responseText,
       });
 
-      // ✅ fetch 완료 후 로딩 모달 닫기
       await Swal.close();
 
       if (!res.ok) {
         if (res.status === 403 || res.status === 401) {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('isLoggedIn');
-
           Swal.fire({
             icon: 'error',
             title: '인증이 만료되었습니다',
@@ -959,8 +965,8 @@ export default function AdvancedEditor({
 
       await Swal.fire({
         icon: 'success',
-        title: '발행되었습니다!',
-        text: `"${materialTitle}" 발행 완료`,
+        title: mode === 'edit' ? '수정되었습니다!' : '발행되었습니다!',
+        text: `"${materialTitle}" ${mode === 'edit' ? '수정' : '발행'} 완료`,
         confirmButtonColor: '#192b55',
       });
 
@@ -972,7 +978,7 @@ export default function AdvancedEditor({
 
       Swal.fire({
         icon: 'error',
-        title: '발행 실패',
+        title: mode === 'edit' ? '수정 실패' : '발행 실패',
         text: error instanceof Error ? error.message : '다시 시도해주세요',
         confirmButtonColor: '#192b55',
       });
@@ -983,7 +989,10 @@ export default function AdvancedEditor({
     if (hasUnsavedChanges) {
       Swal.fire({
         icon: 'warning',
-        title: '저장하지 않은 변경사항이 있습니다',
+        title:
+          mode === 'edit'
+            ? '저장하지 않은 수정사항이 있습니다'
+            : '저장하지 않은 변경사항이 있습니다',
         text: '지금 나가면 변경사항이 모두 사라집니다',
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
@@ -1083,8 +1092,7 @@ export default function AdvancedEditor({
               />
             </button>
             <button className="ae-btn-publish" onClick={handlePublish}>
-              <Send size={16} />
-              발행
+              {mode === 'edit' ? '수정하기' : '발행하기'}
             </button>
           </div>
         </div>

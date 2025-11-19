@@ -503,9 +503,9 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
           fileName: material.title,
           chapters: chapters,
           pdfId: pdfId,
-          materialId: materialId,
+          materialId: materialId, 
+          mode: 'edit', 
           from: 'classroom',
-          mode: 'view',
           initialLabel: labelColor,
         },
       });

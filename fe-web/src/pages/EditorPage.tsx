@@ -1,3 +1,5 @@
+// src/pages/EditorPage.tsx
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import AdvancedEditor from './AdvancedEditor';
@@ -15,6 +17,8 @@ type NavState = {
   chapters?: Chapter[];
   from?: string;
   pdfId?: number;
+  materialId?: string;
+  mode?: 'create' | 'edit'; 
   initialLabel?: string;
 };
 
@@ -22,7 +26,9 @@ type SessionPayload = {
   fileName?: string;
   extractedText?: string;
   chapters?: Chapter[];
-  pdfId?: number; // 🆕 PDF ID 추가
+  pdfId?: number;
+  materialId?: string; 
+  mode?: 'create' | 'edit'; 
 };
 
 export default function EditorPage() {
@@ -33,60 +39,59 @@ export default function EditorPage() {
 
   useEffect(() => {
     console.log('[EditorPage] 마운트됨');
-    
-    // 1. 세션 스토리지 먼저 확인
+
     const sessionData = sessionStorage.getItem('editor_payload_v1');
     let finalData: NavState | null = null;
-    
+
     if (sessionData) {
       try {
         const parsed = JSON.parse(sessionData) as SessionPayload;
         console.log('[EditorPage] 세션 스토리지 데이터:', parsed);
-        console.log('[EditorPage] 챕터 수:', parsed.chapters?.length || 0);
-        console.log('[EditorPage] PDF ID:', parsed.pdfId);
-        
+
         finalData = {
           fileName: parsed.fileName || '새로운 자료',
           extractedText: parsed.extractedText,
           chapters: parsed.chapters,
           pdfId: parsed.pdfId,
+          materialId: parsed.materialId,
+          mode: parsed.mode || 'create',
         };
       } catch (err) {
         console.error('[EditorPage] 세션 파싱 오류:', err);
       }
     }
-    
-    // 2. location.state 확인 (폴백)
+
     if (!finalData && state) {
       console.log('[EditorPage] location.state 사용:', state);
       finalData = state as NavState;
     }
-    
-    // 3. 둘 다 없으면 기본값
+
     if (!finalData) {
       console.log('[EditorPage] 기본값 사용');
       finalData = {
         fileName: '새로운 자료',
         extractedText: '<p>내용을 입력하세요...</p>',
+        mode: 'create',
       };
     }
-    
+
     console.log('[EditorPage] 최종 데이터:', finalData);
     setEditorData(finalData);
     setIsReady(true);
   }, [state]);
 
-  // 데이터 로딩 중
   if (!isReady || !editorData) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        fontSize: '18px',
-        color: '#192b55'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          fontSize: '18px',
+          color: '#192b55',
+        }}
+      >
         로딩 중...
       </div>
     );
@@ -97,16 +102,16 @@ export default function EditorPage() {
     extractedText = '<p>내용을 입력하세요...</p>',
     chapters,
     pdfId,
+    materialId,
+    mode = 'create',
     initialLabel,
   } = editorData;
 
   console.log('[EditorPage] AdvancedEditor에 전달:', {
     fileName,
-    extractedText: extractedText.substring(0, 50),
-    hasChapters: !!chapters,
-    chaptersCount: chapters?.length || 0,
-    chapters: chapters,
     pdfId,
+    materialId,
+    mode,
   });
 
   return (
@@ -116,10 +121,16 @@ export default function EditorPage() {
       extractedText={extractedText}
       initialChapters={chapters}
       pdfId={pdfId}
-      initialLabel={initialLabel} 
+      materialId={materialId} 
+      mode={mode} 
+      initialLabel={initialLabel}
       onBack={() => navigate(-1)}
       onPublish={(title, publishedChapters, label) => {
-        console.log('발행된 데이터:', { title, chapters: publishedChapters, label });
+        console.log('발행된 데이터:', {
+          title,
+          chapters: publishedChapters,
+          label,
+        });
         sessionStorage.removeItem('editor_payload_v1');
         navigate('/', { replace: true });
       }}
