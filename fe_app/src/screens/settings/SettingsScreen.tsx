@@ -28,8 +28,8 @@ export default function SettingsScreen() {
   const navigation = useNavigation();
   const logout = useAuthStore((state) => state.logout);
 
-  const { colors, fontSize: themeFont } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const { colors, fontSize: themeFont, isHighContrast } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
   const commonStyles = React.useMemo(() => createCommonStyles(colors), [colors]);
 
   const settings = useAppSettingsStore((state) => state.settings);
@@ -1030,7 +1030,7 @@ export default function SettingsScreen() {
             isTestingTts ? "재생 중..." : "테스트",
             handleTestTTS,
             isTestingTts ? COLORS.status.success : COLORS.secondary.main,
-            colors.text.primary,
+            isHighContrast && !isTestingTts ? COLORS.common.black : colors.text.primary,
             isTestingTts ? COLORS.status.success : COLORS.secondary.dark
           )}
         </View>
@@ -1117,7 +1117,7 @@ export default function SettingsScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
+const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
   const isPrimaryColors = 'primary' in colors;
 
   return StyleSheet.create({
@@ -1125,7 +1125,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
 
     header: {
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      borderBottomColor: isHighContrast ? COLORS.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
       minHeight: HEADER_MIN_HEIGHT,
     },
     headerTitle: {
