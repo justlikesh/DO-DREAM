@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import BackButton from "./BackButton";
 import VoiceCommandButton from "./VoiceCommandButton";
 import { createCommonStyles } from "../styles/commonStyles";
+import BookmarkButton from "./BookmarkButton";
 import { Material } from "../types/material";
 import { Chapter } from "../types/chapter";
 import { useTheme } from "../contexts/ThemeContext";
@@ -50,31 +51,10 @@ export default function PlayerHeader({
         />
 
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[
-              styles.bookmarkHeaderButton,
-              isBookmarked && styles.bookmarkHeaderButtonActive,
-            ]}
+          <BookmarkButton
+            isBookmarked={isBookmarked}
             onPress={onToggleBookmark}
-            accessible
-            accessibilityLabel={isBookmarked ? "저장 해제하기" : "현재 챕터 저장하기"}
-            accessibilityHint={
-              isBookmarked
-                ? "현재 챕터의 저장을 해제합니다."
-                : "현재 학습 위치를 저장합니다."
-            }
-            accessibilityRole="button"
-          >
-            <Text
-              style={[
-                styles.bookmarkHeaderButtonText,
-                isBookmarked && styles.bookmarkHeaderButtonTextActive,
-              ]}
-            >
-              {isBookmarked ? "저장 해제" : "저장하기"}
-            </Text>
-          </TouchableOpacity>
-
+          />
           <VoiceCommandButton
             style={commonStyles.headerVoiceButton}
             accessibilityHint="두 번 탭한 후 재생, 일시정지, 다음, 이전, 질문하기, 저장하기, 퀴즈 풀기, 설정 열기, 한 섹션씩 모드, 연속 모드, 반복 모드, 뒤로 가기와 같은 명령을 말씀하세요."
@@ -103,7 +83,6 @@ export default function PlayerHeader({
 
 const createStyles = (colors: any, fontSize: (size: number) => number) => {
   const isPrimaryColors = 'primary' in colors;
-  const isHighContrast = 'button' in colors;
 
   return StyleSheet.create({
     header: {
@@ -128,30 +107,6 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       alignItems: "center",
       gap: 8,
       height: HEADER_BTN_HEIGHT,
-    },
-    bookmarkHeaderButton: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-      borderWidth: 3,
-      borderColor: isPrimaryColors ? colors.status.info : colors.status.info,
-      backgroundColor: isPrimaryColors ? colors.status.infoLight : colors.background.elevated,
-      height: HEADER_BTN_HEIGHT,
-      minWidth: 100,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    bookmarkHeaderButtonActive: {
-      borderColor: isPrimaryColors ? "#43A047" : colors.status.success,
-      backgroundColor: isPrimaryColors ? "#E8F5E9" : colors.background.elevated,
-    },
-    bookmarkHeaderButtonText: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: colors.text.primary,
-    },
-    bookmarkHeaderButtonTextActive: {
-      color: isPrimaryColors ? "#1B5E20" : colors.status.success,
     },
     headerInfo: {
       marginTop: 8,
