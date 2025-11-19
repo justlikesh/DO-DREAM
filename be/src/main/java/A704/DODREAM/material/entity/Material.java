@@ -54,16 +54,6 @@ public class Material {
 	@Column(name = "grade_level", length = 20)
 	private String gradeLevel;
 
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "content_type", length = 20)
-//	@Builder.Default
-//	private ContentType contentType = ContentType.TEXT;
-//
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "processing_status", nullable = false, length = 20)
-//	@Builder.Default
-//	private ProcessingStatus processingStatus = ProcessingStatus.PENDING;
-
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     @Builder.Default
@@ -91,8 +81,4 @@ public class Material {
     public boolean isDeleted() {
         return this.deletedAt != null;
     }
-
-//	@OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-//	@Builder.Default
-//	private List<MaterialContent> contents = new ArrayList<>();
 }

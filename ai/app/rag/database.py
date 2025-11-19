@@ -16,6 +16,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # RAG 모델(ChatSession, ChatMessage)을 위한 기본 클래스
 Base = declarative_base()
 
+
 def get_rag_db():
     """
     FastAPI 의존성(Dependency) 함수.
