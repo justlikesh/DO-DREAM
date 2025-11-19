@@ -532,11 +532,11 @@
 }
 
 .sr-accuracy-badge {
-  background: rgba(239, 246, 255, 0.8);
+  background: rgba(239, 246, 255, 1);
   color: #192b55;
   padding: 3px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   border: 1px solid rgba(226, 232, 240, 0.3);
 }
@@ -598,9 +598,9 @@
   display: inline-flex;
   padding: 4px 10px;
   border-radius: 6px;
-  background: rgba(239, 246, 255, 0.8);
+  background: rgba(239, 246, 255, 1);
   color: #192b55;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 }

@@ -7,6 +7,7 @@ import ClassroomList from './pages/ClassroomList';
 import Classroom from './pages/Classroom';
 import EditorPage from './pages/EditorPage';
 import StudentRoom from './pages/StudentRoom';
+import ChatHistory from './pages/ChatHistory'; 
 import './index.css';
 
 export default function App() {
@@ -46,7 +47,7 @@ export default function App() {
   };
 
   return (
-    <MemoProvider> {/* ✅ 추가 */}
+    <MemoProvider>
       <Routes>
         {/* 로그인/회원가입 페이지 */}
         <Route
@@ -88,6 +89,12 @@ export default function App() {
         <Route
           path="/student/:studentId"
           element={isLoggedIn ? <StudentRoom /> : <Navigate to="/" replace />}
+        />
+
+        {/* 대화 기록 페이지 */}
+        <Route
+          path="/chat-history/:sessionId"
+          element={isLoggedIn ? <ChatHistory /> : <Navigate to="/" replace />}
         />
 
         {/* 기본 라우트 */}

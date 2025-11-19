@@ -5,7 +5,6 @@ import {
   FileText,
   MessageCircle,
   Award,
-  AlertTriangle,
   Home,
   Search,
   SortDesc,
@@ -43,10 +42,23 @@ type QuizResult = {
 
 type StudentQuestion = {
   id: string;
-  question: string;
-  answer: string;
-  askedDate: string;
-  topic: string;
+  document_id: string;
+  material_title: string;
+  session_title: string;
+  created_at: string;
+  last_message_preview: string;
+};
+
+type ChatMessage = {
+  role: 'user' | 'ai';
+  content: string;
+  created_at: string;
+};
+
+type ChatSession = {
+  session_id: string;
+  material_title: string;
+  messages: ChatMessage[];
 };
 
 type SharedMaterialItemDto = {
@@ -96,11 +108,17 @@ const formatYmdFromIso = (iso: string | null | undefined) => {
 };
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/+$/, '');
+const RAG_BASE = 'https://www.dodream.io.kr/ai';
 
 export default function StudentRoom() {
   const navigate = useNavigate();
   const location = useLocation();
   const { studentId } = useParams<{ studentId: string }>();
+
+  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(
+    null,
+  );
+  const [showChatModal, setShowChatModal] = useState(false);
 
   // ✅ 전달받은 데이터만 사용
   const student = location.state?.student as Student | undefined;
@@ -236,7 +254,38 @@ export default function StudentRoom() {
 
         // 퀴즈 / 질문은 아직 API 스펙이 없으니 일단 비워둠
         setQuizResults([]);
-        setStudentQuestions([]);
+        const qaRes = await fetch(
+          `${RAG_BASE}/rag/chat/sessions?student_id=${student.id}`,
+          { method: 'GET', headers, credentials: 'include' },
+        );
+
+        if (qaRes.ok) {
+          const raw = await qaRes.json();
+          console.log('💬 질문 & 답변 raw:', raw);
+
+          const items = Array.isArray(raw) ? raw : [];
+
+          const questions: StudentQuestion[] = items.map((item: any) => ({
+            id: item.id || '',
+            document_id: item.document_id || '',
+            material_title: item.material_title || '',
+            session_title: item.session_title || '',
+            created_at: item.created_at || '',
+            last_message_preview: item.last_message_preview || '',
+          }));
+
+          // 최신순 정렬
+          questions.sort(
+            (a, b) =>
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime(),
+          );
+
+          setStudentQuestions(questions);
+        } else {
+          console.warn(`질문 & 답변 조회 실패 (status: ${qaRes.status})`);
+          setStudentQuestions([]);
+        }
       } catch (err) {
         console.error('학생 데이터 로딩 실패', err);
         setReceivedMaterials([]);
@@ -398,6 +447,19 @@ export default function StudentRoom() {
         confirmButtonColor: '#192b55',
       });
     }
+  };
+
+  const handleViewQA = (sessionId: string, materialTitle: string) => {
+    // 별도 페이지로 이동 (state로 데이터 전달)
+    navigate(`/chat-history/${sessionId}`, {
+      state: {
+        sessionId,
+        materialTitle,
+        studentId: student.id,
+        studentName: student.name,
+        from: 'student-room',
+      },
+    });
   };
 
   const getStatusBadge = (status: string) =>
@@ -653,20 +715,24 @@ export default function StudentRoom() {
               ) : (
                 <div className="sr-qa-list">
                   {studentQuestions.map((qa) => (
-                    <div key={qa.id} className="sr-qa-item">
-                      <div className="sr-qa-header">
-                        <span className="sr-topic-badge">{qa.topic}</span>
-                        <span className="sr-qa-date">{qa.askedDate}</span>
+                    <div
+                      key={qa.id}
+                      className="sr-qa-item"
+                      onClick={() => handleViewQA(qa.id, qa.material_title)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="sr-qa-preview-left">
+                        <p className="sr-qa-preview-text">
+                          {qa.last_message_preview}
+                        </p>
                       </div>
-                      <div className="sr-qa-content">
-                        <div className="sr-qa-row">
-                          <span className="sr-qa-label">Q.</span>
-                          <p className="sr-qa-text">{qa.question}</p>
-                        </div>
-                        <div className="sr-qa-row">
-                          <span className="sr-qa-label">A.</span>
-                          <p className="sr-qa-text">{qa.answer}</p>
-                        </div>
+                      <div className="sr-qa-preview-right">
+                        <span className="sr-topic-badge">
+                          {qa.material_title}
+                        </span>
+                        <span className="sr-qa-date">
+                          {formatYmdFromIso(qa.created_at)}
+                        </span>
                       </div>
                     </div>
                   ))}
