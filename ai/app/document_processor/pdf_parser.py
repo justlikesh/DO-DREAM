@@ -1,30 +1,43 @@
-import google.generativeai as genai
-from typing import Dict, Any, List
 import json
-from app.document_processor.config import GEMINI_API_KEY
+from typing import Dict, Any, List
+
+from openai import OpenAI
+from app.config import OPENAI_API_KEY
 
 
 class PDFParser:
-    """PDF를 Gemini로 파싱하는 클래스"""
+    """PDF를 OpenAI로 파싱하는 클래스"""
 
-    def __init__(self):
-        """Gemini API 초기화"""
-        if not GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY가 설정되지 않았습니다.")
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "gpt-5-mini",  # 필요시 gpt-4.1 / gpt-4o 등으로 변경
+    ) -> None:
+        self.client = OpenAI(api_key=api_key or OPENAI_API_KEY)
+        self.model = model
 
-        print(f"🔑 Gemini API 키 로드됨: {GEMINI_API_KEY[:20]}...")  # 디버깅용
-        genai.configure(api_key=GEMINI_API_KEY)
+    def _extract_text_from_response(self, response) -> str:
+        """
+        openai-python 버전 차이를 흡수하기 위한 헬퍼:
+        - 최신 버전은 response.output_text 제공
+        - 구버전은 response.output[0].content[0].text 형태
+        """
+        # 1) 최신 방식
+        if hasattr(response, "output_text"):
+            return response.output_text
 
-        # Gemini 2.5 Flash 사용
-        self.model = genai.GenerativeModel("models/gemini-2.5-flash")
+        # 2) 구버전 fallback
+        try:
+            return response.output[0].content[0].text
+        except Exception:
+            # 3) 최후의 fallback (디버깅 용)
+            return str(response)
 
     def parse_pdf(self, pdf_path: str, output_format: str) -> Dict[str, Any]:
         """PDF를 파싱하여 지정된 형식으로 반환"""
 
-        # PDF 파일 업로드
         print(f"PDF 파일 업로드 중: {pdf_path}")
-        uploaded_file = genai.upload_file(pdf_path)
-        print(f"업로드 완료: {uploaded_file.name}")
+        uploaded_file = None
 
         prompt = f"""
 다음 PDF 문서를 분석하여 아래의 JSON 형식으로 정확하게 변환해주세요.
@@ -119,21 +132,39 @@ class PDFParser:
 """
 
         try:
-            print("Gemini로 PDF 분석 중...")
-            response = self.model.generate_content([uploaded_file, prompt])
+            # 1) PDF 파일 업로드
+            with open(pdf_path, "rb") as f:
+                uploaded_file = self.client.files.create(
+                    file=f,
+                    purpose="user_data",
+                )
+            print(f"업로드 완료: {uploaded_file.id}")
 
-            # 업로드된 파일 삭제
-            genai.delete_file(uploaded_file.name)
-            print("임시 파일 삭제 완료")
+            print("OpenAI로 PDF 분석 중...")
 
-            response_text = response.text.strip()
+            # ✅ 여기서 더 이상 response_format 사용하지 않음
+            response = self.client.responses.create(
+                model=self.model,
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_file", "file_id": uploaded_file.id},
+                            {"type": "input_text", "text": prompt},
+                        ],
+                    }
+                ],
+            )
 
-            # 마크다운 코드 블록 제거
+            # 버전 호환 헬퍼로 텍스트 추출
+            response_text = self._extract_text_from_response(response).strip()
+
+            # 혹시 모를 ``` 제거
             response_text = (
                 response_text.replace("```json", "").replace("```", "").strip()
             )
 
-            # JSON 파싱
+            # 4) JSON 파싱
             parsed_data = json.loads(response_text)
             print("JSON 파싱 성공!")
             return parsed_data
@@ -141,28 +172,26 @@ class PDFParser:
         except json.JSONDecodeError as e:
             print(f"JSON 파싱 실패: {e}")
             print(f"응답 내용:\n{response_text[:500]}...")
-            raise ValueError(f"JSON 파싱 실패: {e}\n응답: {response_text[:500]}...")
+            raise ValueError(
+                f"JSON 파싱 실패: {e}\n응답: {response_text[:500]}..."
+            )
         except Exception as e:
-            try:
-                genai.delete_file(uploaded_file.name)
-            except:
-                pass
             raise ValueError(f"PDF 파싱 중 오류 발생: {e}")
+        finally:
+            if uploaded_file is not None:
+                try:
+                    self.client.files.delete(uploaded_file.id)
+                    print("임시 파일 삭제 완료")
+                except Exception:
+                    pass
 
     def process_concept_checks(
         self, concept_checks: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """
-        개념 Check 항목을 Gemini로 가공하여 정제된 형태로 반환
-
-        Args:
-            concept_checks: s_title == "개념 Check"인 항목 리스트
-
-        Returns:
-            가공된 개념 Check 데이터
+        개념 Check 항목을 OpenAI로 가공하여 정제된 형태로 반환
         """
 
-        # 입력 데이터를 JSON 문자열로 변환
         concept_checks_json = json.dumps(concept_checks, ensure_ascii=False, indent=2)
 
         prompt = f"""
@@ -216,25 +245,28 @@ class PDFParser:
 """
 
         try:
-            print("Gemini로 개념 Check 가공 중...")
-            response = self.model.generate_content(prompt)
+            print("OpenAI로 개념 Check 가공 중...")
 
-            response_text = response.text.strip()
+            # 여기서도 response_format 제거
+            response = self.client.responses.create(
+                model=self.model,
+                input=prompt,
+            )
 
-            # 마크다운 코드 블록 제거
+            response_text = self._extract_text_from_response(response).strip()
             response_text = (
                 response_text.replace("```json", "").replace("```", "").strip()
             )
 
-            # JSON 파싱
             processed_data = json.loads(response_text)
             print("개념 Check 가공 성공!")
-
             return processed_data
 
         except json.JSONDecodeError as e:
             print(f"JSON 파싱 실패: {e}")
             print(f"응답 내용:\n{response_text[:500]}...")
-            raise ValueError(f"JSON 파싱 실패: {e}\n응답: {response_text[:500]}...")
+            raise ValueError(
+                f"JSON 파싱 실패: {e}\n응답: {response_text[:500]}..."
+            )
         except Exception as e:
             raise ValueError(f"개념 Check 가공 중 오류 발생: {e}")
