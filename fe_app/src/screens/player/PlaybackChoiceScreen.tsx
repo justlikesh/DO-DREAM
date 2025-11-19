@@ -138,12 +138,13 @@ export default function PlaybackChoiceScreen() {
       `${selectedChapter.title} 챕터를 처음부터 시작합니다.`
     );
 
-    navigation.navigate("Player", {
+    navigation.navigate("Player" as any, {
       material,
       chapterId: selectedChapter.chapterId,
       fromStart: true,
       initialSectionIndex: 0,
-    });
+      key: "Player",
+    } as any);
   }, [chapters, currentChapterIndex, material, navigation]);
 
   const handleContinue = useCallback(() => {
@@ -164,11 +165,12 @@ export default function PlaybackChoiceScreen() {
       `${selectedChapter.title} 챕터를 이어서 듣기 시작합니다.`
     );
 
-    navigation.navigate("Player", {
+    navigation.navigate("Player" as any, {
       material,
       chapterId: selectedChapter.chapterId,
       fromStart: false,
-    });
+      key: "Player",
+    } as any);
   }, [chapters, currentChapterIndex, material, navigation]);
 
   const handleBookmarkPress = useCallback(() => {
@@ -219,12 +221,13 @@ export default function PlaybackChoiceScreen() {
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    navigation.navigate("Player", {
+    navigation.navigate("Player" as any, {
       material,
       chapterId: selectedChapter.chapterId,
       fromStart: true,
       initialSectionIndex: 0,
-    });
+      key: "Player",
+    } as any);
   }, [chapters, currentChapterIndex, material, navigation]);
 
   const handleSettingsPress = useCallback(() => {
