@@ -550,7 +550,7 @@ export default function ClassroomList({ onLogout }: ClassroomListProps) {
       heightAuto: false,
     });
 
-    const MIN_SHOW_MS = 1200;
+    const MIN_SHOW_MS = 500;
 
     try {
       const isPdf =
