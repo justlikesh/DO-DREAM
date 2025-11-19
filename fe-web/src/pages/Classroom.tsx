@@ -648,7 +648,12 @@ export default function Classroom() {
     <div className="cl-root cl-root--no-page-scroll classroom-page">
       <header className="cl-header">
         <div className="cl-header-wrapper">
-          <h1 className="cl-header-title">DO:DREAM</h1>
+          <h1
+            className="cl-header-title cl-header-title--clickable"
+            onClick={() => navigate('/classrooms')}
+          >
+            DO:DREAM
+          </h1>
           <div className="cl-header-button">
             <button
               type="button"
