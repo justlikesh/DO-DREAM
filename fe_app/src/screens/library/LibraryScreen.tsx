@@ -403,9 +403,8 @@ export default function LibraryScreen() {
 
     // 진행률 데이터가 있으면 우선적으로 사용
     const chapterDescription = progressData
-      ? `진행률 ${progressData.overallProgressPercentage.toFixed(1)}%, ${
-          progressData.completedSections
-        }/${progressData.totalSections} 섹션 완료. `
+      ? `진행률 ${progressData.overallProgressPercentage.toFixed(0)}%, ${
+          progressData.completedSections} / ${progressData.totalSections} 챕터 완료. `
       : hasChapterInfo
       ? `현재 ${item.currentChapter}챕터, 전체 ${item.totalChapters}챕터 중. `
       : item.hasProgress
@@ -446,7 +445,7 @@ export default function LibraryScreen() {
               style={[styles.chapterText, { fontSize: scaledChapterFontSize }]}
             >
               {progressData
-                ? `${progressData.overallProgressPercentage.toFixed(1)}% 완료`
+                ? `${progressData.overallProgressPercentage.toFixed(0)}% 완료`
                 : hasChapterInfo
                 ? `현재 ${item.currentChapter}챕터`
                 : item.hasProgress
@@ -455,9 +454,9 @@ export default function LibraryScreen() {
             </Text>
 
             {progressData && (
-              <Text style={styles.sectionProgressText}>
+              <Text style={styles.chapterProgressText}>
                 {progressData.completedSections} / {progressData.totalSections}{" "}
-                섹션
+                챕터
               </Text>
             )}
           </View>
@@ -476,7 +475,7 @@ export default function LibraryScreen() {
     );
   };
 
-  const styles = React.useMemo(() => createStyles(colors, themeFont), [colors, themeFont]);
+  const styles = React.useMemo(() => createStyles(colors, themeFont, isHighContrast), [colors, themeFont, isHighContrast]);
   const headerFontSize = themeFont(36);
 
   // 핸들러를 ref로 저장하여 최신 버전 유지
@@ -568,7 +567,7 @@ export default function LibraryScreen() {
   );
 }
 
-const createStyles = (colors: any, fontSize: (size: number) => number) => {
+const createStyles = (colors: any, fontSize: (size: number) => number, isHighContrast: boolean) => {
   const isPrimaryColors = 'primary' in colors;
 
   return StyleSheet.create({
@@ -585,7 +584,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       paddingHorizontal: 24,
       paddingVertical: 16,
       borderBottomWidth: 3,
-      borderBottomColor: isPrimaryColors ? colors.primary.main : colors.border.default,
+      borderBottomColor: isHighContrast ? colors.secondary.main : (isPrimaryColors ? colors.primary.main : colors.border.default),
       minHeight: HEADER_MIN_HEIGHT,
     },
     studentName: {
@@ -639,7 +638,7 @@ const createStyles = (colors: any, fontSize: (size: number) => number) => {
       color: colors.text.secondary,
       marginBottom: 2,
     },
-    sectionProgressText: {
+    chapterProgressText: {
       fontSize: fontSize(15),
       color: colors.text.tertiary || colors.text.secondary,
       marginTop: 2,
