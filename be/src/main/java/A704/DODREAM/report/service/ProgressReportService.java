@@ -112,13 +112,30 @@ public class ProgressReportService {
         // 5. 챕터별 진행률 계산
         List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
 
-        // 5-1. totalPages 동기화 (DB와 실제 계산값 일치시키기)
+        // 5-1. totalPages 동기화 및 currentPage 보정
         int calculatedTotalPages = calculateTotalSections(chapters);
-        if (progress != null && (progress.getTotalPages() == null || !progress.getTotalPages().equals(calculatedTotalPages))) {
-            log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}",
-                    progress.getTotalPages(), calculatedTotalPages);
-            progress.updateTotalPages(calculatedTotalPages);
-            progressRepository.save(progress);
+        if (progress != null) {
+            boolean needsSave = false;
+            
+            // totalPages 동기화
+            if (progress.getTotalPages() == null || !progress.getTotalPages().equals(calculatedTotalPages)) {
+                log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}",
+                        progress.getTotalPages(), calculatedTotalPages);
+                progress.updateTotalPages(calculatedTotalPages);
+                needsSave = true;
+            }
+            
+            // currentPage가 totalPages를 초과하면 보정
+            if (progress.getCurrentPage() != null && progress.getCurrentPage() > calculatedTotalPages) {
+                log.warn("getProgressReport: currentPage 보정. DB={} → 최대값={}",
+                        progress.getCurrentPage(), calculatedTotalPages);
+                progress.updateProgress(calculatedTotalPages);
+                needsSave = true;
+            }
+            
+            if (needsSave) {
+                progressRepository.save(progress);
+            }
         }
 
         // 6. 전체 통계 계산 (퀴즈 제외)
@@ -492,17 +509,25 @@ public class ProgressReportService {
 
         Material material = share.getMaterial();
 
-        // 3. chapters 정보 가져오기 및 totalPages 자동 계산
+        // 3. chapters 정보 가져오기 및 totalPages 계산/검증
         List<Map<String, Object>> chapters = null;
+        Integer serverCalculatedTotalPages = null;
+        
         try {
             Map<String, Object> jsonData = getMaterialJsonFromS3(material);
             chapters = extractChapters(jsonData);
-
-            if (totalPages == null) {
-                totalPages = calculateTotalSections(chapters);
+            serverCalculatedTotalPages = calculateTotalSections(chapters);
+            
+            // 서버 계산값을 항상 사용 (앱이 보낸 값은 참고용)
+            if (totalPages != null && !totalPages.equals(serverCalculatedTotalPages)) {
+                log.warn("앱이 보낸 totalPages({})와 서버 계산값({})이 다름. 서버 값 사용.", 
+                        totalPages, serverCalculatedTotalPages);
             }
+            totalPages = serverCalculatedTotalPages;
+            
         } catch (Exception e) {
             log.error("총 페이지 수 계산 실패: materialId={}", materialId, e);
+            // JSON 조회 실패 시에만 앱이 보낸 값 사용
             if (totalPages == null) {
                 totalPages = currentPage;
             }

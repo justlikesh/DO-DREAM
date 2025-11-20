@@ -77,12 +77,10 @@ public class StudentMaterialProgress {
 			this.currentPage = page;
 		}
 
-		if (this.totalPages != null && this.totalPages > 0) {
-			this.progressPercentage = (int)((this.currentPage * 100.0) / totalPages);
-
-			if (this.currentPage >= totalPages && this.completedAt == null) {
-				this.completedAt = LocalDateTime.now();
-			}
+		// progressPercentage는 DB에 저장하지 않음 - API에서 실시간 계산
+		// completedAt만 체크
+		if (this.totalPages != null && this.currentPage >= this.totalPages && this.completedAt == null) {
+			this.completedAt = LocalDateTime.now();
 		}
 	}
 
