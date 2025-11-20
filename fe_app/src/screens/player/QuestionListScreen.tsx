@@ -347,9 +347,9 @@ const createStyles = (
       minHeight: HEADER_MIN_HEIGHT,
     },
     title: {
-      fontSize: fontSize(22),
-      fontWeight: "600",
-      color: colors.text.secondary,
+      fontSize: fontSize(32),
+      fontWeight: "bold",
+      color: colors.text.primary,
       flex: 1,
       textAlign: "center",
     },

@@ -256,12 +256,14 @@ export default function QuizResultScreen() {
         <View style={styles.cardContent}>
           <Text style={styles.cardQuestionLabel}>문제</Text>
           {resultItem.title && (
-            <Text style={styles.cardQuestionText}>{resultItem.title}</Text>
+            <View style={styles.questionContentBox}>
+              <Text style={styles.cardQuestionText}>{resultItem.title}</Text>
+            </View>
           )}
           {resultItem.content && (
-            <Text style={[styles.cardQuestionText, resultItem.title && { marginTop: 8 }]}>
-              {resultItem.content}
-            </Text>
+            <View style={[styles.questionContentBox, resultItem.title && { marginTop: 12 }]}>
+              <Text style={styles.cardQuestionText}>{resultItem.content}</Text>
+            </View>
           )}
         </View>
 
@@ -737,6 +739,13 @@ const createStyles = (isHighContrast: boolean) => StyleSheet.create({
     color: COLORS.text.secondary,
     fontWeight: "600",
     marginBottom: 8,
+  },
+  questionContentBox: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.primary.main,
+    backgroundColor: COLORS.background.default,
   },
   cardQuestionText: {
     fontSize: 26,

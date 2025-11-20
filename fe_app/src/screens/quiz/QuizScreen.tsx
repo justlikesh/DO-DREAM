@@ -554,15 +554,19 @@ export default function QuizScreen() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <View style={styles.header}>
-          <View style={styles.headerTopRow}>
-            <BackButton onPress={handleGoBack} />
-            <VoiceCommandButton
-              style={commonStyles.headerVoiceButton}
-              accessibilityHint="두 번 탭한 후, 제출하기, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
-              onBeforeListen={() => Speech.stop()}
-            />
-          </View>
-          <View style={styles.headerInfo}>
+          <BackButton onPress={handleGoBack} />
+          <VoiceCommandButton
+            style={commonStyles.headerVoiceButton}
+            accessibilityHint="두 번 탭한 후, 제출하기, 다음 문제, 이전 문제, 문제 다시, 채점하기, 뒤로 가기와 같은 명령을 말씀하세요"
+            onBeforeListen={() => Speech.stop()}
+          />
+        </View>
+
+        <ScrollView
+          style={styles.contentArea}
+          contentContainerStyle={styles.contentContainer}
+        >
+          <View style={styles.questionHeader}>
             <Text style={styles.quizTitle} numberOfLines={1}>
               {currentQuestion.title}
             </Text>
@@ -570,20 +574,8 @@ export default function QuizScreen() {
               {currentQuestionIndex + 1} / {questions.length}
             </Text>
           </View>
-        </View>
 
-        <ScrollView
-          style={styles.contentArea}
-          contentContainerStyle={styles.contentContainer}
-        >
           <View style={styles.questionSection}>
-            <Text
-              style={styles.questionTitle}
-              accessible={true}
-              accessibilityRole="text"
-            >
-              {currentQuestion.title}
-            </Text>
             <Text
               ref={questionTextRef}
               style={styles.questionContent}
@@ -711,31 +703,26 @@ const createStyles = (isHighContrast: boolean) =>
       backgroundColor: COLORS.background.default,
     },
     header: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "stretch",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
       paddingHorizontal: 24,
       paddingVertical: 16,
       borderBottomWidth: 3,
       borderBottomColor: isHighContrast ? COLORS.secondary.main : COLORS.primary.main,
       minHeight: HEADER_MIN_HEIGHT,
-    },
-    headerTopRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
       height: HEADER_BTN_HEIGHT,
     },
-    headerInfo: {
-      marginTop: 16,
+    questionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      marginBottom: 24,
     },
     quizTitle: {
-      fontSize: 26,
+      fontSize: 32,
       fontWeight: "bold",
-      color: COLORS.text.primary,
+      color: isHighContrast ? COLORS.primary.main : COLORS.primary.dark,
       flex: 1,
       marginRight: 16,
     },
@@ -754,12 +741,6 @@ const createStyles = (isHighContrast: boolean) =>
     },
     questionSection: {
       marginBottom: 32,
-    },
-    questionTitle: {
-      fontSize: 24,
-      fontWeight: "bold",
-      color: COLORS.primary.main,
-      marginBottom: 16,
     },
     questionContent: {
       fontSize: 28,
