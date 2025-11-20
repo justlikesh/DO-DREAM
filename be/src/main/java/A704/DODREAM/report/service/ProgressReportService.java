@@ -52,6 +52,7 @@ public class ProgressReportService {
     /**
      * 특정 학생의 특정 교재에 대한 진행률 리포트 조회
      */
+    @Transactional
     public ProgressReportResponse getProgressReport(Long studentId, Long materialId) {
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
@@ -110,6 +111,15 @@ public class ProgressReportService {
 
         // 5. 챕터별 진행률 계산
         List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
+        
+        // 5-1. totalPages 동기화 (DB와 실제 계산값 일치시키기)
+        int calculatedTotalPages = calculateTotalSections(chapters);
+        if (progress != null && (progress.getTotalPages() == null || !progress.getTotalPages().equals(calculatedTotalPages))) {
+            log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}", 
+                    progress.getTotalPages(), calculatedTotalPages);
+            progress.updateTotalPages(calculatedTotalPages);
+            progressRepository.save(progress);
+        }
 
         // 6. 전체 통계 계산 (퀴즈 제외)
         int totalChapters = (int) chapterProgressList.stream()
@@ -518,29 +528,39 @@ public class ProgressReportService {
                     .build();
         }
 
-        // 6. 진행률 업데이트 (콘텐츠 페이지 기준)
-        progress.updateProgress(contentCurrentPage);
-        
-        // totalPages가 변경된 경우 업데이트
-        if (!totalPages.equals(progress.getTotalPages())) {
-            // Reflection 또는 Setter가 필요한데, 일단 로그만
-            log.warn("totalPages 불일치: DB={}, 계산된 값={}", progress.getTotalPages(), totalPages);
+        // 6. totalPages 업데이트 (필요한 경우)
+        if (progress.getTotalPages() == null || !totalPages.equals(progress.getTotalPages())) {
+            log.info("totalPages 업데이트: {} → {}", progress.getTotalPages(), totalPages);
+            progress.updateTotalPages(totalPages);
         }
+        
+        // 7. 진행률 업데이트 (콘텐츠 페이지 기준)
+        progress.updateProgress(contentCurrentPage);
 
-        // 7. 저장
+        // 8. 저장
         StudentMaterialProgress saved = progressRepository.save(progress);
+        
+        // 9. 실제 진행률 계산 (DB 값 검증용)
+        int calculatedPercentage = 0;
+        if (saved.getTotalPages() != null && saved.getTotalPages() > 0) {
+            calculatedPercentage = (int)((saved.getCurrentPage() * 100.0) / saved.getTotalPages());
+        }
+        
+        log.info("진행률 저장 완료: currentPage={}/{}, DB진행률={}%, 계산진행률={}%", 
+                saved.getCurrentPage(), saved.getTotalPages(), 
+                saved.getProgressPercentage(), calculatedPercentage);
 
-        // 8. 응답 생성
+        // 10. 응답 생성 (계산된 진행률 사용)
         String message = saved.getCompletedAt() != null 
                 ? "🎉 축하합니다! 모든 학습을 완료했습니다!"
-                : String.format("진행률 업데이트 완료 (%d%%)", saved.getProgressPercentage());
+                : String.format("진행률 업데이트 완료 (%d%%)", calculatedPercentage);
 
         return UpdateProgressResponse.builder()
                 .studentId(saved.getStudent().getId())
                 .materialId(saved.getMaterial().getId())
                 .currentPage(saved.getCurrentPage())
                 .totalPages(saved.getTotalPages())
-                .progressPercentage(saved.getProgressPercentage())
+                .progressPercentage(calculatedPercentage)  // 계산된 진행률 사용
                 .isCompleted(saved.getCompletedAt() != null)
                 .lastAccessedAt(saved.getLastAccessedAt())
                 .completedAt(saved.getCompletedAt())
