@@ -87,18 +87,14 @@ public class StudentMaterialProgress {
 	}
 
 	/**
-	 * totalPages 업데이트 및 진행률 재계산
+	 * totalPages 업데이트 (진행률은 재계산하지 않음 - API에서 실시간 계산)
 	 */
 	public void updateTotalPages(int totalPages) {
 		this.totalPages = totalPages;
-
-		// 진행률 재계산
-		if (this.currentPage != null && this.totalPages > 0) {
-			this.progressPercentage = (int)((this.currentPage * 100.0) / this.totalPages);
-
-			if (this.currentPage >= this.totalPages && this.completedAt == null) {
-				this.completedAt = LocalDateTime.now();
-			}
+		
+		// completedAt 체크만 수행
+		if (this.currentPage != null && this.currentPage >= this.totalPages && this.completedAt == null) {
+			this.completedAt = LocalDateTime.now();
 		}
 	}
 }
