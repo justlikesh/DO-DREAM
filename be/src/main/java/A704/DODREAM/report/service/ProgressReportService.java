@@ -621,21 +621,25 @@ public class ProgressReportService {
     }
 
     /**
-     * 현재 학습 중인 챕터 찾기
+     * 현재 학습 중인 챕터 찾기 (퀴즈 제외)
      */
     private ChapterProgressDto findCurrentChapter(List<ChapterProgressDto> chapterProgress) {
-        // 완료되지 않은 첫 번째 챕터를 현재 챕터로 간주
+        // 완료되지 않은 첫 번째 콘텐츠 챕터를 현재 챕터로 간주 (퀴즈 제외)
         for (ChapterProgressDto chapter : chapterProgress) {
-            if (!chapter.isCompleted()) {
+            if (!"quiz".equals(chapter.getChapterType()) && !chapter.isCompleted()) {
                 return chapter;
             }
         }
 
-        // 모든 챕터가 완료된 경우 마지막 챕터 반환
-        if (!chapterProgress.isEmpty()) {
-            return chapterProgress.get(chapterProgress.size() - 1);
+        // 모든 콘텐츠 챕터가 완료된 경우 마지막 콘텐츠 챕터 반환
+        for (int i = chapterProgress.size() - 1; i >= 0; i--) {
+            ChapterProgressDto chapter = chapterProgress.get(i);
+            if (!"quiz".equals(chapter.getChapterType())) {
+                return chapter;
+            }
         }
 
+        // 콘텐츠 챕터가 없으면 null
         return null;
     }
 
