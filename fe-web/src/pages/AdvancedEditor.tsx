@@ -420,6 +420,9 @@ export default function AdvancedEditor({
     const first = parts[0];
     const rest = parts.slice(1);
 
+    // ✅ 현재 활성 챕터 ID 저장
+    const currentActiveId = activeChapterId;
+
     setChapters((prev) => {
       const currentChapter = prev.find((ch) => ch.id === activeChapterId);
       const originalType = currentChapter?.type || 'content';
@@ -440,10 +443,13 @@ export default function AdvancedEditor({
       );
 
       const newOnes: Chapter[] = rest.map((content, idx) => {
-        const nextId = String(baseIndex + idx);
+        // ✅ 고유한 ID 생성 (충돌 방지)
+        const nextId = `${originalType}_${Date.now()}_${idx}`;
 
         const defaultTitle =
-          originalType === 'quiz' ? `문제 ${nextId}` : `챕터 ${nextId}`;
+          originalType === 'quiz'
+            ? `문제 ${baseIndex + idx}`
+            : `챕터 ${baseIndex + idx}`;
 
         const extractedTitle = extractTitle(content, defaultTitle);
 
@@ -466,6 +472,11 @@ export default function AdvancedEditor({
       result.splice(activeChapterIndex + 1, 0, ...newOnes);
       return result;
     });
+
+    // ✅ 분할 후 명시적으로 원래 활성 챕터(첫 번째 분할 결과) 유지
+    setTimeout(() => {
+      setActiveChapterId(currentActiveId);
+    }, 0);
 
     setIsSplitMode(false);
 
