@@ -52,7 +52,6 @@ public class ProgressReportService {
     /**
      * 특정 학생의 특정 교재에 대한 진행률 리포트 조회
      */
-    @Transactional
     public ProgressReportResponse getProgressReport(Long studentId, Long materialId) {
         // 1. 학생 조회
         User student = userRepository.findById(studentId)
@@ -69,120 +68,31 @@ public class ProgressReportService {
                 .findByStudentIdAndMaterialId(studentId, materialId)
                 .orElse(null);
 
-        // 4. S3에서 JSON 가져와서 분석
-        Map<String, Object> jsonData = getMaterialJsonFromS3(material);
-        log.info("=== JSON 구조 상세 분석 시작 ===");
-        log.info("최상위 keys: {}", jsonData.keySet());
-
-        // extractChapters 메서드로 3가지 패턴 모두 지원 (parsedData.data / data / chapters)
-        List<Map<String, Object>> chapters = extractChapters(jsonData);
-
-        log.info("총 챕터 수: {}", chapters.size());
-
-        // 첫 번째 챕터 구조 로깅
-        if (!chapters.isEmpty()) {
-            Map<String, Object> firstChapter = chapters.get(0);
-            log.info("첫 번째 챕터 keys: {}", firstChapter.keySet());
-
-            // 두 가지 구조 모두 로깅
-            if (firstChapter.containsKey("index")) {
-                // 이전 구조
-                log.info("첫 번째 챕터 (이전 구조) - index: {}, index_title: {}",
-                        firstChapter.get("index"),
-                        firstChapter.get("index_title"));
-
-                // titles 구조 확인
-                List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
-                if (titles != null && !titles.isEmpty()) {
-                    log.info("titles 개수: {}", titles.size());
-                    Map<String, Object> firstTitle = titles.get(0);
-                    log.info("첫 번째 title keys: {}", firstTitle.keySet());
-                    log.info("첫 번째 title - title: {}", firstTitle.get("title"));
-                }
-            } else {
-                // 새로운 구조
-                log.info("첫 번째 챕터 (새로운 구조) - id: {}, title: {}, type: {}",
-                        firstChapter.get("id"),
-                        firstChapter.get("title"),
-                        firstChapter.get("type"));
-            }
-        }
-        log.info("=== JSON 구조 분석 완료 ===");
-
-        // 5. 챕터별 진행률 계산
-        List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
-
-        // 5-1. totalPages 동기화 및 currentPage 보정
-        int calculatedTotalPages = calculateTotalSections(chapters);
-        if (progress != null) {
-            boolean needsSave = false;
-            
-            // totalPages 동기화
-            if (progress.getTotalPages() == null || !progress.getTotalPages().equals(calculatedTotalPages)) {
-                log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}",
-                        progress.getTotalPages(), calculatedTotalPages);
-                progress.updateTotalPages(calculatedTotalPages);
-                needsSave = true;
-            }
-            
-            // currentPage가 totalPages를 초과하면 보정
-            if (progress.getCurrentPage() != null && progress.getCurrentPage() > calculatedTotalPages) {
-                log.warn("getProgressReport: currentPage 보정. DB={} → 최대값={}",
-                        progress.getCurrentPage(), calculatedTotalPages);
-                progress.updateProgress(calculatedTotalPages);
-                needsSave = true;
-            }
-            
-            if (needsSave) {
-                progressRepository.save(progress);
-            }
-        }
-
-        // 6. 전체 통계 계산 (퀴즈 제외)
-        int totalChapters = (int) chapterProgressList.stream()
-                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
-                .count();
-        int totalSections = chapterProgressList.stream()
-                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
-                .mapToInt(ChapterProgressDto::getTotalSections)
-                .sum();
-
-        int completedChapters = (int) chapterProgressList.stream()
-                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
-                .filter(ChapterProgressDto::isCompleted)
-                .count();
-
-        int completedSections = chapterProgressList.stream()
-                .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
-                .mapToInt(ChapterProgressDto::getCompletedSections)
-                .sum();
-
-        // 항상 실시간 계산 사용 (DB 값은 신뢰할 수 없음)
-        double overallProgress = totalSections > 0
-                ? (double) completedSections / totalSections * 100.0
+        // 4. DB 값으로 진행률 계산
+        int currentPage = progress != null && progress.getCurrentPage() != null ? progress.getCurrentPage() : 0;
+        int totalPages = progress != null && progress.getTotalPages() != null ? progress.getTotalPages() : 1;
+        
+        double overallProgress = totalPages > 0
+                ? (double) currentPage / totalPages * 100.0
                 : 0.0;
         
-        log.info("진행률 계산: completedSections={}, totalSections={}, progress={}%", 
-                completedSections, totalSections, overallProgress);
-
-        // 7. 현재 학습 중인 챕터 찾기
-        ChapterProgressDto currentChapter = findCurrentChapter(chapterProgressList);
+        log.info("진행률 조회: currentPage={}/{} = {}%", currentPage, totalPages, overallProgress);
 
         return ProgressReportResponse.builder()
                 .studentId(student.getId())
                 .studentName(student.getName())
                 .materialId(material.getId())
                 .materialTitle(material.getTitle())
-                .totalChapters(totalChapters)
-                .completedChapters(completedChapters)
-                .totalSections(totalSections)
-                .completedSections(completedSections)
+                .totalChapters(totalPages)  // totalPages = 총 챕터/섹션 수
+                .completedChapters(currentPage >= totalPages ? totalPages : 0)
+                .totalSections(totalPages)
+                .completedSections(currentPage)
                 .overallProgressPercentage(Math.round(overallProgress * 100.0) / 100.0)
-                .currentChapterNumber(currentChapter != null ? currentChapter.getChapterNumber() : null)
-                .currentChapterTitle(currentChapter != null ? currentChapter.getChapterTitle() : null)
+                .currentChapterNumber(currentPage < totalPages ? currentPage + 1 : totalPages)
+                .currentChapterTitle(null)  // 챕터 제목은 앱에서 관리
                 .lastAccessedAt(progress != null ? progress.getLastAccessedAt() : null)
                 .completedAt(progress != null ? progress.getCompletedAt() : null)
-                .chapterProgress(chapterProgressList)
+                .chapterProgress(new ArrayList<>())  // 상세 챕터 정보는 제공하지 않음
                 .build();
     }
 
