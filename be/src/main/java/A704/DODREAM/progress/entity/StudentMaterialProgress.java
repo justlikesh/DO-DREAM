@@ -27,12 +27,12 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "student_material_progresses",
-	indexes = {
-		@Index(name = "idx_student", columnList = "student_id")
-	},
-	uniqueConstraints = {
-		@UniqueConstraint(name = "uk_progress", columnNames = {"student_id", "material_id"})  // 22번째 줄
-	}
+		indexes = {
+				@Index(name = "idx_student", columnList = "student_id")
+		},
+		uniqueConstraints = {
+				@UniqueConstraint(name = "uk_progress", columnNames = {"student_id", "material_id"})  // 22번째 줄
+		}
 )
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -76,7 +76,7 @@ public class StudentMaterialProgress {
 		if (page > this.currentPage) {
 			this.currentPage = page;
 		}
-		
+
 		if (this.totalPages != null && this.totalPages > 0) {
 			this.progressPercentage = (int)((this.currentPage * 100.0) / totalPages);
 
@@ -85,17 +85,17 @@ public class StudentMaterialProgress {
 			}
 		}
 	}
-	
+
 	/**
 	 * totalPages 업데이트 및 진행률 재계산
 	 */
 	public void updateTotalPages(int totalPages) {
 		this.totalPages = totalPages;
-		
+
 		// 진행률 재계산
 		if (this.currentPage != null && this.totalPages > 0) {
 			this.progressPercentage = (int)((this.currentPage * 100.0) / this.totalPages);
-			
+
 			if (this.currentPage >= this.totalPages && this.completedAt == null) {
 				this.completedAt = LocalDateTime.now();
 			}

@@ -73,24 +73,24 @@ public class ProgressReportService {
         Map<String, Object> jsonData = getMaterialJsonFromS3(material);
         log.info("=== JSON 구조 상세 분석 시작 ===");
         log.info("최상위 keys: {}", jsonData.keySet());
-        
+
         // extractChapters 메서드로 3가지 패턴 모두 지원 (parsedData.data / data / chapters)
         List<Map<String, Object>> chapters = extractChapters(jsonData);
-        
+
         log.info("총 챕터 수: {}", chapters.size());
-        
+
         // 첫 번째 챕터 구조 로깅
         if (!chapters.isEmpty()) {
             Map<String, Object> firstChapter = chapters.get(0);
             log.info("첫 번째 챕터 keys: {}", firstChapter.keySet());
-            
+
             // 두 가지 구조 모두 로깅
             if (firstChapter.containsKey("index")) {
                 // 이전 구조
-                log.info("첫 번째 챕터 (이전 구조) - index: {}, index_title: {}", 
-                        firstChapter.get("index"), 
+                log.info("첫 번째 챕터 (이전 구조) - index: {}, index_title: {}",
+                        firstChapter.get("index"),
                         firstChapter.get("index_title"));
-                
+
                 // titles 구조 확인
                 List<Map<String, Object>> titles = (List<Map<String, Object>>) firstChapter.get("titles");
                 if (titles != null && !titles.isEmpty()) {
@@ -101,8 +101,8 @@ public class ProgressReportService {
                 }
             } else {
                 // 새로운 구조
-                log.info("첫 번째 챕터 (새로운 구조) - id: {}, title: {}, type: {}", 
-                        firstChapter.get("id"), 
+                log.info("첫 번째 챕터 (새로운 구조) - id: {}, title: {}, type: {}",
+                        firstChapter.get("id"),
                         firstChapter.get("title"),
                         firstChapter.get("type"));
             }
@@ -111,11 +111,11 @@ public class ProgressReportService {
 
         // 5. 챕터별 진행률 계산
         List<ChapterProgressDto> chapterProgressList = calculateChapterProgress(chapters, progress);
-        
+
         // 5-1. totalPages 동기화 (DB와 실제 계산값 일치시키기)
         int calculatedTotalPages = calculateTotalSections(chapters);
         if (progress != null && (progress.getTotalPages() == null || !progress.getTotalPages().equals(calculatedTotalPages))) {
-            log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}", 
+            log.info("getProgressReport: totalPages 동기화. DB={} → 계산값={}",
                     progress.getTotalPages(), calculatedTotalPages);
             progress.updateTotalPages(calculatedTotalPages);
             progressRepository.save(progress);
@@ -129,19 +129,19 @@ public class ProgressReportService {
                 .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .mapToInt(ChapterProgressDto::getTotalSections)
                 .sum();
-        
+
         int completedChapters = (int) chapterProgressList.stream()
                 .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .filter(ChapterProgressDto::isCompleted)
                 .count();
-        
+
         int completedSections = chapterProgressList.stream()
                 .filter(chapter -> !"quiz".equals(chapter.getChapterType()))
                 .mapToInt(ChapterProgressDto::getCompletedSections)
                 .sum();
 
-        double overallProgress = totalSections > 0 
-                ? (double) completedSections / totalSections * 100.0 
+        double overallProgress = totalSections > 0
+                ? (double) completedSections / totalSections * 100.0
                 : 0.0;
 
         // 7. 현재 학습 중인 챕터 찾기
@@ -182,7 +182,7 @@ public class ProgressReportService {
                 ProgressReportResponse report = getProgressReport(studentId, share.getMaterial().getId());
                 reports.add(report);
             } catch (Exception e) {
-                log.error("진행률 계산 실패: studentId={}, materialId={}", 
+                log.error("진행률 계산 실패: studentId={}, materialId={}",
                         studentId, share.getMaterial().getId(), e);
             }
         }
@@ -198,9 +198,9 @@ public class ProgressReportService {
             log.error("UploadedFile이 null입니다. materialId={}", material.getId());
             throw new CustomException(ErrorCode.FILE_PARSING_FAILED);
         }
-        
+
         if (material.getUploadedFile().getJsonS3Key() == null) {
-            log.error("JSON S3 Key가 null입니다. materialId={}, fileId={}", 
+            log.error("JSON S3 Key가 null입니다. materialId={}, fileId={}",
                     material.getId(), material.getUploadedFile().getId());
             throw new CustomException(ErrorCode.FILE_PARSING_FAILED);
         }
@@ -208,7 +208,7 @@ public class ProgressReportService {
         try {
             String s3Key = material.getUploadedFile().getJsonS3Key();
             log.info("S3에서 JSON 조회 시도: bucket={}, key={}", bucketName, s3Key);
-            
+
             GetObjectRequest getRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(s3Key)
@@ -216,13 +216,13 @@ public class ProgressReportService {
 
             ResponseInputStream<GetObjectResponse> response = s3Client.getObject(getRequest);
             String jsonString = new String(response.readAllBytes());
-            
-            log.info("S3에서 JSON 조회 성공: materialId={}, size={} bytes", 
+
+            log.info("S3에서 JSON 조회 성공: materialId={}, size={} bytes",
                     material.getId(), jsonString.length());
 
             return objectMapper.readValue(jsonString, Map.class);
         } catch (Exception e) {
-            log.error("S3에서 JSON 조회 실패: materialId={}, error={}", 
+            log.error("S3에서 JSON 조회 실패: materialId={}, error={}",
                     material.getId(), e.getMessage(), e);
             throw new RuntimeException("JSON 조회 실패: " + e.getMessage());
         }
@@ -234,11 +234,11 @@ public class ProgressReportService {
      */
     private int convertToContentPage(List<Map<String, Object>> chapters, int currentPage) {
         int quizCountBeforeCurrent = 0;
-        
+
         // currentPage 이전에 나온 퀴즈 챕터 개수 계산
         for (int i = 0; i < Math.min(currentPage, chapters.size()); i++) {
             Map<String, Object> chapter = chapters.get(i);
-            
+
             // 챕터 타입 확인
             String chapterType;
             if (chapter.containsKey("index")) {
@@ -249,17 +249,17 @@ public class ProgressReportService {
                 // 새로운 구조
                 chapterType = (String) chapter.getOrDefault("type", "content");
             }
-            
+
             if ("quiz".equals(chapterType)) {
                 quizCountBeforeCurrent++;
             }
         }
-        
+
         // 전체 페이지에서 퀴즈 개수를 빼서 콘텐츠 페이지 반환
         int contentPage = currentPage - quizCountBeforeCurrent;
-        log.debug("퀴즈 개수: {}, 전체 페이지: {} → 콘텐츠 페이지: {}", 
+        log.debug("퀴즈 개수: {}, 전체 페이지: {} → 콘텐츠 페이지: {}",
                 quizCountBeforeCurrent, currentPage, contentPage);
-        
+
         return Math.max(1, contentPage);
     }
 
@@ -270,22 +270,22 @@ public class ProgressReportService {
     private List<ChapterProgressDto> calculateChapterProgress(
             List<Map<String, Object>> chapters,
             StudentMaterialProgress progress) {
-        
+
         List<ChapterProgressDto> result = new ArrayList<>();
         // DB에 저장된 currentPage는 이미 콘텐츠 페이지 기준 (퀴즈 제외)
         int contentCurrentPage = progress != null ? progress.getCurrentPage() : 1;
         log.info("콘텐츠 페이지 기준 currentPage: {}", contentCurrentPage);
-        
+
         int cumulativeSections = 0;
 
         for (int i = 0; i < chapters.size(); i++) {
             Map<String, Object> chapter = chapters.get(i);
-            
+
             // 챕터 ID와 제목 추출 (두 가지 구조 지원)
             String chapterId;
             String chapterTitle;
             String chapterType;
-            
+
             if (chapter.containsKey("index")) {
                 // 이전 구조
                 chapterId = (String) chapter.get("index");
@@ -299,7 +299,7 @@ public class ProgressReportService {
                 chapterTitle = (String) chapter.get("title");
                 chapterType = (String) chapter.getOrDefault("type", "content");
             }
-            
+
             // 퀴즈 챕터는 진행률 계산에서 제외
             if ("quiz".equals(chapterType)) {
                 // 퀴즈 챕터는 섹션 수 0으로 설정하고 cumulativeSections에 포함하지 않음
@@ -315,10 +315,10 @@ public class ProgressReportService {
                         .build());
                 continue; // 다음 챕터로
             }
-            
+
             // Section 수 계산 (구조에 맞게 자동 판별)
             int totalSections = calculateSectionsFromChapter(chapter);
-            
+
             // 현재 진행 상황에 따른 완료된 섹션 계산
             int completedSections;
             boolean isCompleted;
@@ -345,8 +345,8 @@ public class ProgressReportService {
                 }
             }
 
-            double progressPercentage = totalSections > 0 
-                    ? (double) completedSections / totalSections * 100.0 
+            double progressPercentage = totalSections > 0
+                    ? (double) completedSections / totalSections * 100.0
                     : 0.0;
 
             result.add(ChapterProgressDto.builder()
@@ -385,14 +385,14 @@ public class ProgressReportService {
             return 1; // 최소 1 섹션
         }
     }
-    
+
     /**
      * 이전 JSON 구조에서 섹션 수 계산
      * titles, s_titles, ss_titles, concept_checks를 모두 카운팅
      */
     private int calculateSectionsFromOldStructure(Map<String, Object> chapter) {
         int sectionCount = 0;
-        
+
         String chapterId = (String) chapter.get("index");
         String chapterTitle = (String) chapter.get("index_title");
 
@@ -400,11 +400,11 @@ public class ProgressReportService {
         List<Map<String, Object>> titles = (List<Map<String, Object>>) chapter.get("titles");
         if (titles != null) {
             log.debug("챕터 [{}] titles 개수: {}", chapterId, titles.size());
-            
+
             for (int i = 0; i < titles.size(); i++) {
                 Map<String, Object> title = titles.get(i);
                 int titleSections = 0;
-                
+
                 // title 자체도 하나의 섹션
                 sectionCount++;
                 titleSections++;
@@ -426,7 +426,7 @@ public class ProgressReportService {
                         }
                     }
                 }
-                
+
                 log.debug("  - title[{}]: {} → {} 섹션", i, title.get("title"), titleSections);
             }
         }
@@ -445,13 +445,13 @@ public class ProgressReportService {
             log.info("챕터 [{}] {} - 0 섹션 (퀴즈 전용 챕터, 진행률 제외)", chapterId, chapterTitle);
             return 0;
         }
-        
+
         log.info("챕터 [{}] {} - 총 {} 섹션 (이전 구조)", chapterId, chapterTitle, sectionCount);
-        
+
         // 콘텐츠가 있는 경우 최소 1개 섹션 보장
         return Math.max(1, sectionCount);
     }
-    
+
     /**
      * 새로운 JSON 구조에서 섹션 수 계산
      * 각 chapter가 1개의 섹션 (퀴즈는 제외)
@@ -460,15 +460,15 @@ public class ProgressReportService {
         String chapterId = (String) chapter.get("id");
         String chapterTitle = (String) chapter.get("title");
         String chapterType = (String) chapter.get("type");
-        
+
         // 퀴즈 챕터는 진행률 계산에서 제외
         if ("quiz".equals(chapterType)) {
             log.info("챕터 [{}] {} (type: quiz) - 0 섹션 (퀴즈 제외)", chapterId, chapterTitle);
             return 0;
         }
-        
+
         log.info("챕터 [{}] {} (type: {}) - 1 섹션 (새로운 구조)", chapterId, chapterTitle, chapterType);
-        
+
         // 새로운 구조에서는 각 chapter가 1개의 섹션
         return 1;
     }
@@ -493,7 +493,7 @@ public class ProgressReportService {
         try {
             Map<String, Object> jsonData = getMaterialJsonFromS3(material);
             chapters = extractChapters(jsonData);
-            
+
             if (totalPages == null) {
                 totalPages = calculateTotalSections(chapters);
             }
@@ -508,7 +508,7 @@ public class ProgressReportService {
         int contentCurrentPage = currentPage;
         if (chapters != null && !chapters.isEmpty()) {
             contentCurrentPage = convertToContentPage(chapters, currentPage);
-            log.info("진행률 업데이트: 전체 챕터 {} → 콘텐츠 페이지 {} (totalPages: {})", 
+            log.info("진행률 업데이트: 전체 챕터 {} → 콘텐츠 페이지 {} (totalPages: {})",
                     currentPage, contentCurrentPage, totalPages);
         }
 
@@ -533,25 +533,25 @@ public class ProgressReportService {
             log.info("totalPages 업데이트: {} → {}", progress.getTotalPages(), totalPages);
             progress.updateTotalPages(totalPages);
         }
-        
+
         // 7. 진행률 업데이트 (콘텐츠 페이지 기준)
         progress.updateProgress(contentCurrentPage);
 
         // 8. 저장
         StudentMaterialProgress saved = progressRepository.save(progress);
-        
+
         // 9. 실제 진행률 계산 (DB 값 검증용)
         int calculatedPercentage = 0;
         if (saved.getTotalPages() != null && saved.getTotalPages() > 0) {
             calculatedPercentage = (int)((saved.getCurrentPage() * 100.0) / saved.getTotalPages());
         }
-        
-        log.info("진행률 저장 완료: currentPage={}/{}, DB진행률={}%, 계산진행률={}%", 
-                saved.getCurrentPage(), saved.getTotalPages(), 
+
+        log.info("진행률 저장 완료: currentPage={}/{}, DB진행률={}%, 계산진행률={}%",
+                saved.getCurrentPage(), saved.getTotalPages(),
                 saved.getProgressPercentage(), calculatedPercentage);
 
         // 10. 응답 생성 (계산된 진행률 사용)
-        String message = saved.getCompletedAt() != null 
+        String message = saved.getCompletedAt() != null
                 ? "🎉 축하합니다! 모든 학습을 완료했습니다!"
                 : String.format("진행률 업데이트 완료 (%d%%)", calculatedPercentage);
 
@@ -577,7 +577,7 @@ public class ProgressReportService {
     private List<Map<String, Object>> extractChapters(Map<String, Object> jsonData) {
         log.info("=== extractChapters 시작 ===");
         log.info("JSON 최상위 keys: {}", jsonData.keySet());
-        
+
         // 패턴 1: parsedData.data 구조 (이전)
         Map<String, Object> parsedData = (Map<String, Object>) jsonData.get("parsedData");
         if (parsedData != null) {
@@ -588,21 +588,21 @@ public class ProgressReportService {
                 return chapters;
             }
         }
-        
+
         // 패턴 2: 직접 data 구조 (이전)
         List<Map<String, Object>> chapters = (List<Map<String, Object>>) jsonData.get("data");
         if (chapters != null) {
             log.info("✅ 패턴 2 성공: data에서 {} 개의 챕터 발견", chapters.size());
             return chapters;
         }
-        
+
         // 패턴 3: 직접 chapters 구조 (새로운 - EC2)
         chapters = (List<Map<String, Object>>) jsonData.get("chapters");
         if (chapters != null) {
             log.info("✅ 패턴 3 성공: chapters에서 {} 개의 챕터 발견 (새로운 JSON 구조)", chapters.size());
             return chapters;
         }
-        
+
         log.error("❌ 모든 패턴 실패: chapters를 찾을 수 없습니다.");
         throw new CustomException(ErrorCode.INVALID_JSON_STRUCTURE);
     }
@@ -630,12 +630,12 @@ public class ProgressReportService {
                 return chapter;
             }
         }
-        
+
         // 모든 챕터가 완료된 경우 마지막 챕터 반환
         if (!chapterProgress.isEmpty()) {
             return chapterProgress.get(chapterProgress.size() - 1);
         }
-        
+
         return null;
     }
 
@@ -674,8 +674,8 @@ public class ProgressReportService {
         }
 
         // 4. 평균 진행률 계산
-        double averageProgress = totalMaterials > 0 
-                ? totalProgress / totalMaterials 
+        double averageProgress = totalMaterials > 0
+                ? totalProgress / totalMaterials
                 : 0.0;
 
         // 5. 응답 생성
