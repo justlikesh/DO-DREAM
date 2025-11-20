@@ -23,6 +23,7 @@
       }
     },
     "android": {
+      "versionCode": 11,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon_dodream.png",
         "backgroundColor": "#ffffff"
