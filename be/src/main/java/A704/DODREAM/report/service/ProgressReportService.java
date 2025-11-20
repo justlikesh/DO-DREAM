@@ -509,39 +509,15 @@ public class ProgressReportService {
 
         Material material = share.getMaterial();
 
-        // 3. chapters 정보 가져오기 및 totalPages 계산/검증
-        List<Map<String, Object>> chapters = null;
-        Integer serverCalculatedTotalPages = null;
+        // 3. totalPages 기본값 설정 (앱이 안 보낸 경우)
+        if (totalPages == null) {
+            log.warn("앱이 totalPages를 보내지 않음. currentPage를 기본값으로 사용: {}", currentPage);
+            totalPages = currentPage;
+        }
         
-        try {
-            Map<String, Object> jsonData = getMaterialJsonFromS3(material);
-            chapters = extractChapters(jsonData);
-            serverCalculatedTotalPages = calculateTotalSections(chapters);
-            
-            // 서버 계산값을 항상 사용 (앱이 보낸 값은 참고용)
-            if (totalPages != null && !totalPages.equals(serverCalculatedTotalPages)) {
-                log.warn("앱이 보낸 totalPages({})와 서버 계산값({})이 다름. 서버 값 사용.", 
-                        totalPages, serverCalculatedTotalPages);
-            }
-            totalPages = serverCalculatedTotalPages;
-            
-        } catch (Exception e) {
-            log.error("총 페이지 수 계산 실패: materialId={}", materialId, e);
-            // JSON 조회 실패 시에만 앱이 보낸 값 사용
-            if (totalPages == null) {
-                totalPages = currentPage;
-            }
-        }
+        log.info("진행률 업데이트: currentPage={}, totalPages={}", currentPage, totalPages);
 
-        // 4. currentPage를 콘텐츠 페이지로 변환 (퀴즈 제외)
-        int contentCurrentPage = currentPage;
-        if (chapters != null && !chapters.isEmpty()) {
-            contentCurrentPage = convertToContentPage(chapters, currentPage);
-            log.info("진행률 업데이트: 전체 챕터 {} → 콘텐츠 페이지 {} (totalPages: {})",
-                    currentPage, contentCurrentPage, totalPages);
-        }
-
-        // 5. 진행 상태 조회 또는 생성
+        // 4. 진행 상태 조회 또는 생성
         StudentMaterialProgress progress = progressRepository
                 .findByStudentIdAndMaterialId(studentId, materialId)
                 .orElse(null);
@@ -551,36 +527,35 @@ public class ProgressReportService {
             progress = StudentMaterialProgress.builder()
                     .student(student)
                     .material(material)
-                    .currentPage(contentCurrentPage)  // 콘텐츠 페이지로 저장
-                    .totalPages(totalPages)  // 콘텐츠 섹션 수 (퀴즈 제외)
+                    .currentPage(currentPage)  // 앱이 보낸 값 그대로 저장
+                    .totalPages(totalPages)    // 앱이 보낸 값 그대로 저장
                     .progressPercentage(0)
                     .build();
         }
 
-        // 6. totalPages 업데이트 (필요한 경우)
+        // 5. totalPages 업데이트 (필요한 경우)
         if (progress.getTotalPages() == null || !totalPages.equals(progress.getTotalPages())) {
             log.info("totalPages 업데이트: {} → {}", progress.getTotalPages(), totalPages);
             progress.updateTotalPages(totalPages);
         }
+        
+        // 6. 진행률 업데이트 (앱이 보낸 currentPage 그대로 사용)
+        progress.updateProgress(currentPage);
 
-        // 7. 진행률 업데이트 (콘텐츠 페이지 기준)
-        progress.updateProgress(contentCurrentPage);
-
-        // 8. 저장
+        // 7. 저장
         StudentMaterialProgress saved = progressRepository.save(progress);
-
-        // 9. 실제 진행률 계산 (DB 값 검증용)
+        
+        // 8. 실제 진행률 계산
         int calculatedPercentage = 0;
         if (saved.getTotalPages() != null && saved.getTotalPages() > 0) {
             calculatedPercentage = (int)((saved.getCurrentPage() * 100.0) / saved.getTotalPages());
         }
+        
+        log.info("진행률 저장 완료: currentPage={}/{} = {}%", 
+                saved.getCurrentPage(), saved.getTotalPages(), calculatedPercentage);
 
-        log.info("진행률 저장 완료: currentPage={}/{}, DB진행률={}%, 계산진행률={}%",
-                saved.getCurrentPage(), saved.getTotalPages(),
-                saved.getProgressPercentage(), calculatedPercentage);
-
-        // 10. 응답 생성 (계산된 진행률 사용)
-        String message = saved.getCompletedAt() != null
+        // 9. 응답 생성
+        String message = saved.getCompletedAt() != null 
                 ? "🎉 축하합니다! 모든 학습을 완료했습니다!"
                 : String.format("진행률 업데이트 완료 (%d%%)", calculatedPercentage);
 
@@ -589,7 +564,7 @@ public class ProgressReportService {
                 .materialId(saved.getMaterial().getId())
                 .currentPage(saved.getCurrentPage())
                 .totalPages(saved.getTotalPages())
-                .progressPercentage(calculatedPercentage)  // 계산된 진행률 사용
+                .progressPercentage(calculatedPercentage)
                 .isCompleted(saved.getCompletedAt() != null)
                 .lastAccessedAt(saved.getLastAccessedAt())
                 .completedAt(saved.getCompletedAt())
