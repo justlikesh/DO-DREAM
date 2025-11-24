@@ -1,32 +1,29 @@
 package A704.DODREAM.quiz.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import A704.DODREAM.material.entity.Material;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "quizs", indexes = {
-    @Index(name = "idx_material", columnList = "material_id")
-})
+@Table(name = "quizzes")
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -34,29 +31,33 @@ import java.util.List;
 @Builder
 public class Quiz {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "material_id", nullable = false)
-  private Material material;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "material_id", nullable = false)
+	private Material material;
 
-  @Column(nullable = false, length = 200)
-  private String title;
+	@Column(nullable = false)
+	private Integer questionNumber; // 문제 번호
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "quiz_type", length = 20)
-  @Builder.Default
-  private QuizType quizType = QuizType.AI_GENERATED;
+	@Column(length = 50)
+	private String questionType; // TERM_DEFINITION, FILL_BLANK, SHORT_ANSWER
 
-  @CreatedDate
-  @Column(name = "created_at", updatable = false)
-  private LocalDateTime createdAt;
+	@Column(nullable = false)
+	private String title; // 문제 제목 (예: 1번 문제)
 
-  // 양방향 관계
-  @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
-  @Builder.Default
-  private List<QuizQuestion> questions = new ArrayList<>();
+	@Column(nullable = false, columnDefinition = "TEXT")
+	private String content; // 문제 내용
 
+	@Column(nullable = false)
+	private String correctAnswer; // 정답
+
+	@Column
+	private String chapterReference; // 관련 챕터
+
+	@CreatedDate
+	@Column(name = "created_at", updatable = false)
+	private LocalDateTime createdAt;
 }
