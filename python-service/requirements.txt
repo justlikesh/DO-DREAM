@@ -1,0 +1,32 @@
+# FastAPI 웹 프레임워크
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# PDF 처리
+PyMuPDF==1.23.8  # fitz - PDF 텍스트 레이어 추출
+
+# 레이아웃 감지 (LayoutParser with Detectron2)
+layoutparser==0.3.4
+# Detectron2는 Dockerfile에서 별도 설치
+
+# 표 추출
+camelot-py[cv]==0.11.0  # 표 구조 파싱 (OpenCV 포함)
+tabula-py==2.9.0  # 표 추출 폴백
+
+# 이미지 처리
+Pillow==10.1.0
+opencv-python==4.8.1.78
+
+# HTTP 클라이언트 (CLOVA OCR 호출)
+requests==2.31.0
+httpx==0.25.2
+
+# 유틸리티
+python-dotenv==1.0.0  # 환경변수 관리
+scikit-learn==1.3.2  # 클러스터링 (DBSCAN)
+
+# Gemini API
+google-generativeai==0.8.3  # Google Gemini API for PDF parsing

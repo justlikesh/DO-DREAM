@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+README.md
+*.md
+
+# Environment files (보안상 제외, 런타임에 주입)
+.env
+.env.*
+
+# Temporary files
+*.log
+tmp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large model files (런타임에 다운로드)
+models/
+*.pth
+*.pkl
