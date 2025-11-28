@@ -1,0 +1,153 @@
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RouteProp } from "@react-navigation/native";
+import { Material } from "../types/material";
+import { QuizQuestion } from "../types/quiz";
+import { QuizAnswerRequest, QuizGradingResultItem } from "../types/api/quizApiTypes";
+
+export type RootStackParamList = {
+  Splash: undefined;
+  AuthStart: undefined;
+  Login: undefined;
+  Signup: undefined;
+  Library: undefined;
+  PlaybackChoice: {
+    material: Material;
+    lastChapterId?: number;
+  };
+  Player: {
+    material: Material;
+    chapterId: number;
+    fromStart: boolean;
+    initialSectionIndex?: number;
+  };
+  Question: {
+    material: Material;
+    chapterId: number;
+    sectionIndex: number;
+    questionId?: number; // 기존 질문 히스토리에서 진입 시
+    sessionId?: string; // 기존 세션으로 이어서 대화할 때
+  };
+  QuestionList: {
+    material: Material;
+  };
+  QuizList: {
+    material: Material;
+    chapterId: number;
+  };
+  Quiz: {
+    material: Material;
+    questions: QuizQuestion[];
+    startIndex: number;
+  };
+  QuizResult: {
+    material: Material;
+    gradingResults: QuizGradingResultItem[];
+    userAnswers: QuizAnswerRequest[];
+  };
+  BookmarkList: {
+    material: Material;
+  };
+  Settings: undefined;
+};
+
+// Navigation prop 타입
+export type SplashScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Splash"
+>;
+
+export type AuthStartScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "AuthStart"
+>;
+
+export type LoginScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Login"
+>;
+
+export type SignupScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Signup"
+>;
+
+export type LibraryScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Library"
+>;
+
+export type PlaybackChoiceScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "PlaybackChoice"
+>;
+
+export type PlayerScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Player"
+>;
+
+export type QuestionScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Question"
+>;
+
+export type QuestionListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "QuestionList"
+>;
+
+export type QuizListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "QuizList"
+>;
+
+export type QuizScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Quiz"
+>;
+
+export type QuizResultScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "QuizResult"
+>;
+
+export type BookmarkListScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "BookmarkList"
+>;
+
+export type SettingsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  "Settings"
+>;
+
+// Route prop 타입
+export type PlaybackChoiceScreenRouteProp = RouteProp<
+  RootStackParamList,
+  "PlaybackChoice"
+>;
+
+export type PlayerScreenRouteProp = RouteProp<RootStackParamList, "Player">;
+
+export type QuestionScreenRouteProp = RouteProp<RootStackParamList, "Question">;
+
+export type QuestionListScreenRouteProp = RouteProp<
+  RootStackParamList,
+  "QuestionList"
+>;
+
+export type QuizListScreenRouteProp = RouteProp<RootStackParamList, "QuizList">;
+
+export type QuizScreenRouteProp = RouteProp<RootStackParamList, "Quiz">;
+
+export type QuizResultScreenRouteProp = RouteProp<
+  RootStackParamList,
+  "QuizResult"
+>;
+
+export type BookmarkListScreenRouteProp = RouteProp<
+  RootStackParamList,
+  "BookmarkList"
+>;
+
+export type SettingsScreenRouteProp = RouteProp<RootStackParamList, "Settings">;
