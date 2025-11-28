@@ -1,0 +1,271 @@
+/* =========================
+   Classroom.css (slim)
+   - ClassroomList.css와 겹치는 스타일 제거
+   - Classroom 페이지 전용 요소만 유지
+   ========================= */
+
+/* .cl-header-wrapper {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 40px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+} */
+
+.cl-header-button {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cl-header-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ===== 메인 레이아웃(페이지 전용) ===== */
+.cl-main-fixed {
+  position: relative;
+  height: calc(100vh - 70px); /* 고정 헤더 70px 가정 */
+  margin-left: 280px; /* 고정 사이드바 280px 가정 */
+  margin-top: 70px; /* 헤더 높이 */
+  padding: 30px 40px 30px 40px;
+  overflow: hidden; /* 내부 스크롤 컨테이너만 스크롤 */
+}
+
+/* 2단 컬럼 래이아웃 (좌: 학생/반, 우: 자료 등) */
+.cl-two-columns {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+/* ===== 카드 공통 (Classroom 전용 카드) ===== */
+.cl-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 내부 스크롤 위해 */
+}
+.cl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px 10px;
+}
+.cl-card-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+.cl-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cl-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== 카드 내부 툴바/검색/정렬 (페이지 전용) ===== */
+.cl-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  height: 100%;
+}
+
+/* ===== 카드 스크롤 컨테이너 (페이지 전용) ===== */
+.cl-section-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 8px 12px;
+}
+
+/* ===== 라벨 필터 칩 (페이지 전용) ===== */
+.cl-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 0px;
+  margin: 4px 8px;
+  border-radius: 12px;
+}
+.cl-chip {
+  --chip-color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  cursor: pointer;
+}
+.cl-chip.active {
+  background-color: var(--chip-color);
+  color: #fff;
+}
+.cl-chip.reset {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* ===== 학생 카드 (Classroom 전용) ===== */
+.cl-students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.cl-student-card {
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 250ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+.cl-student-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(25, 43, 85, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(25, 43, 85, 0.1);
+}
+
+.cl-student-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cl-student-avatar {
+  height: 50px;
+  object-fit: cover;
+}
+.cl-student-info h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #1e293b;
+}
+.cl-student-info p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+}
+.cl-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cl-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(229, 231, 235, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cl-progress-fill {
+  height: 100%;
+  background: #fbe210;
+}
+.cl-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #192b55;
+}
+
+/* ===== 반응형 (페이지 전용 요소만) ===== */
+@media (max-width: 1024px) {
+  .cl-main-fixed {
+    margin-left: 0;
+    padding: 16px;
+  }
+  .cl-two-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* ★ 툴바 캡슐: 좌/우 공통 강제 통일 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* ★ 버튼 UA 리셋(크롬/사파리 차단) */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+/* ★ input UA 리셋 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input {
+  all: unset;
+  font: inherit;
+  color: inherit;
+  line-height: 1;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* 아이콘 정렬 */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap > svg,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* (선택) hover */
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-input-wrap:hover,
+.classroom-page .cl-card .cl-card-head .cl-head-right .cl-sort-btn:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}

@@ -1,0 +1,980 @@
+/* ===== StudentRoom.css ===== */
+
+/* ===== StudentRoom 전용 스타일 ===== */
+
+.student-room-page {
+  min-height: 100vh;
+  background-image: url('../assets/join/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: scroll;
+  overflow-y: auto;
+}
+
+/* ===== Header ===== */
+.student-room-page .cl-header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: 70px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+/* ===== Sidebar - Classroom과 동일 ===== */
+.student-room-page .cl-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  padding: 20px 24px;
+  padding-top: calc(70px + 30px);
+  overflow-y: hidden;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 50;
+  box-shadow: 2px 0px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+/* ===== 프로필 섹션 - Classroom과 동일 ===== */
+.student-room-page .cl-profile-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.student-room-page .cl-profile-avatar-mini {
+  height: 100px;
+  object-fit: cover;
+  border: none;
+}
+
+.sr-avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  font-size: 40px;
+  flex-shrink: 0;
+  border: 3px solid #e5e7eb;
+}
+
+.student-room-page .cl-profile-name-mini {
+  font-size: 18px;
+  font-weight: 700;
+  color: #192b55;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.student-room-page .cl-profile-email-mini {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  word-break: break-all;
+}
+
+.student-room-page .cl-profile-label-mini {
+  font-size: 16px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin: 0;
+}
+
+.student-room-page .cl-sidebar-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+/* ===== Sidebar 통계 ===== */
+.sr-sidebar-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sr-sidebar-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  border: 2px solid rgba(226, 232, 240, 1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.sr-sidebar-stat-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sr-sidebar-stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #192b55;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+
+.sr-sidebar-progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(226, 232, 240, 0.4);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sr-sidebar-progress-fill {
+  height: 100%;
+  background: #fec73d;
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== Main Content - Classroom과 동일 ===== */
+.student-room-page .cl-main-fixed {
+  position: relative;
+  margin-left: 280px;
+  margin-top: 70px;
+  padding: 30px 32px 32px;
+  height: auto;
+  overflow: visible;
+
+  /* Classroom 공통 스타일에서 내려온 큰 판 배경/그림자 덮어쓰기 */
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+/* ===== Content Wrapper ===== */
+.sr-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ===== 카드 스타일 - Classroom과 비슷하게 ===== */
+.student-room-page .cl-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 20px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.student-room-page .cl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px 10px;
+}
+
+.student-room-page .cl-card-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.student-room-page .cl-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.student-room-page .cl-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== 검색 & 정렬 버튼 - Classroom과 동일 ===== */
+.student-room-page .cl-input-wrap,
+.student-room-page .cl-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-sort-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #eee;
+  color: #374151;
+  font: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.student-room-page .cl-input {
+  all: unset;
+  font: inherit;
+  color: inherit;
+  line-height: 1;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.student-room-page .cl-input-wrap > svg,
+.student-room-page .cl-sort-btn > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* ===== 스크롤 영역 - Classroom과 동일 ===== */
+.student-room-page .cl-section-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ===== 2단 컬럼 레이아웃 ===== */
+.sr-two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* ===== 자료 리스트 ===== */
+.student-room-page .cl-materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.student-room-page .cl-material-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 12px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.student-room-page .cl-material-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 238, 243, 0.6);
+  backdrop-filter: blur(6px);
+  color: #192b55;
+  flex-shrink: 0;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-material-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-room-page .cl-material-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-room-page .cl-material-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.student-room-page .cl-material-date {
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* ===== 자료 진행률 ===== */
+.sr-material-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.sr-progress-bar-small {
+  width: 100px;
+  height: 6px;
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sr-progress-fill-small {
+  height: 100%;
+  background: #10b981;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.sr-status-badge {
+  min-width: 60px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+
+/* ===== 빈 상태 ===== */
+.student-room-page .cl-empty-materials {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #cbd5e1;
+  text-align: center;
+  gap: 10px;
+}
+
+.student-room-page .cl-empty-materials svg {
+  margin-bottom: 16px;
+  opacity: 0.5;
+  color: #cbd5e1;
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.student-room-page .cl-empty-materials p {
+  font-size: 14px;
+  margin: 0;
+  color: #64748b;
+}
+
+.student-room-page .cl-empty-hint {
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+}
+
+/* ===== 약점 영역 ===== */
+.sr-weak-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sr-weak-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(248, 250, 252, 0.5);
+  backdrop-filter: blur(6px);
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.sr-weak-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.sr-weak-header strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.2px;
+}
+
+.sr-weak-header small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.sr-weak-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(226, 232, 240, 0.5);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.sr-weak-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 100%);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* ===== 퀴즈 리스트 ===== */
+.sr-quiz-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sr-quiz-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-radius: 12px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sr-quiz-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-quiz-info h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.2px;
+}
+
+.sr-quiz-info p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+.sr-quiz-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sr-score-main {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sr-accuracy-badge {
+  background: rgba(239, 246, 255, 1);
+  color: #192b55;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+}
+
+/* ===== Q&A 리스트 ===== */
+.sr-qa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sr-qa-item {
+  padding: 14px 16px;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.4);
+  border-left: 4px solid #192b55;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+}
+
+.sr-qa-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  border-left-color: #fec73d;
+}
+
+.sr-qa-preview-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-qa-preview-text {
+  margin: 0;
+  color: #1e293b;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-qa-preview-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sr-topic-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(239, 246, 255, 1);
+  color: #192b55;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sr-qa-date {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ===== Chat Modal ===== */
+.sr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.sr-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.sr-modal-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.sr-modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-modal-title-group svg {
+  color: #192b55;
+  flex-shrink: 0;
+}
+
+.sr-modal-title-group h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sr-modal-title-group p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.sr-modal-close {
+  all: unset;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 252, 0.8);
+  color: #64748b;
+  font-size: 20px;
+  font-weight: 600;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+  flex-shrink: 0;
+}
+
+.sr-modal-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.sr-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 28px;
+}
+
+.sr-chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sr-chat-message {
+  display: flex;
+  width: 100%;
+}
+
+.sr-chat-user {
+  justify-content: flex-end;
+}
+
+.sr-chat-ai {
+  justify-content: flex-start;
+}
+
+.sr-chat-bubble {
+  max-width: 70%;
+  padding: 14px 18px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: bubbleIn 0.3s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+@keyframes bubbleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.sr-chat-user .sr-chat-bubble {
+  background: linear-gradient(135deg, #192b55 0%, #2c4a8a 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.sr-chat-ai .sr-chat-bubble {
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  color: #1e293b;
+  border-bottom-left-radius: 4px;
+}
+
+.sr-chat-bubble p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.sr-chat-time {
+  font-size: 11px;
+  opacity: 0.7;
+  align-self: flex-end;
+}
+
+.sr-chat-user .sr-chat-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sr-chat-ai .sr-chat-time {
+  color: #94a3b8;
+}
+
+/* ===== 스크롤바 스타일 ===== */
+.sr-content-wrapper::-webkit-scrollbar,
+.student-room-page .cl-section-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sr-content-wrapper::-webkit-scrollbar-track,
+.student-room-page .cl-section-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sr-content-wrapper::-webkit-scrollbar-thumb,
+.student-room-page .cl-section-scroll::-webkit-scrollbar-thumb {
+  background: rgba(25, 43, 85, 0.2);
+  border-radius: 4px;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 1200px) {
+  .sr-two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .student-room-page .cl-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .student-room-page .cl-main-fixed {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .sr-content-wrapper {
+    padding-right: 0;
+  }
+
+  .sr-two-columns {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .student-room-page .cl-main-fixed {
+    padding: 20px;
+  }
+
+  .student-room-page .cl-card {
+    padding: 16px;
+  }
+
+  .sr-content-wrapper {
+    gap: 16px;
+  }
+
+  .sr-two-columns {
+    gap: 16px;
+  }
+
+  .sr-material-progress {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .sr-progress-bar-small {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .student-room-page .cl-main-fixed {
+    padding: 16px;
+  }
+
+  .student-room-page .cl-card {
+    padding: 16px;
+  }
+
+  .sr-quiz-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sr-quiz-score {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sr-qa-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ===== 퀴즈 카드 그리드 ===== */
+.sr-quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.sr-quiz-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sr-quiz-card-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.sr-quiz-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.4px;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.sr-quiz-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sr-quiz-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sr-quiz-card-row:last-child {
+  border-bottom: none;
+  padding-top: 20px;
+  border-top: 2px solid #f1f5f9;
+}
+
+.sr-quiz-card-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: -0.2px;
+}
+
+.sr-quiz-card-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.3px;
+}
+
+.sr-quiz-rate {
+  color: #192b55;
+  background: #eff6ff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  border: none
+}
